@@ -1,5 +1,16 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Página de vendas EUA e subdomínio eua.* (12/11/2026)
+`eua.<domínio>` herda o tenant do domínio pai no `proxy.ts`. A raiz desse host
+é reescrita para `/eua` (grupo `(landing-eua)`, sem chrome do site) e as demais
+rotas seguem sem reescrita. O redirect canônico do domínio pai não se aplica ao
+subdomínio.
+A página é bilíngue (PT/EN), usa o dólar comercial do Banco Central e capta
+leads com origem `landing_eua` em `POST /api/public/eua/lead`. A contratação
+reutiliza o fluxo canônico de proposta (`/proposta/rascunho`).
+Telefones com DDI estrangeiro preservam o "+" na proposta e no CRM.
+Relatório: `docs/relatorios-fases/PAGINA-VENDAS-EUA-2026-11-12.md`.
+
 ### Carteira no filtro mensal de boletos (09/11/2026)
 O Controle de Boletos inclui vendas anteriores com cotas ativas ou
 contempladas na competência selecionada, mesmo com PDF pendente.

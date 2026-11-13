@@ -51,6 +51,24 @@ export function formatWhatsappBrInput(raw: string): string {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 
+/**
+ * Máscara BR, exceto quando o número começa com "+DDI" diferente de 55
+ * (ex.: clientes nos EUA), que é preservado em formato internacional.
+ */
+export function formatWhatsappIntlInput(raw: string): string {
+  const trimmed = raw.trim();
+  const d = digitsOnlyPhone(trimmed);
+  if (!trimmed.startsWith("+")) return formatWhatsappBrInput(trimmed);
+  if (d.startsWith("55")) return d.length > 2 ? `+55 ${formatWhatsappBrInput(d.slice(2))}` : `+${d}`;
+  if (d.startsWith("1")) {
+    const n = d.slice(1, 11);
+    if (n.length <= 3) return `+1 ${n}`.trim();
+    if (n.length <= 6) return `+1 (${n.slice(0, 3)}) ${n.slice(3)}`;
+    return `+1 (${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}`;
+  }
+  return `+${d.slice(0, 15)}`;
+}
+
 /** Máscara CPF: 000.000.000-00 */
 export function formatCpfBrInput(raw: string): string {
   const d = raw.replace(/\D/g, "").slice(0, 11);

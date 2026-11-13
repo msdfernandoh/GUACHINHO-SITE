@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Protótipo — eua.raconsinop.com.br</title>
+<style>
+  /* ===== Tema padrão: Bandeiras EUA + Brasil (ponte) ===== */
+  :root{
+    --navy:#0a3161; --ink:#04112b; --ink-rgb:4 17 43;
+    --cyan:#5b9dff; --acc:91 157 255; --on-acc:#04112b;
+    --yellow:#ffdf00; --yel:255 223 0;
+    --green:#1fb85a; --grn:31 184 90; --green-2:#009c3b;
+    --usd:#9ec5ff; --red:#d22f4f;
+    --hl1:#9ec5ff; --hl2:#ffdf00;
+    --plan1:#0d2a6e; --plan2:#061a45; --drawer:#071d4d;
+    --glow-r:rgba(0,156,59,.30); --glow-l:rgba(10,49,97,.95);
+    --text:#eef2ff; --muted:#a9b6dc; --line:rgba(255,255,255,.12); --card:rgba(255,255,255,.06);
+    --radius:18px;
+  }
+  /* ===== Tema alternativo: Racon (marca) ===== */
+  body.theme-racon{
+    --navy:#0a1172; --ink:#050833; --ink-rgb:5 8 51;
+    --cyan:#33f5ff; --acc:51 245 255; --on-acc:#012a33;
+    --yellow:#ffd21f; --yel:255 210 31;
+    --green:#22c55e; --grn:34 197 94; --green-2:#16a34a;
+    --usd:#4ade80; --hl1:#4ade80; --hl2:#33f5ff;
+    --plan1:#0d1890; --plan2:#070c55; --drawer:#0a0f5c;
+    --glow-r:rgba(51,245,255,.22); --glow-l:rgba(10,17,114,.9);
+    --muted:#a9b2e0;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:Inter,"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--ink);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:84px;transition:background .3s}
+  a{color:inherit}
+  button{font:inherit;cursor:pointer}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 18px}
+  .muted{color:var(--muted)}
+  .tag{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.02em;background:rgb(var(--acc)/.1);color:var(--cyan);border:1px solid rgb(var(--acc)/.3)}
+  h1,h2,h3{line-height:1.12;margin:0 0 12px;letter-spacing:-.02em}
+  h2{font-size:clamp(26px,4vw,40px)}
+  section{padding:64px 0;position:relative}
+  .sec-head{text-align:center;max-width:720px;margin:0 auto 34px}
+  .sec-head p{color:var(--muted);margin:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;padding:15px 22px;font-weight:800;text-decoration:none;transition:transform .15s,filter .15s,background .15s}
+  .btn:active{transform:scale(.97)}
+  .btn-y{background:var(--yellow);color:#1b1600;box-shadow:0 10px 30px -10px rgb(var(--yel)/.6)}
+  .btn-y:hover{filter:brightness(1.06)}
+  .btn-c{background:var(--cyan);color:var(--on-acc)}
+  .btn-g{background:var(--green);color:#03210f}
+  .btn-o{background:transparent;color:var(--text);border:1px solid var(--line)}
+  .btn-o:hover{background:rgba(255,255,255,.06)}
+  .btn-block{width:100%}
+  .usd{color:var(--usd)} .brl{color:var(--yellow)} .cy{color:var(--cyan)}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ===== Bandeiras (SVG, renderiza igual em qualquer aparelho) ===== */
+  .fl{display:inline-block;width:21px;height:14px;border-radius:3px;background-size:cover;background-position:center;vertical-align:-2px;box-shadow:0 0 0 1px rgba(255,255,255,.25);flex:0 0 auto}
+  .fl.us{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 19 10'%3E%3Crect width='19' height='10' fill='%23B31942'/%3E%3Cpath d='M0 1.15h19M0 2.69h19M0 4.23h19M0 5.77h19M0 7.31h19M0 8.85h19' stroke='%23fff' stroke-width='.77'/%3E%3Crect width='7.6' height='5.38' fill='%230A3161'/%3E%3C/svg%3E")}
+  .fl.br{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 14'%3E%3Crect width='20' height='14' fill='%23009C3B'/%3E%3Cpath d='M10 1.6 18.4 7 10 12.4 1.6 7z' fill='%23FFDF00'/%3E%3Ccircle cx='10' cy='7' r='3.4' fill='%23002776'/%3E%3C/svg%3E")}
+  .fl.lg{width:30px;height:20px;border-radius:4px}
+  .ribbon{height:5px;background:linear-gradient(90deg,#0a3161 0 22%,#b31942 22% 27%,#fff 27% 31%,#b31942 31% 36%,#fff 36% 40%,#b31942 40% 50%,#009c3b 50% 72%,#ffdf00 72% 88%,#002776 88% 100%)}
+  .bridge{width:72px;height:5px;border-radius:5px;margin:14px auto 0;background:linear-gradient(90deg,#0a3161 0 25%,#b31942 25% 50%,#009c3b 50% 75%,#ffdf00 75%)}
+  body.theme-racon .ribbon,body.theme-racon .bridge{background:linear-gradient(90deg,var(--navy),var(--cyan))}
+
+  /* ===== Camada de ideias ===== */
+  .pin{display:none;position:absolute;z-index:30;width:30px;height:30px;border-radius:50%;background:#ff3d81;color:#fff;font-size:15px;font-weight:900;align-items:center;justify-content:center;box-shadow:0 0 0 6px rgba(255,61,129,.25);animation:pulse 2s infinite;border:0}
+  body.show-ideas .pin{display:inline-flex}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(255,61,129,.35)}50%{box-shadow:0 0 0 12px rgba(255,61,129,0)}}
+  .idea-pop{position:fixed;z-index:500;max-width:340px;background:#fff;color:#14163a;border-radius:14px;padding:16px 16px 14px;box-shadow:0 20px 60px rgba(0,0,0,.5);font-size:14px;display:none}
+  .idea-pop b{display:block;color:#ff3d81;font-size:12px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+  .idea-pop .x{position:absolute;right:10px;top:6px;background:none;border:0;font-size:20px;color:#888}
+  .proto-tools{position:fixed;right:16px;bottom:96px;z-index:150;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .proto-tools button{border:0;border-radius:999px;padding:10px 14px;font-weight:800;font-size:13px;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  .proto-tools .i{background:#ff3d81}
+  .proto-tools .t{background:#1f2a44;display:flex;gap:6px;align-items:center}
+  .proto-banner{background:repeating-linear-gradient(45deg,#ff3d81 0 14px,#e0306f 14px 28px);color:#fff;text-align:center;font-size:12px;font-weight:700;padding:6px 10px}
+
+  /* ===== Topbar ===== */
+  .top{position:sticky;top:0;z-index:100;background:rgb(var(--ink-rgb)/.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:62px;gap:12px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:-.02em;font-size:18px;text-decoration:none}
+  .logo .mark{width:34px;height:34px;border-radius:10px;background:#fff;display:grid;place-items:center;color:#0a1172;font-weight:900;position:relative;overflow:hidden}
+  .logo .mark:before,.logo .mark:after{content:"";position:absolute;left:8px;right:8px;height:3px;background:#33f5ff;border-radius:3px}
+  .logo .mark:before{top:5px}.logo .mark:after{bottom:5px}
+  .logo small{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+  .logo small .fl{width:14px;height:10px}
+  /* ===== Assinatura Racon Consórcios | Franqueado Gauchinho ===== */
+  .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff;--s:15px}
+  .brand .rc{display:flex;flex-direction:column;align-items:center;line-height:.86;font-weight:900;letter-spacing:-.03em}
+  .brand .rc .w{font-size:calc(var(--s)*1.45)}
+  .brand .rc .w .o{position:relative;display:inline-block}
+  .brand .rc .w .o:before,.brand .rc .w .o:after{content:"";position:absolute;left:-14%;right:-14%;height:.42em;border:0 solid #12b5f5;border-radius:50%}
+  .brand .rc .w .o:before{top:-.24em;border-top-width:.11em}
+  .brand .rc .w .o:after{bottom:-.2em;border-bottom-width:.11em}
+  .brand .rc .c{font-size:var(--s);margin-top:.28em;letter-spacing:-.02em}
+  .brand .sep{width:2px;align-self:stretch;background:#12b5f5;margin:2px 0}
+  .brand .fr{display:flex;align-items:center;gap:8px}
+  .brand .g{width:calc(var(--s)*2.1);height:calc(var(--s)*2.1);border-radius:50%;background:#fff;color:#0a1f44;display:grid;place-items:center;font-weight:900;font-size:calc(var(--s)*1.35);flex:0 0 auto;overflow:hidden}
+  .brand .g img{width:100%;height:100%;object-fit:contain}
+  .brand .fr small{display:block;color:#12b5f5;font-weight:800;letter-spacing:.24em;font-size:calc(var(--s)*.52)}
+  .brand .fr b{display:block;font-family:"Arial Narrow","Roboto Condensed",Impact,sans-serif;font-weight:900;letter-spacing:.04em;font-size:calc(var(--s)*1.05);line-height:1}
+  .brand.lg{--s:26px;gap:20px}
+  @media(max-width:520px){.brand.lg{--s:17px;gap:12px}}
+  footer .cols>*{min-width:0}
+  @media(max-width:520px){.top .brand .fr small{display:none}.top .brand{gap:8px;--s:12px}.lang button{padding:6px 8px}.lang button .fl{display:none}}
+  .wizard>*,.lance-grid>*,.panel-grid>*,.fork>*,.training>*,.hero-grid>*{min-width:0}
+  .conv-out{white-space:nowrap;font-size:clamp(22px,7vw,30px)!important}
+  .slot small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .top nav{display:flex;gap:18px;font-size:14px;color:var(--muted)}
+  .top nav a{text-decoration:none}.top nav a:hover{color:#fff}
+  .lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;font-size:12px;font-weight:800}
+  .lang button{background:none;border:0;color:var(--muted);padding:6px 10px;display:flex;align-items:center;gap:6px}
+  .lang button .fl{width:16px;height:11px}
+  .lang button.on{background:#fff;color:#0a1172}
+  @media(max-width:980px){.top nav{display:none}}
+
+  /* ===== Hero ===== */
+  .hero{padding:56px 0 40px;overflow:hidden;background:
+    radial-gradient(900px 500px at 88% -10%,var(--glow-r),transparent 60%),
+    radial-gradient(700px 500px at -10% 30%,var(--glow-l),transparent 70%),
+    linear-gradient(180deg,var(--navy) 0%,var(--ink) 100%)}
+  .hero:before{content:"";position:absolute;inset:0 45% 0 0;background:radial-gradient(rgba(255,255,255,.16) 1px,transparent 1.7px) 0 0/26px 26px;-webkit-mask-image:linear-gradient(90deg,#000,transparent);mask-image:linear-gradient(90deg,#000,transparent);pointer-events:none}
+  body.theme-racon .hero:before{display:none}
+  .hero .wrap{position:relative;z-index:1}
+  .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
+  @media(max-width:920px){.hero-grid{grid-template-columns:1fr}}
+  .hero h1{font-size:clamp(34px,5.6vw,62px);font-weight:900;margin-top:18px}
+  .hero h1 .hl{background:linear-gradient(90deg,var(--hl1),var(--hl2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.lead{font-size:clamp(16px,2vw,20px);color:#cfd6ff;max-width:560px}
+  .hero-ctas{display:flex;flex-wrap:wrap;gap:12px;margin:26px 0 22px}
+  .trust{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted)}
+  .trust span{display:flex;align-items:center;gap:6px}
+  .trust i{font-style:normal;color:var(--green)}
+
+  .converter{background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.18);border-radius:24px;padding:24px;box-shadow:0 40px 80px -30px rgba(0,0,0,.7);position:relative}
+  .converter h3{font-size:15px;color:var(--muted);font-weight:700;margin-bottom:14px}
+  .conv-row{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+  .conv-row.us{border-left:4px solid #b31942}
+  .conv-row.br{border-left:4px solid #009c3b}
+  body.theme-racon .conv-row.us,body.theme-racon .conv-row.br{border-left:1px solid var(--line)}
+  .conv-row input{background:none;border:0;color:#fff;font-size:30px;font-weight:900;width:100%;outline:none}
+  .conv-row .cur{font-weight:800;color:var(--muted);white-space:nowrap}
+  .conv-arrow{text-align:center;margin:8px 0;color:var(--cyan);font-size:15px;font-weight:700}
+  .conv-out{font-size:30px;font-weight:900}
+  .conv-big{margin-top:16px;padding:16px;border-radius:14px;background:rgb(var(--yel)/.1);border:1px dashed rgb(var(--yel)/.5)}
+  .conv-big .lbl{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--yellow);font-weight:800}
+  .conv-big .val{font-size:clamp(30px,4vw,40px);font-weight:900;color:#fff}
+  .conv-big small{color:var(--muted)}
+  .fx{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-top:12px;gap:8px}
+  .fx input{width:64px;background:rgba(0,0,0,.3);border:1px solid var(--line);color:#fff;border-radius:8px;padding:4px 6px;font-weight:700}
+
+  .logos-strip{display:flex;gap:28px;justify-content:center;flex-wrap:wrap;padding:22px 0;border-bottom:1px solid var(--line);background:rgba(255,255,255,.02);font-size:13px;color:var(--muted)}
+  .logos-strip b{color:#fff;font-size:22px;display:block;font-weight:900}
+  .logos-strip div{text-align:center;min-width:130px}
+
+  /* ===== Wizard ===== */
+  .wizard{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media(max-width:920px){.wizard{grid-template-columns:1fr}}
+  .step-lbl{display:flex;align-items:center;gap:10px;font-weight:800;margin:0 0 12px}
+  .step-lbl .n{width:28px;height:28px;border-radius:50%;background:var(--cyan);color:var(--on-acc);display:grid;place-items:center;font-size:14px;flex:0 0 auto}
+  .chips{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:26px}
+  .chip{background:rgba(255,255,255,.04);border:1.5px solid var(--line);border-radius:14px;padding:14px 12px;color:var(--text);text-align:left;transition:.15s}
+  .chip .e{font-size:24px;display:block;margin-bottom:4px}
+  .chip b{display:block;font-size:14px}
+  .chip small{color:var(--muted);font-size:12px}
+  .chip.on{border-color:var(--cyan);background:rgb(var(--acc)/.12);box-shadow:0 0 0 3px rgb(var(--acc)/.15)}
+  .chips.three{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:520px){.chips.three{grid-template-columns:1fr}}
+  .slider-box{margin-bottom:26px}
+  .slider-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .slider-top .v{font-size:34px;font-weight:900}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:10px;border-radius:99px;background:linear-gradient(90deg,var(--usd) var(--p,30%),rgba(255,255,255,.12) var(--p,30%));outline:none;margin:14px 0 6px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:#fff;border:6px solid var(--usd);box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:6px solid var(--usd)}
+  .quick{display:flex;gap:8px;flex-wrap:wrap}
+  .quick button{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700}
+
+  .plan{position:sticky;top:80px;background:linear-gradient(170deg,var(--plan1),var(--plan2));border:1px solid rgb(var(--acc)/.4);border-radius:24px;padding:24px;box-shadow:0 40px 80px -30px rgb(var(--acc)/.3);overflow:hidden}
+  .plan .ribbon{margin:-24px -24px 18px}
+  .plan .ttl{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--cyan);font-weight:800}
+  .plan .credit{font-size:clamp(38px,5vw,52px);font-weight:900;margin:6px 0 2px;color:#fff}
+  .plan .credit-sub{color:var(--muted);font-size:14px}
+  .plan-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+  .plan-grid div{background:rgba(0,0,0,.25);border-radius:12px;padding:12px}
+  .plan-grid small{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  .plan-grid small .fl{width:16px;height:11px}
+  .plan-grid b{font-size:18px}
+  .strategy{background:rgb(var(--yel)/.08);border-left:4px solid var(--yellow);padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:16px}
+  .strategy b{color:var(--yellow)}
+  .what-buy{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .what-buy span{background:rgba(255,255,255,.08);border-radius:999px;padding:5px 10px;font-size:12px}
+  .disc{font-size:11px;color:var(--muted);margin-top:12px}
+  .multi{font-size:13px;color:var(--yellow);margin-top:6px;display:none}
+
+  /* ===== Lance embutido ===== */
+  .lance-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:stretch}
+  @media(max-width:920px){.lance-grid{grid-template-columns:1fr}}
+  .bar{height:64px;border-radius:14px;overflow:hidden;display:flex;margin:18px 0 10px;border:1px solid var(--line)}
+  .bar .a{background:repeating-linear-gradient(45deg,#ffb020 0 10px,#ffc94d 10px 20px);display:flex;align-items:center;justify-content:center;font-weight:900;color:#3a2600;font-size:13px;transition:width .35s;white-space:nowrap;overflow:hidden}
+  .bar .b{background:linear-gradient(90deg,var(--green-2),var(--green));display:flex;align-items:center;justify-content:center;font-weight:900;color:#03210f;transition:width .35s;white-space:nowrap;overflow:hidden}
+  .legend{display:flex;gap:16px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  .reverse{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px}
+  .reverse input{background:rgba(0,0,0,.3);border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px 12px;font-size:18px;font-weight:800;width:170px}
+  .big-answer{font-size:28px;font-weight:900;color:var(--yellow)}
+  .vs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .vs div{border-radius:12px;padding:12px;font-size:13px}
+  .vs .no{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3)}
+  .vs .yes{background:rgb(var(--grn)/.1);border:1px solid rgb(var(--grn)/.35)}
+
+  /* ===== Abas saiba mais ===== */
+  .tabs{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;margin-bottom:18px;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;scroll-snap-align:start;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);padding:12px 16px;border-radius:14px;font-weight:700;font-size:14px}
+  .tab.on{background:#fff;color:#0a1172}
+  .panel{display:none;animation:fade .35s}
+  .panel.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .panel-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:22px}
+  @media(max-width:920px){.panel-grid{grid-template-columns:1fr}}
+  .houses{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:16px 0}
+  .house{aspect-ratio:1;border-radius:14px;display:grid;place-items:center;font-size:30px;background:rgba(255,255,255,.04);border:1px dashed var(--line);filter:grayscale(1);opacity:.4;transition:.3s}
+  .house.on{filter:none;opacity:1;background:rgb(var(--grn)/.12);border:1px solid rgb(var(--grn)/.45);transform:translateY(-3px)}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:520px){.kpis{grid-template-columns:1fr}}
+  .kpi{background:rgba(0,0,0,.25);border-radius:14px;padding:14px}
+  .kpi small{color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:700;letter-spacing:.05em}
+  .kpi b{display:block;font-size:22px}
+  ul.ck{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:8px}
+  ul.ck li:before{content:"✓";color:var(--green);font-weight:900;margin-right:8px}
+  .story{border-left:3px solid var(--cyan);padding:4px 0 4px 14px;color:#d7dcff;font-style:italic;margin-top:16px}
+  .cmp{width:100%;border-collapse:separate;border-spacing:0;font-size:14px;overflow:hidden;border-radius:14px;border:1px solid var(--line)}
+  .cmp th,.cmp td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line)}
+  .cmp th{background:rgba(255,255,255,.06);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .cmp td.good{color:var(--green);font-weight:800}
+  .cmp td.bad{color:#f87171;font-weight:800}
+  .cmp tr:last-child td{border-bottom:0}
+
+  /* ===== Oportunidades ===== */
+  .filters{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:20px}
+  .filters button{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:9px 14px;font-weight:700;font-size:13px}
+  .filters button.on{background:var(--yellow);color:#1b1600;border-color:var(--yellow)}
+  .opps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:920px){.opps{grid-template-columns:1fr 1fr}}
+  @media(max-width:600px){.opps{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px}.opp{flex:0 0 82%;scroll-snap-align:start}}
+  .opp{border-radius:18px;overflow:hidden;border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;animation:fade .35s}
+  .opp .img{height:120px;display:flex;align-items:flex-end;justify-content:space-between;padding:12px;font-size:44px;position:relative}
+  .opp .img.novo{background:linear-gradient(135deg,#0a3161,#1d5fbf)}
+  .opp .img.devolvido{background:linear-gradient(135deg,#00602a,#1fb85a)}
+  .opp .img.carta{background:linear-gradient(135deg,#7a5b00,#e0b400)}
+  .opp .badge{position:absolute;left:12px;top:12px;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);color:#fff;font-size:11px;font-weight:800;padding:5px 9px;border-radius:999px}
+  .opp .city{font-size:12px;font-weight:800;background:#fff;color:#0a1172;border-radius:8px;padding:4px 8px}
+  .opp .body{padding:14px;display:flex;flex-direction:column;gap:6px;flex:1}
+  .opp .body b{font-size:15px}
+  .opp .price{font-size:22px;font-weight:900;color:var(--yellow)}
+  .opp .note{font-size:12px;color:var(--muted);flex:1}
+  .opp .btn{padding:11px;font-size:13px;margin-top:6px}
+  .states{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:18px}
+  .states span{font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--muted)}
+  .states span.on{background:rgb(var(--grn)/.15);border-color:rgb(var(--grn)/.5);color:#fff}
+
+  /* ===== Treinamento ===== */
+  .training{display:grid;grid-template-columns:.9fr 1.1fr;gap:26px;align-items:center;background:linear-gradient(135deg,rgb(var(--yel)/.12),rgb(var(--grn)/.08));border:1px solid rgb(var(--yel)/.4);border-radius:24px;padding:28px;position:relative}
+  @media(max-width:920px){.training{grid-template-columns:1fr}}
+  .training .free{display:inline-block;background:var(--yellow);color:#1b1600;font-weight:900;font-size:12px;padding:5px 10px;border-radius:8px;letter-spacing:.06em}
+  .mods{display:grid;gap:10px}
+  .mod{display:flex;gap:12px;align-items:flex-start;background:rgba(0,0,0,.22);border-radius:14px;padding:12px 14px}
+  .mod .n{width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.1);display:grid;place-items:center;font-weight:900;flex:0 0 auto}
+  .mod b{display:block;font-size:14px}
+  .mod small{color:var(--muted)}
+
+  /* ===== Passos ===== */
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;counter-reset:s}
+  @media(max-width:920px){.steps{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.steps{grid-template-columns:1fr}}
+  .stp{position:relative;padding-top:52px}
+  .stp:before{counter-increment:s;content:counter(s);position:absolute;top:18px;left:22px;width:28px;height:28px;border-radius:8px;background:var(--yellow);color:#1b1600;font-weight:900;display:grid;place-items:center}
+  .stp h3{font-size:17px}
+  .stp p{color:var(--muted);font-size:14px;margin:0}
+
+  /* ===== Bifurcação ===== */
+  .fork{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media(max-width:920px){.fork{grid-template-columns:1fr}}
+  .fork .card{padding:26px;position:relative}
+  .fork .meet{border-color:rgb(var(--acc)/.4);background:linear-gradient(170deg,rgb(var(--acc)/.09),rgba(255,255,255,.02))}
+  .fork .buy{border-color:rgb(var(--yel)/.45);background:linear-gradient(170deg,rgb(var(--yel)/.08),rgba(255,255,255,.02))}
+  .avatar{width:56px;height:56px;border-radius:50%;object-fit:cover;object-position:center 20%;border:2px solid var(--cyan);background:#1aa3e8;flex:0 0 auto}
+  .tz{display:flex;gap:8px;align-items:center;margin:12px 0;flex-wrap:wrap;font-size:13px}
+  select,.inp{background:rgba(0,0,0,.3);border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px 12px;font-size:15px;width:100%}
+  select option{color:#000}
+  .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px}
+  .day{flex:0 0 auto;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:8px 12px;text-align:center;font-size:12px;min-width:64px}
+  .day b{display:block;font-size:18px}
+  .day.on{background:var(--cyan);color:var(--on-acc);border-color:var(--cyan)}
+  .slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  @media(max-width:420px){.slots{grid-template-columns:repeat(3,1fr)}}
+  .slot{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:9px 4px;font-size:13px;font-weight:700}
+  .slot.on{background:#fff;color:#0a1172}
+  .slot small{display:block;font-size:10px;color:var(--muted);font-weight:600}
+  .slot.on small{color:#5560a8}
+  .chan{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .chan button{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:9px;font-size:13px;font-weight:700;min-width:90px}
+  .chan button.on{border-color:var(--cyan);background:rgb(var(--acc)/.14)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  @media(max-width:520px){.row2{grid-template-columns:1fr}}
+  .ok-box{display:none;text-align:center;padding:20px 6px}
+  .ok-box .big{font-size:52px}
+
+  /* ===== Gaveta checkout ===== */
+  .drawer-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:none}
+  .drawer{position:fixed;z-index:301;right:0;top:0;bottom:0;width:min(520px,100%);background:var(--drawer);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .35s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
+  .drawer.open{transform:none}
+  .drawer-bg.open{display:block}
+  .dr-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .dr-head button{background:none;border:0;color:#fff;font-size:26px}
+  .progress{display:flex;gap:6px;padding:14px 20px 0}
+  .progress span{flex:1;height:5px;border-radius:5px;background:rgba(255,255,255,.12)}
+  .progress span.on{background:var(--yellow)}
+  .dr-body{padding:20px;overflow:auto;flex:1}
+  .dr-foot{padding:16px 20px;border-top:1px solid var(--line);display:flex;gap:10px}
+  .pane{display:none}.pane.on{display:block;animation:fade .3s}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-bottom:5px}
+  .drop{border:2px dashed rgb(var(--acc)/.45);border-radius:14px;padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:center;cursor:pointer;transition:.2s;position:relative}
+  .drop:hover,.drop.drag{background:rgb(var(--acc)/.08)}
+  .drop .ic{font-size:26px}
+  .drop b{display:block;font-size:14px}
+  .drop small{color:var(--muted);font-size:12px}
+  .drop.done{border-style:solid;border-color:var(--green);background:rgb(var(--grn)/.08)}
+  .drop.done .st{color:var(--green);font-weight:900}
+  .drop .st{margin-left:auto;font-size:12px;color:var(--muted)}
+  .drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .cota-opt{display:flex;justify-content:space-between;align-items:center;padding:14px;border:1.5px solid var(--line);border-radius:14px;margin-bottom:10px;cursor:pointer}
+  .cota-opt.on{border-color:var(--yellow);background:rgb(var(--yel)/.07)}
+  .cota-opt b{font-size:18px}
+  .timeline{list-style:none;padding:0;margin:16px 0 0}
+  .timeline li{position:relative;padding:0 0 18px 30px;font-size:14px}
+  .timeline li:before{content:"";position:absolute;left:7px;top:18px;bottom:0;width:2px;background:var(--line)}
+  .timeline li:last-child:before{display:none}
+  .timeline li i{position:absolute;left:0;top:2px;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.15)}
+  .timeline li.done i{background:var(--green)}
+  .timeline li.now i{background:var(--yellow);box-shadow:0 0 0 5px rgb(var(--yel)/.25)}
+
+  /* ===== FAQ ===== */
+  details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 18px;margin-bottom:10px}
+  details.hi{border-color:rgb(var(--yel)/.5);background:rgb(var(--yel)/.06)}
+  summary{cursor:pointer;font-weight:800;padding:14px 0;list-style:none;display:flex;justify-content:space-between;gap:10px}
+  summary::-webkit-details-marker{display:none}
+  summary:after{content:"+";font-size:22px;color:var(--cyan);line-height:1}
+  details[open] summary:after{content:"–"}
+  details p{color:#cfd6ff;margin:0 0 16px;font-size:15px}
+  details a{color:var(--yellow);font-weight:800}
+
+  /* ===== barra fixa ===== */
+  .sticky{position:fixed;left:0;right:0;bottom:0;z-index:120;background:rgb(var(--ink-rgb)/.95);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+  .sticky .wrap{display:flex;gap:8px;padding:0}
+  .sticky .btn{flex:1;padding:13px 8px;font-size:14px}
+  .sticky .mini{display:flex;flex-direction:column;justify-content:center;font-size:11px;color:var(--muted);min-width:110px}
+  .sticky .mini b{color:#fff;font-size:16px}
+  @media(min-width:921px){.sticky .wrap{max-width:720px;margin:0 auto}}
+
+  footer{padding:40px 0 30px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+  footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr;gap:20px}
+  @media(max-width:720px){footer .cols{grid-template-columns:1fr}}
+
+  .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(20px);background:#fff;color:#0a1172;padding:12px 18px;border-radius:12px;font-weight:800;font-size:14px;opacity:0;transition:.3s;z-index:400;pointer-events:none;box-shadow:0 20px 40px rgba(0,0,0,.4)}
+  .toast.on{opacity:1;transform:translateX(-50%)}
+</style>
+</head>
+<body class="show-ideas">
+
+<div class="proto-banner" data-en="LAYOUT PROTOTYPE — sample data · pink 💡 buttons explain each idea (tap to read)">PROTÓTIPO DE LAYOUT — dados ilustrativos · os botões 💡 rosa explicam cada ideia (toque para ler)</div>
+<div class="proto-tools">
+  <button class="t" id="themeBtn" title="Trocar paleta"><span class="fl us"></span><span class="fl br"></span><span id="themeLbl">Tema: Bandeiras</span></button>
+  <button class="i" id="ideasFab">💡 Ocultar ideias</button>
+</div>
+<div class="idea-pop" id="ideaPop"><button class="x" onclick="hideIdea()">×</button><b id="ideaTitle"></b><span id="ideaText"></span></div>
+
+<!-- ================= TOPBAR ================= -->
+<header class="top">
+  <div class="ribbon"></div>
+  <div class="wrap">
+    <a class="brand" href="#" aria-label="Racon Consórcios · Franqueado Gauchinho">
+      <span class="rc"><span class="w">Rac<span class="o">o</span>n</span><span class="c">Consórcios</span></span>
+      <span class="sep"></span>
+      <span class="fr"><span class="g"><img src="../../gauchinho-app/public/foto/ICONE.svg" alt="" onerror="this.outerHTML='G'"/></span><span><small data-en="FRANCHISEE">FRANQUEADO</small><b>GAUCHINHO</b></span></span>
+    </a>
+    <nav>
+      <a href="#plano" data-en="Build your plan">Monte seu plano</a>
+      <a href="#lance" data-en="Bid without cash">Lance sem tirar do bolso</a>
+      <a href="#oportunidades" data-en="Opportunities">Oportunidades</a>
+      <a href="#estrategias" data-en="Strategies">Estratégias</a>
+      <a href="#decidir" data-en="Call / Sign up">Reunião / Contratar</a>
+      <a href="#faq" data-en="FAQ">Dúvidas</a>
+    </nav>
+    <div class="lang" style="position:relative">
+      <button class="on" data-lang="pt"><span class="fl br"></span>PT</button><button data-lang="en"><span class="fl us"></span>EN</button>
+      <span class="pin" style="right:-38px;top:-2px" data-t="Página inteira em inglês" data-i="O botão EN troca a página INTEIRA: textos, botões, formulários, agenda (dias e horários em formato americano), números (R$ 430,000), mensagens e checkout. O link pode ser compartilhado já em inglês: ...?lang=en — ideal para o cônjuge americano.">💡</span>
+    </div>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="tag"><span class="fl us"></span> → <span class="fl br"></span> <span data-en="Exclusively for Brazilians living in the USA">Exclusivo para brasileiros que vivem nos EUA</span></span>
+      <h1 data-en="Build wealth in Brazil <span class='hl'>while you earn in dollars</span>">Construa patrimônio no Brasil <span class="hl">ganhando em dólar</span></h1>
+      <p class="lead" data-en="A house, an apartment, a car or a real-estate retirement plan in Brazil — <b>zero interest</b>, <b>cash-buyer power</b> and everything done from your phone, right there in the US.">Casa, apartamento, carro ou uma aposentadoria de imóveis no Brasil — <b>sem juros</b>, com <b>poder de compra à vista</b> e tudo resolvido pelo celular, daí dos EUA.</p>
+      <div class="hero-ctas">
+        <a href="#plano" class="btn btn-y" data-en="Build my plan in 30s →">Montar meu plano em 30s →</a>
+        <a href="#decidir" class="btn btn-o" data-en="📅 15-min call in my time zone">📅 Reunião de 15 min no meu fuso</a>
+      </div>
+      <div class="trust">
+        <span><i>●</i> <span data-en="Randon Group since 1949">Grupo Randon desde 1949</span></span>
+        <span><i>●</i> <span data-en="Authorized by Brazil's Central Bank">Administradora autorizada pelo Banco Central</span></span>
+        <span><i>●</i> <span data-en="100% digital contract and documents">Contrato e documentos 100% digitais</span></span>
+      </div>
+    </div>
+
+    <div class="converter">
+      <span class="pin" style="left:-14px;top:-14px" data-t="Gancho imediato: dólar → poder de compra" data-i="Antes de qualquer texto, o visitante digita quanto sobra por mês em dólar e vê na hora quanto CRÉDITO isso compra no Brasil. Na versão final o câmbio vem automático da tabela indices_financeiros / API do dia.">💡</span>
+      <h3 data-en="How much can you set aside each month for Brazil?">Quanto sobra por mês para investir no Brasil?</h3>
+      <div class="conv-row us"><span class="fl lg us"></span><span class="cur">$</span><input id="heroUsd" class="num" inputmode="numeric" value="300" aria-label="USD"/><span class="cur" data-en="USD/mo">USD/mês</span></div>
+      <div class="conv-arrow" data-en="⇣ becomes">⇣ vira</div>
+      <div class="conv-row br"><span class="fl lg br"></span><span class="conv-out brl num" id="heroBrl">R$ 1.620</span><span class="cur" style="margin-left:auto" data-en="per month">por mês</span></div>
+      <div class="conv-big">
+        <div class="lbl" data-en="That buys you a credit of up to">Isso compra um crédito de até</div>
+        <div class="val num" id="heroCredit">R$ 430.000</div>
+        <small data-en="for real estate, paid in cash to the seller · reduced installment until you are awarded">em imóvel, à vista na mão do vendedor · parcela reduzida até a contemplação</small>
+      </div>
+      <div class="fx"><span><span data-en="Reference rate:">Câmbio de referência:</span> R$ <input id="fx" class="num" value="5.40" inputmode="decimal"/></span><span data-en="updated daily">atualiza diariamente</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="logos-strip" style="position:relative">
+  <span class="pin" style="left:12px;top:-14px" data-t="Prova de solidez (anti-golpe)" data-i="O maior medo de quem está fora é cair em golpe. Mostramos números públicos do grupo controlador (B3: RAPT4) logo no topo.">💡</span>
+  <div><b data-en="77 years">77 anos</b><span data-en="Randon Group (1949)">Grupo Randon (1949)</span></div>
+  <div><b>B3: RAPT4</b><span data-en="Publicly traded company">Companhia de capital aberto</span></div>
+  <div><b data-en="R$ 18.7 bn">R$ 18,7 bi</b><span data-en="in group assets">em ativos do grupo</span></div>
+  <div><b data-en="Central Bank">Banco Central</b><span data-en="regulates consórcio in Brazil">regulamenta o consórcio</span></div>
+  <div><b>Sinop · MT</b><span data-en="real human support">atendimento humano de verdade</span></div>
+</div>
+
+<!-- ================= WIZARD ================= -->
+<section id="plano">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="tag" data-en="Step 1 of 2 · 30 seconds">Passo 1 de 2 · 30 segundos</span>
+      <h2 style="margin-top:14px" data-en="Build your plan in 3 taps">Monte seu plano em 3 toques</h2>
+      <p data-en="No sign-up needed to simulate. Leave your contact only if you want the plan on WhatsApp.">Sem cadastro para simular. Você só deixa contato se quiser receber o plano no WhatsApp.</p>
+      <div class="bridge"></div>
+    </div>
+
+    <div class="wizard">
+      <div class="card" style="position:relative">
+        <span class="pin" style="right:-12px;top:-12px" data-t="Quiz em vez de formulário" data-i="Três perguntas de toque convertem muito mais que formulário. Cada resposta vira dado do lead no CRM: objetivo, capacidade em USD e urgência.">💡</span>
+        <p class="step-lbl"><span class="n">1</span> <span data-en="What do you want to own in Brazil?">O que você quer conquistar no Brasil?</span></p>
+        <div class="chips" id="goalChips">
+          <button class="chip on" data-goal="imovel"><span class="e">🏠</span><b data-en="House or apartment">Casa ou apartamento</b><small data-en="to live in or move back">para morar ou voltar</small></button>
+          <button class="chip" data-goal="renda"><span class="e">🏘️</span><b data-en="Real-estate retirement">Aposentadoria imobiliária</b><small data-en="properties that pay rent">imóveis que geram aluguel</small></button>
+          <button class="chip" data-goal="veiculo"><span class="e">🚙</span><b data-en="Car or pickup truck">Carro ou caminhonete</b><small data-en="for your family in Brazil">para a família no Brasil</small></button>
+          <button class="chip" data-goal="alavancagem"><span class="e">📈</span><b data-en="Leverage">Alavancagem</b><small data-en="multiply your assets">multiplicar patrimônio</small></button>
+        </div>
+
+        <p class="step-lbl"><span class="n">2</span> <span data-en="How much do you want to invest per month, in dollars?">Quanto quer investir por mês, em dólar?</span></p>
+        <div class="slider-box">
+          <div class="slider-top"><span class="v usd num" id="usdV">$300</span><span class="muted num" id="usdBrl"></span></div>
+          <input type="range" id="usd" min="100" max="3000" step="25" value="300" aria-label="USD"/>
+          <div class="quick"><button data-q="150">$150</button><button data-q="300">$300</button><button data-q="500">$500</button><button data-q="1000">$1,000</button><button data-q="2000">$2,000</button></div>
+        </div>
+
+        <p class="step-lbl"><span class="n">3</span> <span data-en="When do you want the credit in hand?">Quando você quer o crédito na mão?</span></p>
+        <div class="chips three" id="whenChips">
+          <button class="chip" data-when="ja"><span class="e">⚡</span><b data-en="As soon as possible">O quanto antes</b><small data-en="next few months">próximos meses</small></button>
+          <button class="chip on" data-when="ano"><span class="e">🗓️</span><b data-en="Within 1–2 years">Em até 1–2 anos</b><small data-en="planned">planejado</small></button>
+          <button class="chip" data-when="calma"><span class="e">🌱</span><b data-en="No rush">Sem pressa</b><small data-en="build up over time">construir aos poucos</small></button>
+        </div>
+      </div>
+
+      <div style="position:relative">
+        <div class="plan" id="planCard">
+          <div class="ribbon"></div>
+          <span class="pin" style="left:-12px;top:-12px" data-t="Resultado vivo + estratégia" data-i="O cartão muda em tempo real e mostra a ESTRATÉGIA de acordo com a urgência. Usa os grupos reais (1563 imóvel 200m · 5388/5588 veículo) — na versão final puxa do catálogo de grupos do sistema.">💡</span>
+          <div class="ttl" id="planTitle"></div>
+          <div class="credit num" id="planCredit"></div>
+          <div class="credit-sub" data-en="of credit to buy in cash in Brazil">de crédito para comprar à vista no Brasil</div>
+          <div class="multi" id="planMulti"></div>
+          <div class="plan-grid">
+            <div><small><span class="fl br"></span><span data-en="Reduced installment">Parcela reduzida</span></small><b class="brl num" id="planParcela"></b></div>
+            <div><small><span class="fl us"></span><span data-en="In dollars ≈">Em dólar ≈</span></small><b class="usd num" id="planParcelaUsd"></b></div>
+            <div><small data-en="Suggested group">Grupo sugerido</small><b id="planGrupo"></b></div>
+            <div><small data-en="Interest">Juros</small><b style="color:var(--green)" data-en="ZERO">ZERO</b></div>
+          </div>
+          <div class="strategy" id="planStrategy"></div>
+          <div class="what-buy" id="planBuys"></div>
+          <div style="display:grid;gap:10px">
+            <button class="btn btn-y btn-block" onclick="openCheckout()" data-en="I want this share → sign up online">Quero esta cota → contratar online</button>
+            <button class="btn btn-o btn-block" onclick="openLead()" data-en="📲 Send this plan to my WhatsApp">📲 Receber este plano no WhatsApp</button>
+          </div>
+          <p class="disc" data-en="Illustrative simulation. Reduced installment until you are awarded; after that the installment is recalculated according to the group rules. Awards happen by draw or bid, with no guaranteed date.">Simulação ilustrativa. Parcela reduzida até a contemplação; depois dela a parcela é recalculada conforme o regulamento do grupo. Contemplação por sorteio ou lance, sem data garantida.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= LANCE EMBUTIDO ================= -->
+<section id="lance" style="background:linear-gradient(180deg,transparent,rgb(var(--acc)/.07),transparent)">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="tag" data-en="The secret few people know">O segredo que pouca gente conhece</span>
+      <h2 style="margin-top:14px" data-en="Place a bid <span class='brl'>without cash out of pocket</span>">Dê lance <span class="brl">sem tirar dinheiro do bolso</span></h2>
+      <p data-en="With an embedded bid you use part of your own credit to bid and get awarded sooner.">Com o lance embutido você usa uma parte do próprio crédito para ofertar o lance e antecipar a contemplação.</p>
+      <div class="bridge"></div>
+    </div>
+    <div class="lance-grid">
+      <div class="card" style="position:relative">
+        <span class="pin" style="right:-12px;top:-12px" data-t="Visual em vez de explicação" data-i="A barra mostra, arrastando, quanto vira lance e quanto fica 'na mão'. Quem entende isso sozinho chega na reunião já convencido.">💡</span>
+        <div class="slider-top"><span class="muted" data-en="Credit purchased">Crédito contratado</span><b class="num" id="lcCreditLbl"></b></div>
+        <input type="range" id="lcCredit" min="100000" max="1000000" step="10000" value="300000"/>
+        <div class="slider-top" style="margin-top:10px"><span class="muted" data-en="Share used as embedded bid">Parte usada como lance embutido</span><b class="num brl" id="lcPctLbl"></b></div>
+        <input type="range" id="lcPct" min="0" max="30" step="5" value="25"/>
+        <div class="bar"><div class="a" id="lcA"></div><div class="b" id="lcB"></div></div>
+        <div class="legend"><span><i style="background:#ffc94d"></i><span data-en="Goes to the bid (comes out of the credit)">Vira lance (sai do crédito)</span></span><span><i style="background:var(--green)"></i><span data-en="Left to buy your property">Fica para comprar o bem</span></span></div>
+        <div class="vs">
+          <div class="no" data-en="<b>Regular bid</b><br/>You would need <b class='num' id='lcCash'></b> in savings.">
+            <b>Lance comum</b><br/>Você precisaria ter <b class="num" id="lcCash"></b> guardados.</div>
+          <div class="yes" data-en="<b>Embedded bid</b><br/>You pay <b>R$ 0</b> out of pocket for this bid."><b>Lance embutido</b><br/>Você tira <b>R$ 0</b> do bolso para esse lance.</div>
+        </div>
+      </div>
+      <div class="card" style="position:relative">
+        <span class="pin" style="right:-12px;top:-12px" data-t="Calculadora reversa" data-i="O cliente pensa no imóvel que quer, não no crédito. Ele digita 'quero R$ 300 mil na mão' e a página responde qual carta contratar já contando o embutido.">💡</span>
+        <h3 data-en="Reverse calculator">Calculadora reversa</h3>
+        <p class="muted" style="margin-top:0" data-en="How much do you want <b>in hand</b> to buy the property?">Quanto você quer <b>na mão</b> para comprar o imóvel?</p>
+        <div class="reverse"><span style="font-weight:900">R$</span><input id="rvWant" class="num" value="300000" inputmode="numeric"/></div>
+        <p class="muted" style="margin:18px 0 4px" data-en="Purchase a credit letter of">Contrate uma carta de</p>
+        <div class="big-answer num" id="rvAnswer"></div>
+        <p class="muted" style="margin:4px 0 0" data-en="and use <b>30%</b> as an embedded bid. The rest buys your property in cash.">e use <b>30%</b> como lance embutido. O restante compra seu imóvel à vista.</p>
+        <ul class="ck">
+          <li data-en="Embedded bid capped by each group's rules">Lance embutido limitado pelo regulamento de cada grupo</li>
+          <li data-en="Can be combined with a cash bid for even better odds">Pode ser combinado com lance livre (recurso próprio) para chances ainda maiores</li>
+          <li data-en="Our bidding robot follows every monthly meeting for you">Nosso robô de lances acompanha as assembleias para você</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= OPORTUNIDADES ================= -->
+<section id="oportunidades">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="tag"><span class="fl br"></span> <span data-en="All over Brazil">Brasil inteiro</span></span>
+      <h2 style="margin-top:14px" data-en="Opportunities across Brazil, <span class='brl'>right now</span>">Oportunidades no Brasil inteiro, <span class="brl">agora</span></h2>
+      <p data-en="Your credit works in any city in Brazil. We track new properties being delivered and units returned to builders — where cash buyers get the best deals.">Seu crédito vale em qualquer cidade do Brasil. Acompanhamos imóveis novos sendo entregues e imóveis devolvidos às construtoras — onde quem compra à vista consegue as melhores condições.</p>
+      <div class="bridge"></div>
+    </div>
+    <div style="position:relative">
+      <span class="pin" style="left:-6px;top:-14px" data-t="Vitrine viva de oportunidades" data-i="Na versão final estes cards vêm das tabelas que o sistema JÁ TEM: oportunidades_imobiliarias (com imobiliárias parceiras) e cartas_contempladas. O botão 'Tenho interesse' cria o lead já marcado com o imóvel — o consultor sabe exatamente o que a pessoa quer.">💡</span>
+      <div class="filters" id="oppFilters">
+        <button class="on" data-f="all" data-en="All">Todos</button>
+        <button data-f="novo" data-en="🏗️ New · being delivered">🏗️ Novos sendo entregues</button>
+        <button data-f="devolvido" data-en="🔁 Returned units">🔁 Imóveis devolvidos</button>
+        <button data-f="carta" data-en="📑 Awarded credit letters">📑 Cartas contempladas</button>
+      </div>
+    </div>
+    <div class="opps" id="opps"></div>
+    <div class="states" id="states"></div>
+    <p class="disc" style="text-align:center" data-en="Sample listings for the prototype. The real list is updated by our team every week.">Exemplos ilustrativos no protótipo. A lista real é atualizada pela equipe toda semana.</p>
+
+    <!-- Treinamento -->
+    <div class="training" style="margin-top:40px">
+      <span class="pin" style="right:-12px;top:-12px" data-t="Bônus que tira o medo de comprar errado" data-i="Quem mora fora tem medo de comprar o imóvel errado à distância. O treinamento gratuito após a contratação vira argumento de fechamento ('você não vai estar sozinho') e aparece também no checkout e na tela de sucesso.">💡</span>
+      <div>
+        <span class="free" data-en="FREE BONUS">BÔNUS GRATUITO</span>
+        <h2 style="margin-top:12px;font-size:clamp(24px,3.4vw,34px)" data-en="Learn how to buy the best properties anywhere in Brazil with consórcio">Aprenda a comprar os melhores imóveis em qualquer lugar do Brasil com consórcio</h2>
+        <p class="muted" data-en="Free training for every client, unlocked right after you sign up. You will not be buying alone, even from thousands of miles away.">Treinamento gratuito para todo cliente, liberado logo após a contratação. Você não compra sozinho, mesmo a milhares de quilômetros.</p>
+        <button class="btn btn-y" onclick="openCheckout()" data-en="Sign up and unlock the training →">Contratar e liberar o treinamento →</button>
+      </div>
+      <div class="mods">
+        <div class="mod"><span class="n">1</span><div><b data-en="Picking the right city and neighborhood">Escolher a cidade e o bairro certos</b><small data-en="where property values and rents are growing">onde o imóvel valoriza e o aluguel cresce</small></div></div>
+        <div class="mod"><span class="n">2</span><div><b data-en="Negotiating as a cash buyer">Negociar como comprador à vista</b><small data-en="how to use your credit to get a discount">como usar o crédito para conseguir desconto</small></div></div>
+        <div class="mod"><span class="n">3</span><div><b data-en="New and returned units: where the deals are">Imóveis novos e devolvidos: onde estão as oportunidades</b><small data-en="buying at delivery and from builder resales">comprar na entrega e no repasse das construtoras</small></div></div>
+        <div class="mod"><span class="n">4</span><div><b data-en="Renting and managing from the US">Alugar e administrar estando nos EUA</b><small data-en="property managers, contracts and receiving rent">imobiliária, contrato e recebimento do aluguel</small></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ESTRATÉGIAS ================= -->
+<section id="estrategias">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="tag" data-en="Learn more · tap the tabs">Saiba mais · toque nas abas</span>
+      <h2 style="margin-top:14px" data-en="5 ways to put your dollars to work in Brazil">5 estratégias para fazer o dólar trabalhar no Brasil</h2>
+      <p data-en="Short, practical and with numbers. Swipe the tabs sideways on your phone.">Resumido, prático e com números. Arraste as abas para o lado no celular.</p>
+      <div class="bridge"></div>
+    </div>
+    <div style="position:relative">
+      <span class="pin" style="left:-6px;top:-14px" data-t="Abas deslizáveis no celular" data-i="No mobile as abas rolam com o dedo. Cada interação pode ser registrada como evento (Meta Pixel / GA4) para remarketing por interesse.">💡</span>
+      <div class="tabs" id="tabs">
+        <button class="tab on" data-tab="aposent" data-en="🏘️ Real-estate retirement">🏘️ Aposentadoria imobiliária</button>
+        <button class="tab" data-tab="alav" data-en="📈 Leverage with multiple shares">📈 Alavancagem com várias cotas</button>
+        <button class="tab" data-tab="carro" data-en="🚙 A car for the family">🚙 Carro para a família</button>
+        <button class="tab" data-tab="volta" data-en="✈️ Moving-back plan">✈️ Plano de volta ao Brasil</button>
+        <button class="tab" data-tab="cmp" data-en="⚖️ Consórcio vs. mortgage">⚖️ Consórcio x Financiamento</button>
+      </div>
+    </div>
+
+    <div class="card panel on" id="p-aposent">
+      <div class="panel-grid">
+        <div>
+          <h3 data-en="Your retirement, built in brick">Sua previdência feita de tijolo</h3>
+          <p class="muted" data-en="Instead of relying only on Social Security or Brazil's INSS, you build a portfolio of properties in Brazil. Each awarded property is rented out; the rent helps pay the installments and, once paid off, becomes your income.">Em vez de depender só do Social Security ou do INSS, você monta uma carteira de imóveis no Brasil. Cada imóvel contemplado é alugado; o aluguel ajuda a pagar as parcelas e, depois de quitado, vira renda para você.</p>
+          <div class="slider-top"><span class="muted" data-en="How many properties do you want?">Quantos imóveis você quer ter?</span><b class="num" id="apN"></b></div>
+          <input type="range" id="apNr" min="1" max="5" step="1" value="3"/>
+          <div class="slider-top" style="margin-top:8px"><span class="muted" data-en="Value of each property">Valor de cada imóvel</span><b class="num" id="apV"></b></div>
+          <input type="range" id="apVr" min="100000" max="600000" step="25000" value="250000"/>
+          <div class="houses" id="houses"></div>
+        </div>
+        <div>
+          <div class="kpis">
+            <div class="kpi"><small data-en="Assets">Patrimônio</small><b class="num" id="apPat"></b></div>
+            <div class="kpi"><small data-en="Rent/mo*">Aluguel/mês*</small><b class="num brl" id="apRent"></b></div>
+            <div class="kpi"><small data-en="In dollars ≈">Em dólar ≈</small><b class="num usd" id="apRentUsd"></b></div>
+          </div>
+          <ul class="ck">
+            <li data-en="Share ladder: one new share each year, within your budget">Escada de cotas: uma cota nova a cada ano, cabendo no bolso</li>
+            <li data-en="A partner property manager in Brazil handles the rental for you">Imobiliária parceira administra o aluguel para você</li>
+            <li data-en="Income in reais for when you move back — or to send to your parents">Renda em reais para quando você voltar — ou para mandar para os pais</li>
+          </ul>
+          <p class="story" data-en="“I've lived in Boston for 9 years. I started with one share and today I own two rented apartments in Brazil.” — <span class='muted'>real testimonial to be collected</span>">"Moro em Boston há 9 anos. Comecei com uma cota e hoje tenho dois apartamentos alugados no Brasil." — <span class="muted">depoimento real a coletar</span></p>
+          <p class="disc" data-en="*Rent estimated at 0.5% of the property value per month. Illustrative figures, not a promise of returns.">*Estimativa de aluguel de 0,5% do valor do imóvel ao mês. Valores ilustrativos, não são promessa de rentabilidade.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card panel" id="p-alav">
+      <div class="panel-grid">
+        <div>
+          <h3 data-en="Leverage: several shares, one budget">Alavancagem: várias cotas, um só orçamento</h3>
+          <p class="muted" data-en="With reduced installments until you are awarded, the same monthly amount that would pay a mortgage can carry two or three credit letters. Once awarded, you buy in cash at a discount, rent it out, or sell the awarded letter.">Com parcelas reduzidas até a contemplação, o mesmo valor mensal que pagaria um financiamento sustenta duas ou três cartas. Ao ser contemplado, você compra à vista com desconto, aluga ou revende a carta contemplada.</p>
+          <ul class="ck">
+            <li data-en="<b>Buy in cash at a discount:</b> buyers with credit in hand negotiate 10–20% lower"><b>Comprar à vista com desconto:</b> quem chega com crédito na mão negocia 10–20% abaixo</li>
+            <li data-en="<b>An awarded letter has value:</b> it can be transferred at a premium"><b>Carta contemplada tem valor:</b> pode ser transferida com ágio</li>
+            <li data-en="<b>No compound interest:</b> only an administration fee spread over the term"><b>Sem juros compostos:</b> só taxa de administração diluída no prazo</li>
+          </ul>
+        </div>
+        <div class="card" style="background:rgba(0,0,0,.25)">
+          <p class="muted" style="margin-top:0"><span data-en="Example with">Exemplo com</span> <b class="usd" id="alUsd"></b></p>
+          <div class="kpis" style="grid-template-columns:1fr 1fr">
+            <div class="kpi"><small data-en="1 large letter">1 carta grande</small><b class="num" id="alOne"></b></div>
+            <div class="kpi"><small data-en="or 3 letters of">ou 3 cartas de</small><b class="num" id="alThree"></b></div>
+          </div>
+          <p class="muted" style="font-size:13px" data-en="Three letters = three chances to be awarded at every monthly meeting (draw and bid on each).">Três cartas = três chances por assembleia de ser contemplado (sorteio e lance em cada uma).</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card panel" id="p-carro">
+      <div class="panel-grid">
+        <div>
+          <h3 data-en="A car waiting for you in Brazil">Carro esperando por você no Brasil</h3>
+          <p class="muted" data-en="A car for your parents, a pickup for the family business or your own car for when you visit. 72 to 120-month groups, reduced installments and cash purchase at the dealership.">Carro para os pais, caminhonete para o negócio da família ou o seu carro para quando visitar. Grupos de 72 a 120 meses, parcela reduzida e compra à vista na concessionária.</p>
+          <ul class="ck">
+            <li data-en="Credit from R$ 36k to R$ 200k per share">Crédito de R$ 36 mil a R$ 200 mil por cota</li>
+            <li data-en="New or pre-owned vehicles">Pode comprar novo ou seminovo</li>
+            <li data-en="Digital power of attorney: a family member picks up the vehicle for you">Procuração digital: alguém da família retira o veículo por você</li>
+          </ul>
+        </div>
+        <table class="cmp" id="carTable"></table>
+      </div>
+    </div>
+
+    <div class="card panel" id="p-volta">
+      <div class="panel-grid">
+        <div>
+          <h3 data-en="Moving-back plan: arrive with your home ready">Plano de volta: chegar com casa pronta</h3>
+          <p class="muted" data-en="If you plan to move back in 5 or 10 years, you can arrive with your home paid off (or nearly) — consórcio does not require proof of Brazilian income the way bank mortgages do.">Quem planeja voltar em 5, 10 anos pode chegar com a casa quitada (ou quase) — consórcio não exige comprovar renda brasileira como o banco exige.</p>
+          <ul class="ck">
+            <li data-en="Tell us the year you plan to move back and we build the bidding ladder">Defina o ano da volta e montamos a escada de lances</li>
+            <li data-en="The property can stay rented until you arrive">Imóvel pode ficar alugado até você chegar</li>
+            <li data-en="No Brazilian mortgage interest">Nada de juros de financiamento brasileiro</li>
+          </ul>
+        </div>
+        <div class="card" style="background:rgba(0,0,0,.25)">
+          <div class="slider-top"><span class="muted" data-en="I plan to move back in">Pretendo voltar em</span><b class="num" id="vtY"></b></div>
+          <input type="range" id="vtR" min="1" max="15" value="5"/>
+          <p style="margin:10px 0 0" data-en="By then you will have paid <b class='num brl' id='vtPaid'></b> installments and competed in <b class='num cy' id='vtAss'></b> monthly meetings.">Até lá você terá pago <b class="num brl" id="vtPaid"></b> parcelas e terá concorrido em <b class="num cy" id="vtAss"></b> assembleias.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card panel" id="p-cmp">
+      <h3 data-en="Consórcio vs. bank mortgage (R$ 300k example)">Consórcio x Financiamento (exemplo R$ 300 mil)</h3>
+      <div style="overflow-x:auto">
+      <table class="cmp">
+        <tr><th></th><th data-en="Bank mortgage">Financiamento bancário</th><th data-en="Racon consórcio">Consórcio Racon</th></tr>
+        <tr><td data-en="Interest">Juros</td><td class="bad" data-en="~11–13% a year">~11–13% ao ano</td><td class="good" data-en="Zero">Zero</td></tr>
+        <tr><td data-en="Total paid (approx.)">Total pago (aprox.)</td><td class="bad num" id="cmpFin"></td><td class="good num" id="cmpCons"></td></tr>
+        <tr><td data-en="Down payment">Entrada</td><td data-en="20% to 30%">20% a 30%</td><td class="good" data-en="Not required">Não exige</td></tr>
+        <tr><td data-en="Proof of income in Brazil">Comprovar renda no Brasil</td><td class="bad" data-en="Yes">Sim</td><td class="good" data-en="Not in the same way">Não da mesma forma</td></tr>
+        <tr><td data-en="Can you live abroad?">Pode morar fora?</td><td data-en="Difficult">Difícil</td><td class="good" data-en="Yes, 100% online">Sim, 100% online</td></tr>
+        <tr><td data-en="When you get the property">Recebe o bem</td><td data-en="Right away">Na hora</td><td data-en="When awarded (draw or bid)">Na contemplação (sorteio ou lance)</td></tr>
+      </table>
+      </div>
+      <p class="disc" data-en="Mortgage: Price amortization, 12% a year, 200 months. Consórcio: illustrative 20% administration fee over the term. Exact figures in the official proposal.">Financiamento: Price, 12% a.a., 200 meses. Consórcio: taxa de administração ilustrativa de 20% no prazo. Valores exatos na proposta oficial.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= COMO FUNCIONA ================= -->
+<section style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head"><h2 data-en="From Florida to Brazil in 4 steps">Da Flórida ao Brasil em 4 passos</h2><p data-en="You don't need to travel to Brazil for any of it.">Você não precisa vir ao Brasil para nada.</p><div class="bridge"></div></div>
+    <div class="steps">
+      <div class="card stp"><h3 data-en="Choose your credit">Escolha o crédito</h3><p data-en="Simulate above or with a specialist on a call.">Simule acima ou com um consultor na reunião.</p></div>
+      <div class="card stp"><h3 data-en="Send photos of your documents">Envie fotos dos documentos</h3><p data-en="Passport or Brazilian ID, CPF and proof of US address — from your phone.">Passaporte ou RG, CPF e comprovante de endereço nos EUA — pelo celular.</p></div>
+      <div class="card stp"><h3 data-en="Get the payment slip">Receba o boleto</h3><p data-en="The administrator's boleto arrives on WhatsApp and email. Pay by PIX from a Brazilian account or by international transfer.">Boleto da administradora no WhatsApp e no e-mail. Pague por PIX de conta brasileira ou remessa.</p></div>
+      <div class="card stp"><h3 data-en="Track it and own it">Acompanhe e conquiste</h3><p data-en="Monthly meetings, bids and awards notified on your WhatsApp — plus free training.">Assembleias, lances e contemplação avisados no seu WhatsApp — e treinamento gratuito.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= BIFURCAÇÃO ================= -->
+<section id="decidir">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="tag" data-en="Step 2 of 2">Passo 2 de 2</span>
+      <h2 style="margin-top:14px" data-en="How would you like to continue?">Como você prefere seguir?</h2>
+      <div class="bridge"></div>
+    </div>
+    <div class="fork">
+      <div class="card meet">
+        <span class="pin" style="right:-12px;top:-12px" data-t="Agenda no fuso do cliente" data-i="O cliente vê os horários já convertidos para o fuso dele (detectado automático). Os horários vêm da agenda do consultor no sistema e a reunião nasce no CRM com lembrete no WhatsApp 1h antes.">💡</span>
+        <div id="meetForm">
+          <div style="display:flex;gap:14px;align-items:center">
+            <img class="avatar" src="../../gauchinho-app/public/racon/racon-rubinho-apontando.png" alt="" onerror="this.outerHTML='&lt;div class=&quot;avatar&quot; style=&quot;display:grid;place-items:center;font-size:26px&quot;&gt;👨‍💼&lt;/div&gt;'"/>
+            <div><h3 style="margin:0" data-en="Get answers in 15 minutes">Tirar dúvidas em 15 minutos</h3><span class="muted" style="font-size:14px" data-en="Video call with a specialist · no commitment">Vídeo-chamada com especialista · sem compromisso</span></div>
+          </div>
+          <div class="tz"><span class="muted" data-en="Your time zone:">Seu fuso:</span>
+            <select id="tzSel" style="width:auto;padding:6px 10px;font-size:13px">
+              <option value="America/New_York">Eastern (NY, FL, MA)</option>
+              <option value="America/Chicago">Central (TX, IL)</option>
+              <option value="America/Denver">Mountain (CO, UT)</option>
+              <option value="America/Phoenix">Arizona</option>
+              <option value="America/Los_Angeles">Pacific (CA, WA)</option>
+            </select>
+          </div>
+          <div class="days" id="days"></div>
+          <div class="slots" id="slots"></div>
+          <div class="chan" id="chan">
+            <button class="on" data-c="WhatsApp">🟢 WhatsApp</button><button data-c="Google Meet">📹 Meet</button><button data-c="Zoom">🎥 Zoom</button>
+          </div>
+          <div class="row2"><input class="inp" id="mName" placeholder="Seu nome" data-en-ph="Your name"/><input class="inp" id="mPhone" placeholder="WhatsApp +1 (___) ___-____" inputmode="tel"/></div>
+          <button class="btn btn-c btn-block" onclick="bookMeeting()" data-en="Confirm call">Confirmar reunião</button>
+        </div>
+        <div class="ok-box" id="meetOk">
+          <div class="big">✅</div>
+          <h3 data-en="Call confirmed!">Reunião confirmada!</h3>
+          <p class="muted" id="meetOkTxt"></p>
+          <a class="btn btn-o" id="gcal" target="_blank" rel="noopener" data-en="📅 Add to Google Calendar">📅 Adicionar ao Google Agenda</a>
+        </div>
+      </div>
+
+      <div class="card buy">
+        <span class="pin" style="right:-12px;top:-12px" data-t="Checkout em gaveta" data-i="Usa o fluxo que JÁ EXISTE: /api/public/contratacoes/iniciar → rascunho → documentos → finalizar. A equipe recebe no ERP e envia o boleto da administradora.">💡</span>
+        <div style="display:flex;gap:14px;align-items:center">
+          <div class="avatar" style="display:grid;place-items:center;font-size:26px;background:var(--yellow);border-color:var(--yellow)">🚀</div>
+          <div><h3 style="margin:0" data-en="I know what I want">Já sei o que quero</h3><span class="muted" style="font-size:14px" data-en="Online sign-up in about 5 minutes">Contratação online em ~5 minutos</span></div>
+        </div>
+        <ul class="ck" style="margin:18px 0">
+          <li data-en="Choose your share (it comes from your plan)">Escolha a cota (vem do seu plano)</li>
+          <li data-en="Fill in your details">Preencha seus dados</li>
+          <li data-en="Take photos of your documents with your phone">Tire foto dos documentos pelo celular</li>
+          <li data-en="Get the administrator's boleto on WhatsApp">Receba o boleto da administradora no WhatsApp</li>
+          <li data-en="<b>Bonus:</b> free training on buying the best properties in Brazil"><b>Bônus:</b> treinamento gratuito para comprar os melhores imóveis</li>
+        </ul>
+        <button class="btn btn-y btn-block" onclick="openCheckout()" data-en="Sign up now →">Contratar agora →</button>
+        <p class="muted" style="font-size:12px;text-align:center;margin:10px 0 0" data-en="🔒 Encrypted documents · only the responsible team has access">🔒 Documentos criptografados · só a equipe responsável acessa</p>
+        <hr style="border:0;border-top:1px solid var(--line);margin:18px 0"/>
+        <p style="margin:0 0 10px;font-weight:800" data-en="Rather talk directly?">Prefere conversar direto?</p>
+        <div class="row2" style="margin:0">
+          <a class="btn btn-g wa" data-n="5566996086030" data-who="Fernando" target="_blank" rel="noopener">WhatsApp Fernando</a>
+          <a class="btn btn-g wa" data-n="5566999126120" data-who="Gauchinho" target="_blank" rel="noopener">WhatsApp Gauchinho</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section id="faq" style="padding-top:20px">
+  <div class="wrap" style="max-width:820px;position:relative">
+    <span class="pin" style="left:-6px;top:-14px" data-t="FAQ que mata objeções" data-i="As três primeiras perguntas vendem: treinamento gratuito, comprar em qualquer cidade e oportunidades de imóveis novos e devolvidos. Sugestão extra: botão 'Perguntar à IA' usando o assistente que o sistema já tem (ia_conversas).">💡</span>
+    <div class="sec-head"><h2 data-en="Questions from Brazilians in the US">Dúvidas de quem mora nos EUA</h2><div class="bridge"></div></div>
+    <details class="hi" open><summary data-en="🎓 Will you teach me how to buy the best property in Brazil?">🎓 Vocês me ensinam a comprar o melhor imóvel no Brasil?</summary><p data-en="Yes. After you sign up you get <b>free training: how to buy the best properties anywhere in Brazil with consórcio</b> — choosing the city and neighborhood, negotiating as a cash buyer, finding new and returned units, and renting from abroad.">Sim. Após a contratação você recebe o <b>treinamento gratuito: como comprar os melhores imóveis em qualquer lugar do Brasil com consórcio</b> — escolha de cidade e bairro, negociação à vista, onde encontrar imóveis novos e devolvidos e como alugar morando fora.</p></details>
+    <details class="hi"><summary data-en="📍 Can I buy a property in any city in Brazil?">📍 Posso comprar imóvel em qualquer cidade do Brasil?</summary><p data-en="Yes. The credit is valid nationwide: capital cities, beach towns, the countryside or your hometown. We help you assess the property and the region before you buy.">Sim. O crédito vale em todo o território nacional: capitais, litoral, interior ou a sua cidade natal. Ajudamos a avaliar o imóvel e a região antes da compra.</p></details>
+    <details class="hi"><summary data-en="🏗️ What are new and returned properties, and why are they a deal?">🏗️ O que são imóveis novos sendo entregues e imóveis devolvidos?</summary><p data-en="<b>New properties being delivered</b> are units finishing construction, where builders want to close sales. <b>Returned properties</b> are units given back by buyers who gave up, which builders often resell on better terms. With credit in hand you pay cash and negotiate. <a href='#oportunidades'>See current opportunities →</a>"><b>Imóveis novos sendo entregues</b> são unidades em fase final de obra, quando a construtora quer fechar vendas. <b>Imóveis devolvidos</b> são unidades devolvidas por compradores que desistiram, que muitas vezes a construtora revende em condições melhores. Com o crédito na mão você paga à vista e negocia. <a href="#oportunidades">Ver oportunidades atuais →</a></p></details>
+    <details><summary data-en="Can I join a consórcio while living in the United States?">Posso fazer consórcio morando nos Estados Unidos?</summary><p data-en="Yes. You need an active CPF and identification documents. The whole process is digital: proposal, document upload and signature. Our team confirms the exact documents for your case.">Sim. Você precisa de CPF ativo e documentos de identificação. Todo o processo é digital: proposta, envio de documentos e assinatura. Nosso time confirma a documentação exata para o seu caso.</p></details>
+    <details><summary data-en="How do I pay the installments from outside Brazil?">Como pago as parcelas estando fora do Brasil?</summary><p data-en="By boleto or PIX, from a Brazilian bank account (yours or a family member's) or through an international money transfer service. On the call we show you the cheapest option for your case.">Por boleto ou PIX, a partir de uma conta brasileira (sua ou de um familiar) ou via serviço de remessa internacional. Na reunião mostramos a forma mais barata para o seu caso.</p></details>
+    <details><summary data-en="What if the dollar drops?">E se o dólar cair?</summary><p data-en="Your installment is in reais. If the dollar drops, it weighs a bit more in dollars; if it rises, it weighs less. That's why we simulate with a safety margin and you can adjust the credit.">Sua parcela é em reais. Se o dólar cair, a parcela pesa um pouco mais em dólar; se subir, pesa menos. Por isso simulamos com folga e você pode ajustar o crédito.</p></details>
+    <details><summary data-en="Who receives the property or car if I'm in the US?">Quem recebe o imóvel ou o carro se eu estiver nos EUA?</summary><p data-en="You can appoint someone you trust in Brazil through a power of attorney, which can even be done at a Brazilian consulate. We guide you through every step of the purchase.">Você pode nomear um procurador no Brasil (familiar de confiança) por procuração, inclusive feita em consulado. Nós orientamos todo o passo a passo da compra.</p></details>
+    <details><summary data-en="When will I be awarded?">Quando sou contemplado?</summary><p data-en="At any monthly meeting, by draw or by bid. There is no guaranteed date — that's why we show bidding strategies (including the embedded bid) to improve your odds.">Em qualquer assembleia mensal, por sorteio ou por lance. Não existe data garantida — por isso mostramos estratégias de lance (inclusive o embutido) para aumentar suas chances.</p></details>
+    <details><summary data-en="Is it safe? How do I know it's not a scam?">É seguro? Como sei que não é golpe?</summary><p data-en="Racon belongs to the Randon Group (founded in 1949, listed on Brazil's B3 stock exchange) and consórcio is regulated by Brazil's Central Bank. The boleto is issued by the administrator itself, in its own name — never in an individual's name.">A Racon é do Grupo Randon (desde 1949, listado na B3) e o consórcio é regulamentado pelo Banco Central. O boleto é emitido pela própria administradora em nome dela — nunca em nome de pessoa física.</p></details>
+  </div>
+</section>
+
+<footer>
+  <div class="ribbon" style="margin-top:-40px;margin-bottom:34px"></div>
+  <div class="wrap cols">
+    <div>
+      <div class="brand lg" style="margin-bottom:16px">
+        <span class="rc"><span class="w">Rac<span class="o">o</span>n</span><span class="c">Consórcios</span></span>
+        <span class="sep"></span>
+        <span class="fr"><span class="g"><img src="../../gauchinho-app/public/foto/ICONE.svg" alt="" onerror="this.outerHTML='G'"/></span><span><small data-en="FRANCHISEE">FRANQUEADO</small><b>GAUCHINHO</b></span></span>
+      </div><span data-en="Authorized Racon Consórcios representative · Randon Group">Representante autorizado Racon Consórcios · Grupo Randon</span><br/>Sinop · Mato Grosso · <span data-en="Brazil">Brasil</span></div>
+    <div>WhatsApp<br/>+55 (66) 99608-6030 · Fernando<br/>+55 (66) 99912-6120 · Gauchinho</div>
+    <div data-en="Illustrative simulations. Consórcio is not an investment with guaranteed returns. Check the group rules.">Simulações ilustrativas. Consórcio não é investimento com rentabilidade garantida. Consulte o regulamento do grupo.</div>
+  </div>
+</footer>
+
+<!-- ================= BARRA FIXA ================= -->
+<div class="sticky">
+  <span class="pin" style="left:12px;top:-36px" data-t="Barra fixa que acompanha o plano" data-i="No celular, a barra fica sempre no rodapé mostrando o crédito do plano atual. Em qualquer ponto a pessoa decide: reunião ou contratar.">💡</span>
+  <div class="wrap">
+    <div class="mini"><span data-en="Your plan">Seu plano</span><b class="num" id="stickyCredit"></b></div>
+    <a href="#decidir" class="btn btn-o" data-en="📅 Call">📅 Reunião</a>
+    <button class="btn btn-y" onclick="openCheckout()" data-en="Sign up">Contratar</button>
+  </div>
+</div>
+
+<!-- ================= GAVETA CHECKOUT ================= -->
+<div class="drawer-bg" id="drBg" onclick="closeCheckout()"></div>
+<aside class="drawer" id="drawer">
+  <div class="ribbon"></div>
+  <div class="dr-head"><b data-en="Online sign-up">Contratação online</b><button onclick="closeCheckout()" aria-label="×">×</button></div>
+  <div class="progress"><span class="on"></span><span></span><span></span><span></span></div>
+  <div class="dr-body">
+    <div class="pane on" data-pane="0">
+      <h3 data-en="1. Choose your share">1. Escolha sua cota</h3>
+      <p class="muted" style="margin-top:0" data-en="We picked the shares closest to your plan.">Separamos as cotas próximas do seu plano.</p>
+      <div id="cotaList"></div>
+    </div>
+    <div class="pane" data-pane="1">
+      <h3 data-en="2. Your details">2. Seus dados</h3>
+      <div class="field"><label data-en="Full name">Nome completo</label><input class="inp" placeholder="Como no documento" data-en-ph="As shown on your ID"/></div>
+      <div class="row2"><div class="field"><label>CPF</label><input class="inp" placeholder="000.000.000-00" inputmode="numeric"/></div><div class="field"><label data-en="Date of birth">Data de nascimento</label><input class="inp" type="date"/></div></div>
+      <div class="row2"><div class="field"><label>WhatsApp</label><input class="inp" placeholder="+1 (___) ___-____" inputmode="tel"/></div><div class="field"><label data-en="Email">E-mail</label><input class="inp" type="email" placeholder="voce@email.com" data-en-ph="you@email.com"/></div></div>
+      <div class="field"><label data-en="US address">Endereço nos EUA</label><input class="inp" placeholder="Street, City, State, ZIP"/></div>
+      <div class="field"><label data-en="How will you pay the installments?">Como vai pagar as parcelas?</label><select>
+        <option data-en="PIX / my own Brazilian account">PIX / conta brasileira própria</option>
+        <option data-en="A family member's account in Brazil">Conta de familiar no Brasil</option>
+        <option data-en="International money transfer">Remessa internacional</option>
+        <option data-en="I'd like guidance">Quero orientação</option></select></div>
+    </div>
+    <div class="pane" data-pane="2">
+      <h3 data-en="3. Photos of your documents">3. Fotos dos documentos</h3>
+      <p class="muted" style="margin-top:0" data-en="Take the photo now or drag the file. Photos, PDFs and screenshots accepted.">Tire a foto na hora ou arraste o arquivo. Aceita foto, PDF e print.</p>
+      <label class="drop"><span class="ic">🛂</span><span><b data-en="Passport, Brazilian ID or driver's license">Passaporte, RG ou CNH</b><small data-en="front and back">frente e verso</small></span><span class="st" data-en="Upload">Enviar</span><input type="file" accept="image/*,application/pdf" capture="environment"/></label>
+      <label class="drop"><span class="ic">🪪</span><span><b>CPF</b><small data-en="a screenshot from the Receita app works">pode ser print do app Receita</small></span><span class="st" data-en="Upload">Enviar</span><input type="file" accept="image/*,application/pdf"/></label>
+      <label class="drop"><span class="ic">🏠</span><span><b data-en="Proof of US address">Comprovante de endereço nos EUA</b><small data-en="utility bill, bank statement or lease">conta de luz, banco ou lease</small></span><span class="st" data-en="Upload">Enviar</span><input type="file" accept="image/*,application/pdf"/></label>
+      <label class="drop"><span class="ic">🤳</span><span><b data-en="Selfie holding your ID">Selfie segurando o documento</b><small data-en="identity check">validação de identidade</small></span><span class="st" data-en="Upload">Enviar</span><input type="file" accept="image/*" capture="user"/></label>
+      <p class="muted" style="font-size:12px" data-en="🔒 Files go to private, encrypted storage.">🔒 Arquivos vão para armazenamento privado e criptografado.</p>
+    </div>
+    <div class="pane" data-pane="3">
+      <div id="reviewBox">
+        <h3 data-en="4. Review and submit">4. Revisar e enviar</h3>
+        <div class="card" id="reviewCota" style="background:rgba(0,0,0,.25)"></div>
+        <label style="display:flex;gap:10px;margin:16px 0;font-size:14px"><input type="checkbox" id="agree" style="width:20px;height:20px;flex:0 0 auto"/> <span data-en="I have read and agree to the group rules and the privacy policy.">Li e concordo com o regulamento do grupo e com a política de privacidade.</span></label>
+      </div>
+      <div id="doneBox" style="display:none;text-align:center">
+        <div style="font-size:56px">🎉</div>
+        <h3 data-en="Proposal submitted!">Proposta enviada!</h3>
+        <p class="muted"><span data-en="Reference">Protocolo</span> <b class="cy">EUA-2026-0417</b></p>
+        <ul class="timeline" style="text-align:left">
+          <li class="done"><i></i><b data-en="Proposal received">Proposta recebida</b><br/><span class="muted" data-en="just now">agora</span></li>
+          <li class="now"><i></i><b data-en="Document review">Conferência dos documentos</b><br/><span class="muted" data-en="our team in Brazil">nossa equipe em Sinop</span></li>
+          <li><i></i><b data-en="Administrator's boleto">Boleto da administradora</b><br/><span class="muted" data-en="on your WhatsApp and email">no seu WhatsApp e e-mail</span></li>
+          <li><i></i><b data-en="🎓 Free training unlocked">🎓 Treinamento gratuito liberado</b><br/><span class="muted" data-en="how to buy the best properties in Brazil">como comprar os melhores imóveis no Brasil</span></li>
+          <li><i></i><b data-en="Share active · first monthly meeting">Cota ativa · primeira assembleia</b><br/><span class="muted" data-en="you'll be notified of the result">você é avisado do resultado</span></li>
+        </ul>
+        <p class="muted" style="font-size:13px" data-en="Track everything through this personal link, no password needed.">Você pode acompanhar tudo por este link pessoal, sem senha.</p>
+      </div>
+    </div>
+  </div>
+  <div class="dr-foot">
+    <button class="btn btn-o" id="drBack" onclick="stepCheckout(-1)" data-en="Back">Voltar</button>
+    <button class="btn btn-y" id="drNext" style="flex:1" onclick="stepCheckout(1)"></button>
+  </div>
+</aside>
+
+<!-- ================= LEAD ================= -->
+<div class="drawer-bg" id="leadBg" onclick="closeLead()"></div>
+<aside class="drawer" id="leadDr">
+  <div class="ribbon"></div>
+  <div class="dr-head"><b id="leadTitle"></b><button onclick="closeLead()" aria-label="×">×</button></div>
+  <div class="dr-body">
+    <div id="leadForm">
+      <p class="muted" style="margin-top:0" id="leadIntro"></p>
+      <div class="card" style="background:rgba(0,0,0,.25);margin-bottom:14px" id="leadSummary"></div>
+      <div class="field"><label data-en="Name">Nome</label><input class="inp" id="lName" placeholder="Seu nome" data-en-ph="Your name"/></div>
+      <div class="field"><label>WhatsApp</label><input class="inp" id="lPhone" placeholder="+1 (___) ___-____" inputmode="tel"/></div>
+      <div class="field"><label data-en="City / state in the US">Cidade / estado nos EUA</label><input class="inp" placeholder="Ex.: Orlando, FL" data-en-ph="e.g. Orlando, FL"/></div>
+      <label style="display:flex;gap:10px;font-size:13px;color:var(--muted)"><input type="checkbox" checked/> <span data-en="Send it to my spouse too">Quero que meu cônjuge também receba</span></label>
+      <button class="btn btn-y btn-block" style="margin-top:16px" onclick="sendLead()" data-en="Send it to me 📲">Enviar para mim 📲</button>
+    </div>
+    <div id="leadOk" class="ok-box"><div class="big">📲</div><h3 data-en="On its way!">A caminho!</h3><p class="muted" data-en="You'll get it on WhatsApp in a moment. A specialist can reach out at the time you prefer.">Em instantes você recebe no WhatsApp. Um especialista pode te chamar no horário que você preferir.</p></div>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= idioma ================= */
+let LANG = 'pt';
+const tr = (pt, en) => LANG === 'en' ? en : pt;
+const loc = () => LANG === 'en' ? 'en-US' : 'pt-BR';
+
+/* ================= helpers ================= */
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const brl = v => 'R$ ' + Math.round(v).toLocaleString(loc());
+const brlK = v => v >= 1e6
+  ? 'R$ ' + (v/1e6).toLocaleString(loc(),{maximumFractionDigits:2}) + tr(' mi','M')
+  : 'R$ ' + Math.round(v/1000).toLocaleString(loc()) + tr(' mil','k');
+const usd = v => '$' + Math.round(v).toLocaleString('en-US');
+const pm = () => tr('/mês','/mo');
+const digits = s => Number(String(s).replace(/\D/g,'')) || 0;
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('on');setTimeout(()=>el.classList.remove('on'),2200)}
+function fill(r){const p=(r.value-r.min)/(r.max-r.min)*100;r.style.setProperty('--p',p+'%')}
+const fx = () => Number(String($('#fx').value).replace(',','.')) || 5.4;
+
+/* Tabela do criativo: grupo 1563 imóvel 200m (parcela reduzida 0,375% do crédito),
+   grupos 5388/5588 veículo (0,58% do crédito). */
+const GROUPS = {
+  imovel:{fator:0.00375,min:100000,max:1000000,step:10000,grupo:['1563 · 200 meses','1563 · 200 months']},
+  veiculo:{fator:0.0058,min:36562,max:200000,step:5000,grupo:['5388/5588 · até 120m','5388/5588 · up to 120 mo']}
+};
+const GOALS = {
+  imovel:{g:'imovel',t:['Casa ou apartamento','House or apartment'],buys:[['🏠 Casa','🏠 House'],['🏢 Apartamento','🏢 Apartment'],['🌳 Terreno','🌳 Land'],['🔨 Construção/reforma','🔨 Build/renovate']]},
+  renda:{g:'imovel',t:['Aposentadoria imobiliária','Real-estate retirement'],buys:[['🏢 Apto para alugar','🏢 Rental apartment'],['🏬 Sala comercial','🏬 Office unit'],['🏘️ Kitnets','🏘️ Studios'],['🏗️ Imóvel novo sendo entregue','🏗️ New unit being delivered']]},
+  veiculo:{g:'veiculo',t:['Carro ou caminhonete','Car or pickup truck'],buys:[['🚗 Carro 0km','🚗 New car'],['🚙 SUV','🚙 SUV'],['🛻 Caminhonete','🛻 Pickup truck'],['🏍️ Moto','🏍️ Motorcycle']]},
+  alavancagem:{g:'imovel',t:['Alavancagem patrimonial','Wealth leverage'],buys:[['📑 Várias cartas','📑 Several letters'],['💰 Compra à vista','💰 Cash purchase'],['🔁 Imóveis devolvidos','🔁 Returned units'],['🏘️ Imóveis para renda','🏘️ Income properties']]}
+};
+const WHEN = {
+  ja:['<b>Estratégia ⚡ rápida:</b> lance embutido de até 30% + lance livre nas primeiras assembleias. Nosso robô de lances acompanha cada assembleia por você.',
+      '<b>⚡ Fast strategy:</b> embedded bid of up to 30% + a cash bid in the first monthly meetings. Our bidding robot follows every meeting for you.'],
+  ano:['<b>Estratégia 🗓️ planejada:</b> concorra no sorteio todo mês e entre com lance embutido quando a média de lances do grupo ficar favorável.',
+       '<b>🗓️ Planned strategy:</b> compete in the draw every month and place an embedded bid when the group\'s average bid becomes favorable.'],
+  calma:['<b>Estratégia 🌱 construção:</b> parcela reduzida, sorteio mensal e, se quiser, uma nova cota por ano (escada de cotas) para multiplicar patrimônio.',
+         '<b>🌱 Build-up strategy:</b> reduced installment, monthly draw and, if you like, one new share per year (share ladder) to multiply your assets.']
+};
+let state = {goal:'imovel', when:'ano', usd:300, credit:430000, grupo:'imovel', cotas:1, unit:430000};
+
+/* ================= hero ================= */
+function calcCredit(usdMonth, gkey){
+  const G = GROUPS[gkey]; const brlMonth = usdMonth * fx();
+  return {brlMonth, c: Math.floor(brlMonth / G.fator / G.step) * G.step, G};
+}
+function renderHero(){
+  const {brlMonth,c,G} = calcCredit(digits($('#heroUsd').value),'imovel');
+  $('#heroBrl').textContent = brl(brlMonth);
+  $('#heroCredit').textContent = c < G.min ? tr('a partir de ','from ') + brl(G.min) : brl(c);
+}
+$('#heroUsd').addEventListener('input', e => { renderHero(); const n=digits(e.target.value); if(n>=100&&n<=3000){ $('#usd').value=n; renderPlan(); }});
+$('#fx').addEventListener('input', renderAll);
+
+/* ================= wizard ================= */
+$$('#goalChips .chip').forEach(b=>b.onclick=()=>{ $$('#goalChips .chip').forEach(x=>x.classList.remove('on')); b.classList.add('on'); state.goal=b.dataset.goal; renderPlan(); });
+$$('#whenChips .chip').forEach(b=>b.onclick=()=>{ $$('#whenChips .chip').forEach(x=>x.classList.remove('on')); b.classList.add('on'); state.when=b.dataset.when; renderPlan(); });
+$('#usd').addEventListener('input', renderPlan);
+$$('.quick button').forEach(b=>b.onclick=()=>{ $('#usd').value=b.dataset.q; renderPlan(); });
+
+function renderPlan(){
+  const r=$('#usd'); fill(r); state.usd=+r.value;
+  const goal = GOALS[state.goal]; state.grupo = goal.g;
+  const {brlMonth,c,G} = calcCredit(state.usd, goal.g);
+  $('#usdV').textContent = usd(state.usd); $('#usdBrl').textContent = '≈ ' + brl(brlMonth) + pm();
+  let credit = Math.max(G.min, Math.min(c, G.max)), cotas = 1;
+  if (c > G.max){ cotas = Math.ceil(c / G.max); credit = Math.floor(c / cotas / G.step) * G.step; }
+  state.credit = credit * cotas; state.cotas = cotas; state.unit = credit;
+  const parcela = credit * G.fator * cotas;
+  $('#planTitle').textContent = tr('Seu plano · ','Your plan · ') + tr(...goal.t);
+  $('#planCredit').textContent = brl(credit * cotas);
+  const m = $('#planMulti');
+  if (cotas > 1){ m.style.display='block'; m.textContent = tr(`Dividido em ${cotas} cotas de ${brl(credit)} — mais chances por assembleia.`, `Split into ${cotas} shares of ${brl(credit)} — more chances at every meeting.`); }
+  else if (c < G.min){ m.style.display='block'; m.textContent = tr(`Valor mínimo do grupo: ${brl(G.min)} (parcela ${brl(G.min*G.fator)} ≈ ${usd(G.min*G.fator/fx())}).`, `Group minimum: ${brl(G.min)} (installment ${brl(G.min*G.fator)} ≈ ${usd(G.min*G.fator/fx())}).`); }
+  else m.style.display='none';
+  $('#planParcela').textContent = brl(parcela);
+  $('#planParcelaUsd').textContent = usd(parcela/fx()) + pm();
+  $('#planGrupo').textContent = tr(...G.grupo);
+  $('#planStrategy').innerHTML = tr(...WHEN[state.when]);
+  $('#planBuys').innerHTML = goal.buys.map(x=>`<span>${tr(...x)}</span>`).join('');
+  $('#stickyCredit').textContent = brlK(credit*cotas);
+  $('#alUsd').textContent = usd(state.usd*2) + pm();
+  const one = calcCredit(state.usd*2,'imovel').c;
+  $('#alOne').textContent = brlK(one); $('#alThree').textContent = brlK(Math.floor(one/3/10000)*10000);
+}
+
+/* ================= lance embutido ================= */
+function renderLance(){
+  const C=+$('#lcCredit').value, p=+$('#lcPct').value; fill($('#lcCredit')); fill($('#lcPct'));
+  const lance=C*p/100;
+  $('#lcCreditLbl').textContent=brl(C); $('#lcPctLbl').textContent=p+'%';
+  $('#lcA').style.width=p+'%'; $('#lcB').style.width=(100-p)+'%';
+  $('#lcA').textContent = p>=10 ? tr('Lance ','Bid ')+brlK(lance) : '';
+  $('#lcB').textContent = tr('Na mão ','In hand ')+brlK(C-lance);
+  $('#lcCash').textContent = brl(lance);
+}
+['#lcCredit','#lcPct'].forEach(s=>$(s).addEventListener('input',renderLance));
+function renderReverse(){
+  const want=digits($('#rvWant').value);
+  $('#rvAnswer').textContent=brl(Math.ceil(want/0.7/10000)*10000);
+}
+$('#rvWant').addEventListener('input',renderReverse);
+$('#rvWant').addEventListener('blur',fmtReverse);
+function fmtReverse(){ const el=$('#rvWant'); el.value=digits(el.value).toLocaleString(loc()); }
+
+/* ================= oportunidades ================= */
+const OPP_TYPE = {
+  novo:{e:'🏢',b:['🏗️ Novo · sendo entregue','🏗️ New · being delivered'],note:['Pague à vista com seu crédito e negocie condição de entrega.','Pay cash with your credit and negotiate delivery terms.']},
+  devolvido:{e:'🏠',b:['🔁 Devolvido à construtora','🔁 Returned to builder'],note:['Unidade devolvida e revendida pela construtora — abaixo da tabela atual*.','Unit returned and resold by the builder — below current list price*.']},
+  carta:{e:'📑',b:['📑 Carta contemplada','📑 Awarded credit letter'],note:['Crédito já liberado: compre sem esperar a assembleia.','Credit already released: buy without waiting for a meeting.']}
+};
+const OPPS = [
+  {type:'novo', city:'Florianópolis · SC', uf:'SC', t:['Studio a 600 m da praia · entrega mar/2027','Studio 600 m from the beach · delivery Mar 2027'], v:520000},
+  {type:'devolvido', city:'Goiânia · GO', uf:'GO', t:['Apartamento 2 quartos · pronto para morar','2-bed apartment · move-in ready'], v:310000},
+  {type:'novo', city:'Sinop · MT', uf:'MT', t:['Apartamento 3 quartos · entrega dez/2026','3-bed apartment · delivery Dec 2026'], v:420000},
+  {type:'devolvido', city:'Balneário Camboriú · SC', uf:'SC', t:['Apartamento vista mar · unidade devolvida','Ocean-view apartment · returned unit'], v:890000},
+  {type:'carta', city:'Brasil inteiro', uf:'', t:['Carta contemplada de imóvel R$ 250 mil','Awarded real-estate letter, R$ 250k'], v:250000, cityEn:'Nationwide'},
+  {type:'novo', city:'Curitiba · PR', uf:'PR', t:['Casa em condomínio · entregue este mês','Gated-community house · delivered this month'], v:650000},
+  {type:'devolvido', city:'Belo Horizonte · MG', uf:'MG', t:['Apartamento 2 quartos · revenda de construtora','2-bed apartment · builder resale'], v:345000},
+  {type:'carta', city:'Brasil inteiro', uf:'', t:['Carta contemplada de veículo R$ 120 mil','Awarded vehicle letter, R$ 120k'], v:120000, cityEn:'Nationwide'},
+  {type:'novo', city:'Fortaleza · CE', uf:'CE', t:['Apartamento perto da praia · entrega jun/2027','Beach-area apartment · delivery Jun 2027'], v:380000}
+];
+let oppFilter='all';
+function renderOpps(){
+  const list = OPPS.filter(o=>oppFilter==='all'||o.type===oppFilter);
+  $('#opps').innerHTML = list.map(o=>{const T=OPP_TYPE[o.type]; const i=OPPS.indexOf(o); return `
+    <div class="opp"><div class="img ${o.type}"><span class="badge">${tr(...T.b)}</span><span>${T.e}</span><span class="city">${o.cityEn?tr(o.city,o.cityEn):o.city}</span></div>
+    <div class="body"><b>${tr(...o.t)}</b><div class="price num">${o.type==='carta'?tr('Crédito ','Credit ')+brl(o.v):brl(o.v)}</div><div class="note">${tr(...T.note)}</div>
+    <button class="btn btn-o" onclick="openLead(${i})">${tr('Tenho interesse →','I\'m interested →')}</button></div></div>`}).join('');
+  const ufs=['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
+  const on=new Set(OPPS.map(o=>o.uf));
+  $('#states').innerHTML = ufs.map(u=>`<span class="${on.has(u)?'on':''}">${u}</span>`).join('');
+}
+$$('#oppFilters button').forEach(b=>b.onclick=()=>{ $$('#oppFilters button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); oppFilter=b.dataset.f; renderOpps(); });
+
+/* ================= abas ================= */
+$$('.tab').forEach(t=>t.onclick=()=>{ $$('.tab').forEach(x=>x.classList.remove('on')); t.classList.add('on'); $$('.panel').forEach(p=>p.classList.remove('on')); $('#p-'+t.dataset.tab).classList.add('on'); t.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}); });
+
+function renderAposent(){
+  const n=+$('#apNr').value, v=+$('#apVr').value; fill($('#apNr')); fill($('#apVr'));
+  $('#apN').textContent = n + ' ' + (n>1?tr('imóveis','properties'):tr('imóvel','property'));
+  $('#apV').textContent=brl(v);
+  $('#houses').innerHTML=[0,1,2,3,4].map(i=>`<div class="house ${i<n?'on':''}">🏠</div>`).join('');
+  const rent=n*v*0.005;
+  $('#apPat').textContent=brlK(n*v); $('#apRent').textContent=brl(rent); $('#apRentUsd').textContent=usd(rent/fx());
+}
+['#apNr','#apVr'].forEach(s=>$(s).addEventListener('input',renderAposent));
+function renderVolta(){
+  const y=+$('#vtR').value; fill($('#vtR'));
+  $('#vtY').textContent=new Date().getFullYear()+y; $('#vtPaid').textContent=y*12; $('#vtAss').textContent=y*12;
+}
+$('#vtR').addEventListener('input',renderVolta);
+function renderCarTable(){
+  const rows=[[60000,348],[100000,580],[150000,870],[200000,1160]];
+  $('#carTable').innerHTML = `<tr><th>${tr('Crédito','Credit')}</th><th>${tr('Parcela reduzida','Reduced installment')}</th><th>${tr('Em dólar ≈','In dollars ≈')}</th></tr>` +
+    rows.map(([c,p],i)=>`<tr><td>${i===2?'<b>':''}${brl(c)}${i===2?'</b>':''}</td><td class="num">${brl(p)}</td><td class="usd num">${usd(p/fx())}${pm()}</td></tr>`).join('');
+}
+function renderCmp(){
+  const P=300000,i=Math.pow(1.12,1/12)-1,n=200, pmt=P*i/(1-Math.pow(1+i,-n));
+  $('#cmpFin').textContent='≈ '+brl(pmt*n); $('#cmpCons').textContent='≈ '+brl(P*1.2);
+}
+
+/* ================= agenda ================= */
+let sel={day:0,slot:null,chan:'WhatsApp'};
+const BR_TZ='America/Cuiaba';
+function tzGuess(){ const z=Intl.DateTimeFormat().resolvedOptions().timeZone; if([...$('#tzSel').options].some(x=>x.value===z)) $('#tzSel').value=z; }
+function slotDates(dayOffset){
+  // consultor atende 9h–20h no horário de Cuiabá (UTC-4)
+  const base=new Date(); base.setUTCHours(0,0,0,0); base.setUTCDate(base.getUTCDate()+dayOffset);
+  const out=[]; for(let h=9;h<20;h++){ for(const m of [0,30]){ const d=new Date(base); d.setUTCHours(h+4,m); if(d>new Date(Date.now()+3600e3)) out.push(d);} }
+  return out.filter((_,k)=>k%3!==1).slice(0,12);
+}
+function renderDays(){
+  const tz=$('#tzSel').value, fmtD=new Intl.DateTimeFormat(loc(),{weekday:'short',timeZone:tz}), fmtN=new Intl.DateTimeFormat(loc(),{day:'2-digit',timeZone:tz});
+  $('#days').innerHTML=[0,1,2,3,4,5].map(i=>{const d=new Date(Date.now()+i*864e5);return `<button class="day ${i===sel.day?'on':''}" data-d="${i}">${i===0?tr('Hoje','Today'):fmtD.format(d).replace('.','')}<b>${fmtN.format(d)}</b></button>`}).join('');
+  $$('.day').forEach(b=>b.onclick=()=>{sel.day=+b.dataset.d; sel.slot=null; renderDays();});
+  const f=new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit',timeZone:tz}),
+        fb=new Intl.DateTimeFormat(loc(),{hour:'numeric',minute:'2-digit',timeZone:BR_TZ});
+  const ds=slotDates(sel.day);
+  $('#slots').innerHTML= ds.length ? ds.map(d=>`<button class="slot ${sel.slot&&+sel.slot===+d?'on':''}" data-t="${d.toISOString()}">${f.format(d)}<small>${tr('Sinop ','Brazil ')}${fb.format(d)}</small></button>`).join('')
+    : `<p class="muted" style="grid-column:1/-1">${tr('Sem horários hoje — escolha outro dia.','No times left today — pick another day.')}</p>`;
+  $$('.slot').forEach(b=>b.onclick=()=>{sel.slot=new Date(b.dataset.t); renderDays();});
+}
+$('#tzSel').addEventListener('change',renderDays);
+$$('#chan button').forEach(b=>b.onclick=()=>{$$('#chan button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); sel.chan=b.dataset.c;});
+function bookMeeting(){
+  if(!sel.slot){toast(tr('Escolha um horário 👆','Pick a time 👆'));return}
+  if(!$('#mName').value||!$('#mPhone').value){toast(tr('Preencha nome e WhatsApp','Enter your name and WhatsApp'));return}
+  const tz=$('#tzSel').value, f=new Intl.DateTimeFormat(loc(),{weekday:'long',day:'numeric',month:'long',hour:'numeric',minute:'2-digit',timeZone:tz});
+  const first=$('#mName').value.split(' ')[0];
+  $('#meetOkTxt').innerHTML=tr(`${first}, sua reunião por <b>${sel.chan}</b> é <b>${f.format(sel.slot)}</b> (seu horário).<br/>Você recebe a confirmação e um lembrete 1h antes no WhatsApp.`,
+                               `${first}, your <b>${sel.chan}</b> call is on <b>${f.format(sel.slot)}</b> (your time).<br/>You'll get a confirmation and a reminder 1 hour before on WhatsApp.`);
+  const s=sel.slot.toISOString().replace(/[-:]|\.\d{3}/g,''), e=new Date(+sel.slot+15*6e4).toISOString().replace(/[-:]|\.\d{3}/g,'');
+  $('#gcal').href=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(tr('Reunião consórcio Racon Sinop','Racon Sinop consórcio call'))}&dates=${s}/${e}`;
+  $('#meetForm').style.display='none'; $('#meetOk').style.display='block';
+}
+function renderWa(){
+  $$('.wa').forEach(a=>{ a.href=`https://wa.me/${a.dataset.n}?text=${encodeURIComponent(tr(`Olá ${a.dataset.who}, moro nos EUA e quero saber sobre consórcio.`,`Hi ${a.dataset.who}, I live in the US and I'd like to know about consórcio.`))}`; });
+}
+
+/* ================= checkout ================= */
+let ck=0, cotaSel=0;
+function cotas(){
+  const G=GROUPS[state.grupo], u=state.unit;
+  return [u-4*G.step, u, u+4*G.step].filter(v=>v>=G.min&&v<=G.max).map(v=>({v, p:v*G.fator, g:tr(...G.grupo)}));
+}
+function renderCotas(){
+  const list=cotas();
+  $('#cotaList').innerHTML=list.map((c,i)=>`<div class="cota-opt ${i===cotaSel?'on':''}" data-i="${i}"><div><b class="num">${brl(c.v)}</b><br/><small class="muted">${tr('Grupo','Group')} ${c.g}${state.cotas>1&&i===cotaSel?' · '+state.cotas+tr(' cotas',' shares'):''}</small></div><div style="text-align:right"><b class="brl num">${brl(c.p)}</b><br/><small class="usd num">≈ ${usd(c.p/fx())}${pm()}</small></div></div>`).join('');
+  $$('.cota-opt').forEach(o=>o.onclick=()=>{cotaSel=+o.dataset.i; renderCotas();});
+}
+function openCheckout(){
+  ck=0; $('#reviewBox').style.display='block'; $('#doneBox').style.display='none';
+  cotaSel=Math.max(0,cotas().findIndex(x=>x.v===state.unit));
+  renderCotas(); paintCk(); $('#drawer').classList.add('open'); $('#drBg').classList.add('open');
+}
+function closeCheckout(){ $('#drawer').classList.remove('open'); $('#drBg').classList.remove('open'); }
+const isDone=()=>$('#doneBox').style.display==='block';
+function paintCk(){
+  $$('#drawer .pane').forEach(p=>p.classList.toggle('on',+p.dataset.pane===ck));
+  $$('#drawer .progress span').forEach((s,i)=>s.classList.toggle('on',i<=ck));
+  $('#drBack').style.visibility= ck===0||isDone()?'hidden':'visible';
+  $('#drNext').textContent= isDone()?tr('Fechar','Close'):ck===3?tr('Enviar proposta ✓','Submit proposal ✓'):tr('Continuar →','Continue →');
+  if(ck===3){ const c=cotas()[cotaSel]; $('#reviewCota').innerHTML=`<small class="muted">${tr('Cota escolhida','Selected share')}</small><br/><b style="font-size:22px" class="num">${brl(c.v)}</b><br/><span class="muted">${tr('Grupo','Group')} ${c.g} · ${tr('parcela reduzida','reduced installment')} <b class="brl">${brl(c.p)}</b> (≈ ${usd(c.p/fx())}${pm()})</span><br/><span class="muted">${tr('Documentos','Documents')}: ${$$('.drop.done').length}/4 ${tr('enviados','uploaded')}</span><br/><span class="muted">🎓 ${tr('Inclui treinamento gratuito','Includes free training')}</span>`; }
+}
+function stepCheckout(d){
+  if(ck===3&&d>0){
+    if(isDone()){closeCheckout();return}
+    if(!$('#agree').checked){toast(tr('Marque o aceite para enviar','Tick the agreement box to submit'));return}
+    $('#reviewBox').style.display='none'; $('#doneBox').style.display='block'; paintCk(); return;
+  }
+  ck=Math.max(0,Math.min(3,ck+d)); paintCk();
+}
+$$('.drop').forEach(dz=>{
+  const inp=dz.querySelector('input'), st=dz.querySelector('.st');
+  const done=f=>{dz.classList.add('done'); st.textContent='✓ '+f.name.slice(0,18); st.removeAttribute('data-en');};
+  inp.addEventListener('change',()=>{ if(inp.files[0]) done(inp.files[0]); });
+  ['dragover','dragenter'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag')}));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,()=>dz.classList.remove('drag')));
+  dz.addEventListener('drop',e=>{e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) done(f); });
+});
+
+/* ================= lead ================= */
+let leadOpp=null;
+function renderLeadHead(){
+  if(leadOpp!==null){
+    const o=OPPS[leadOpp];
+    $('#leadTitle').textContent=tr('Tenho interesse','I\'m interested');
+    $('#leadIntro').textContent=tr('Um especialista te envia fotos, condições e como usar seu crédito neste imóvel.','A specialist will send you photos, terms and how to use your credit on this property.');
+    $('#leadSummary').innerHTML=`<small class="muted">${tr(...OPP_TYPE[o.type].b)} · ${o.cityEn?tr(o.city,o.cityEn):o.city}</small><br/><b style="font-size:18px">${tr(...o.t)}</b><br/><span class="brl">${brl(o.v)}</span>`;
+  } else {
+    $('#leadTitle').textContent=tr('Receber meu plano','Get my plan');
+    $('#leadIntro').textContent=tr('Enviamos o seu plano em PDF no WhatsApp, com a cota sugerida e a estratégia de lance. Sem spam.','We send your plan as a PDF on WhatsApp, with the suggested share and bidding strategy. No spam.');
+    $('#leadSummary').innerHTML=`<small class="muted">${tr(...GOALS[state.goal].t)}</small><br/><b style="font-size:22px">${brl(state.credit)}</b><br/><span class="muted">${tr('investindo','investing')} ${usd(state.usd)}${pm()}</span>`;
+  }
+}
+function openLead(i){
+  leadOpp = (typeof i==='number') ? i : null;
+  $('#leadForm').style.display='block'; $('#leadOk').style.display='none';
+  renderLeadHead(); $('#leadDr').classList.add('open'); $('#leadBg').classList.add('open');
+}
+function closeLead(){ $('#leadDr').classList.remove('open'); $('#leadBg').classList.remove('open'); }
+function sendLead(){ if(!$('#lName').value||!$('#lPhone').value){toast(tr('Preencha nome e WhatsApp','Enter your name and WhatsApp'));return} $('#leadForm').style.display='none'; $('#leadOk').style.display='block'; }
+
+/* ================= camada de ideias ================= */
+function showIdea(el){
+  const pop=$('#ideaPop'); $('#ideaTitle').textContent='💡 '+el.dataset.t; $('#ideaText').textContent=el.dataset.i;
+  pop.style.display='block'; const r=el.getBoundingClientRect();
+  let x=Math.min(window.innerWidth-pop.offsetWidth-10, Math.max(10,r.left)), y=r.bottom+10;
+  if(y+pop.offsetHeight>window.innerHeight-90) y=Math.max(10,r.top-pop.offsetHeight-10);
+  pop.style.left=x+'px'; pop.style.top=y+'px';
+}
+function hideIdea(){ $('#ideaPop').style.display='none'; }
+$$('.pin').forEach(p=>p.addEventListener('click',e=>{e.stopPropagation(); showIdea(p);}));
+window.addEventListener('scroll',hideIdea,{passive:true});
+function paintTools(){
+  $('#ideasFab').textContent = document.body.classList.contains('show-ideas') ? tr('💡 Ocultar ideias','💡 Hide ideas') : tr('💡 Mostrar ideias','💡 Show ideas');
+  $('#themeLbl').textContent = document.body.classList.contains('theme-racon') ? tr('Tema: Racon','Theme: Racon') : tr('Tema: Bandeiras','Theme: Flags');
+}
+$('#ideasFab').onclick=()=>{ document.body.classList.toggle('show-ideas'); hideIdea(); paintTools(); };
+$('#themeBtn').onclick=()=>{ document.body.classList.toggle('theme-racon'); paintTools(); };
+
+/* ================= troca de idioma (página inteira) ================= */
+$$('[data-en]').forEach(el=>el.dataset.pt=el.innerHTML);
+$$('[data-en-ph]').forEach(el=>el.dataset.ptPh=el.placeholder);
+function setLang(l){
+  LANG=l;
+  $$('.lang button').forEach(x=>x.classList.toggle('on',x.dataset.lang===l));
+  $$('[data-en]').forEach(el=>el.innerHTML = l==='en'?el.dataset.en:el.dataset.pt);
+  $$('[data-en-ph]').forEach(el=>el.placeholder = l==='en'?el.dataset.enPh:el.dataset.ptPh);
+  document.documentElement.lang = l==='en'?'en':'pt-BR';
+  document.title = tr('Racon Sinop · Patrimônio no Brasil ganhando em dólar','Racon Sinop · Build wealth in Brazil while you earn in dollars');
+  const u=new URL(location.href); if(l==='en') u.searchParams.set('lang','en'); else u.searchParams.delete('lang');
+  try{ history.replaceState(null,'',u); }catch(e){}
+  renderAll();
+  if($('#drawer').classList.contains('open')){ renderCotas(); paintCk(); }
+  if($('#leadDr').classList.contains('open')) renderLeadHead();
+}
+$$('.lang button').forEach(b=>b.onclick=()=>setLang(b.dataset.lang));
+
+function renderAll(){ renderHero(); renderPlan(); renderLance(); renderReverse(); fmtReverse(); renderOpps(); renderAposent(); renderVolta(); renderCarTable(); renderCmp(); renderDays(); renderWa(); paintTools(); }
+
+/* ================= init ================= */
+tzGuess(); if(!slotDates(0).length) sel.day=1;
+setLang(new URLSearchParams(location.search).get('lang')==='en'?'en':'pt');
+</script>
+</body>
+</html>

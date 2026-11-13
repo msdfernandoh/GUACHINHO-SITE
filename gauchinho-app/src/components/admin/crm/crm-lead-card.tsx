@@ -48,12 +48,16 @@ export function CrmLeadCard({
   const parcela = valorParcelaLead(lead);
   const rawPhone = lead.whatsapp || "";
   const phoneDigits = rawPhone.replace(/\D/g, "");
+  // Números gravados com "+DDI" diferente de 55 (ex.: leads da página EUA, +1) já são internacionais.
+  const isInternational = rawPhone.trim().startsWith("+") && !phoneDigits.startsWith("55");
   const displayPhoneDigits = phoneDigits.startsWith("55") && (phoneDigits.length === 12 || phoneDigits.length === 13)
     ? phoneDigits.slice(2)
     : phoneDigits;
-  const displayPhone = displayPhoneDigits ? formatWhatsappBrInput(displayPhoneDigits) : null;
+  const displayPhone = isInternational
+    ? rawPhone.trim()
+    : displayPhoneDigits ? formatWhatsappBrInput(displayPhoneDigits) : null;
   const whatsappUrl = phoneDigits
-    ? `https://wa.me/${phoneDigits.startsWith("55") ? phoneDigits : `55${phoneDigits}`}?text=${encodeURIComponent(
+    ? `https://wa.me/${isInternational || phoneDigits.startsWith("55") ? phoneDigits : `55${phoneDigits}`}?text=${encodeURIComponent(
         `Olá ${lead.nome}, tudo bem? Sou da Gauchinho Consórcios | Racon e estou retornando seu contato!`,
       )}`
     : null;

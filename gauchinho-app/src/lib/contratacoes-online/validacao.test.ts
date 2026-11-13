@@ -12,6 +12,12 @@ describe("validacao contratacao", () => {
     expect(sanitizeCpf("123.456.789-09")).toBe("12345678909");
     expect(sanitizeCnpj("12.345.678/0001-95")).toBe("12345678000195");
     expect(sanitizeTelefone("(51) 99999-8888")).toBe("51999998888");
+    expect(sanitizeTelefone("+55 (51) 99999-8888")).toBe("5551999998888");
+  });
+
+  it("preserva o DDI de telefone estrangeiro", () => {
+    expect(sanitizeTelefone("+1 (407) 555-1234")).toBe("+14075551234");
+    expect(sanitizeTelefone("+1 4075551234").length).toBeGreaterThanOrEqual(10);
   });
 
   it("valida CPF conhecido", () => {

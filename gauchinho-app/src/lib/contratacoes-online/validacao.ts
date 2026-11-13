@@ -10,8 +10,14 @@ export function sanitizeCnpj(value: string): string {
   return sanitizeDigits(value).slice(0, 14);
 }
 
+/**
+ * Números brasileiros ficam só com dígitos (comportamento histórico). Números
+ * com "+DDI" estrangeiro mantêm o "+" para não serem lidos como DDD brasileiro.
+ */
 export function sanitizeTelefone(value: string): string {
-  return sanitizeDigits(value).slice(0, 13);
+  const digits = sanitizeDigits(value);
+  if (value.trim().startsWith("+") && !digits.startsWith("55")) return `+${digits.slice(0, 15)}`;
+  return digits.slice(0, 13);
 }
 
 function cpfChecksum(digits: string, factor: number): number {
