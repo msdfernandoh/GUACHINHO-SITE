@@ -5,6 +5,7 @@ import { useIniciarContratacao } from "@/lib/contratacoes-online/use-iniciar-con
 import { parcelaReduzida, type EuaPlano } from "@/lib/eua-landing/calculos";
 import type { EuaLeadBody } from "@/lib/eua-landing/lead";
 import type { EuaOportunidade } from "@/lib/eua-landing/types";
+import { mascararTelefone, telefoneCompleto } from "@/lib/eua-landing/telefone";
 import { Rich, useEua } from "./eua-ui";
 import s from "./eua-landing.module.css";
 
@@ -36,14 +37,18 @@ export function PhoneInput({ value, onChange }: { value: Fone; onChange: (v: Fon
   const { t } = useEua();
   return (
     <div className={s.phone}>
-      <select value={value.ddi} onChange={(e) => onChange({ ...value, ddi: e.target.value })} aria-label={t("pais")}>
+      <select
+        value={value.ddi}
+        onChange={(e) => onChange({ ddi: e.target.value, numero: mascararTelefone(e.target.value, value.numero) })}
+        aria-label={t("pais")}
+      >
         <option value="+1">🇺🇸 +1</option>
         <option value="+55">🇧🇷 +55</option>
       </select>
       <input
         className={s.inp}
         value={value.numero}
-        onChange={(e) => onChange({ ...value, numero: e.target.value.replace(/[^\d\s()-]/g, "") })}
+        onChange={(e) => onChange({ ...value, numero: mascararTelefone(value.ddi, e.target.value) })}
         placeholder={value.ddi === "+1" ? "(407) 555-1234" : "(66) 99999-9999"}
         inputMode="tel"
         autoComplete="tel-national"
@@ -54,7 +59,7 @@ export function PhoneInput({ value, onChange }: { value: Fone; onChange: (v: Fon
 }
 
 function foneValido(f: Fone) {
-  return f.numero.replace(/\D/g, "").length >= 8;
+  return telefoneCompleto(f.ddi, f.numero);
 }
 
 export type LeadModo = { tipo: "plano" } | { tipo: "oportunidade"; oportunidade: EuaOportunidade } | { tipo: "lista" };

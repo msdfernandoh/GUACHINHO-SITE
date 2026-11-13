@@ -10,7 +10,12 @@ export const EUA_COPY = {
     "Consórcio Racon para brasileiros nos EUA: imóvel, carro ou aposentadoria imobiliária no Brasil, sem juros e 100% online.",
     "Racon consórcio for Brazilians in the US: a home, a car or a real-estate retirement plan in Brazil, interest-free and 100% online.",
   ],
-  brasileirosEua: ["Brasileiros nos EUA", "Brazilians in the USA"],
+  ogTitle: ["Quanto o seu dólar compra no Brasil? 🇺🇸→🇧🇷", "How much does your dollar buy in Brazil? 🇺🇸→🇧🇷"],
+  ogDescription: [
+    "Brasileiro nos EUA: descubra em 30 segundos quanto crédito em reais o seu valor mensal em dólar libera — para casa, carro ou renda de aluguel no Brasil. Sem juros.",
+    "Brazilians in the US: find out in 30 seconds how much credit in reais your monthly dollars unlock — for a home, a car or rental income in Brazil. Interest-free.",
+  ],
+  brasileirosEua:["Brasileiros nos EUA", "Brazilians in the USA"],
   franqueado: ["FRANQUEADO", "FRANCHISEE"],
   navPlano: ["Monte seu plano", "Build your plan"],
   navLance: ["Lance sem tirar do bolso", "Bid without cash"],

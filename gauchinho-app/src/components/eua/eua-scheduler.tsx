@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { EUA_CANAIS_REUNIAO } from "@/lib/eua-landing/lead";
+import { telefoneCompleto } from "@/lib/eua-landing/telefone";
 import { PhoneInput, enviarLeadEua, type EuaPlanoResumo } from "./eua-forms";
 import { Rich, useEua } from "./eua-ui";
 import s from "./eua-landing.module.css";
@@ -75,7 +76,7 @@ export function EuaScheduler({ plano, agoraIso }: { plano: EuaPlanoResumo; agora
   async function solicitar() {
     setErro(null);
     if (!slot) return setErro(t("errHorario"));
-    if (!nome.trim() || fone.numero.replace(/\D/g, "").length < 8) return setErro(t("errNomeWhats"));
+    if (!nome.trim() || !telefoneCompleto(fone.ddi, fone.numero)) return setErro(t("errNomeWhats"));
     setStatus("enviando");
     const ok = await enviarLeadEua({
       acao: "reuniao",

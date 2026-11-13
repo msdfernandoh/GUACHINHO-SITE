@@ -72,6 +72,14 @@ O layout foi aprovado a partir do protótipo `docs/prototipos/eua-landing-protot
   `eua.<domínio>` vale como o domínio pai. Sem isso, os formulários do
   subdomínio recebiam 404 "Site não configurado" em produção.
 
+- **Card de compartilhamento.** `eua/opengraph-image.tsx` gera o card
+  1200×630 de curiosidade ("Quanto o seu dólar compra no Brasil?", com o valor
+  em reais oculto). O título e a descrição de Open Graph estão em PT/EN. A fonte
+  Inter 800 vem do Google Fonts; se a rede falhar, o card usa a fonte padrão.
+- **Máscara de telefone.** Formata enquanto o cliente digita, por país:
+  (407) 555-1234 nos EUA, (66) 99608-6030 no Brasil. Também exige o número
+  completo (`src/lib/eua-landing/telefone.ts`).
+
 ## Testes
 
 - Novos: `host.test.ts`, `calculos.test.ts`, `lead.test.ts`, `eua-proxy.test.ts`

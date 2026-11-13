@@ -19,11 +19,20 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const lang = await langFrom(searchParams);
   const title = euaText(lang, "metaTitle");
   const description = euaText(lang, "metaDescription");
+  const ogTitle = euaText(lang, "ogTitle");
+  const ogDescription = euaText(lang, "ogDescription");
   return {
     title: { absolute: `Racon Consórcios · ${title}` },
     description,
     alternates: { canonical: "/eua", languages: { "pt-BR": "/eua", en: "/eua?lang=en" } },
-    openGraph: { title, description, locale: lang === "en" ? "en_US" : "pt_BR", type: "website" },
+    openGraph: {
+      title: ogTitle,
+      description: ogDescription,
+      siteName: "Racon Consórcios · Franqueado Gauchinho",
+      locale: lang === "en" ? "en_US" : "pt_BR",
+      type: "website",
+    },
+    twitter: { card: "summary_large_image", title: ogTitle, description: ogDescription },
   };
 }
 
