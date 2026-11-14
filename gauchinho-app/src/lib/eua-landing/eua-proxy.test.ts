@@ -67,3 +67,19 @@ describe("subdomínio eua.raconsinop.com.br", () => {
     expect(new URL(response.headers.get("x-middleware-rewrite")!).pathname).toBe("/parceiro/racon-sinop");
   });
 });
+
+describe("subdomínio filhos.raconsinop.com.br", () => {
+  it("abre a página Herança Inteligente na raiz e a inscrição em /evento", async () => {
+    const raiz = await proxy(req("https://filhos.raconsinop.com.br/"));
+    expect(new URL(raiz.headers.get("x-middleware-rewrite")!).pathname).toBe("/filhos");
+    const evento = await proxy(req("https://filhos.raconsinop.com.br/evento"));
+    expect(new URL(evento.headers.get("x-middleware-rewrite")!).pathname).toBe("/filhos/evento");
+    expect(evento.headers.get(`x-middleware-request-${TENANT_EMPRESA_ID_HEADER}`)).toBe("empresa-dona");
+    expect(hostsResolvidos.every((h) => h === "raconsinop.com.br")).toBe(true);
+  });
+
+  it("mantém a API de inscrição sem reescrita", async () => {
+    const response = await proxy(req("https://filhos.raconsinop.com.br/api/public/eventos/inscricao"));
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+});

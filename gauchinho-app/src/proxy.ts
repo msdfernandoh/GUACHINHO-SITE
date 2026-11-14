@@ -20,7 +20,7 @@ import {
 import { isPlatformHost } from "@/lib/tenant/dominio";
 import { decidePlatformHostAccess } from "@/lib/tenant/platform-host";
 import { resolveHostContextForRequest } from "@/lib/tenant/resolve-by-host";
-import { euaLandingRewritePath, euaParentHost } from "@/lib/eua-landing/host";
+import { LANDING_BASES, landingDoHost, landingRewritePath } from "@/lib/landings/subdominios";
 
 /**
  * Rotas que não exigem resolução de tenant publicada
@@ -120,14 +120,15 @@ export async function proxy(request: NextRequest) {
   let tenantOperationalEnabled = false;
   let platformHost = isPlatformHost(request.headers.get("host"));
   let partnerRewriteSlug: string | null = null;
-  // eua.<dominio> herda o tenant do domínio pai e abre a página de vendas EUA.
-  const euaParent = euaParentHost(request.nextUrl.host || request.headers.get("host"));
-  const euaRewritePath = euaParent ? euaLandingRewritePath(path) : null;
+  // <landing>.<dominio> (eua., filhos.) herda o tenant do domínio pai e abre a sua página de vendas.
+  const landing = landingDoHost(request.nextUrl.host || request.headers.get("host"));
+  const landingParent = landing?.parent ?? null;
+  const landingPath = landing ? landingRewritePath(landing, path) : null;
 
   if (!skipTenant) {
     // Resolução lê credenciais de env internamente — proxy não passa service role.
     const resolved = await resolveHostContextForRequest({
-      hostHeader: euaParent ?? request.headers.get("host"),
+      hostHeader: landingParent ?? request.headers.get("host"),
       searchParams: request.nextUrl.searchParams,
     });
 
@@ -139,14 +140,14 @@ export async function proxy(request: NextRequest) {
           // Na Vercel, o header Host pode chegar normalizado para o apex mesmo
           // quando a URL pública solicitada usa www. nextUrl preserva a variante
           // original e evita redirecionamento canônico para a própria URL.
-          hostHeader: euaParent ?? (request.nextUrl.host || request.headers.get("host")),
+          hostHeader: landingParent ?? (request.nextUrl.host || request.headers.get("host")),
           pathname: path === "/" ? "/" : path,
           searchParams: request.nextUrl.searchParams,
           mode: "public",
         });
         if (partner.ok) {
-          // O redirect canônico vale para o domínio pai, nunca para o subdomínio EUA.
-          if (partner.redirect && !euaParent) {
+          // O redirect canônico vale para o domínio pai, nunca para o subdomínio de landing.
+          if (partner.redirect && !landingParent) {
             return NextResponse.redirect(partner.redirect.location, 308);
           }
           requestHeaders.set(TENANT_EMPRESA_ID_HEADER, partner.partner.empresa_id);
@@ -178,7 +179,7 @@ export async function proxy(request: NextRequest) {
             "/parceiros",
             "/eventos",
             "/qr",
-            "/eua",
+            ...LANDING_BASES,
             "/manifest.webmanifest",
             "/manifest.json",
           ];
@@ -226,9 +227,9 @@ export async function proxy(request: NextRequest) {
   }
 
   let rewriteUrl: URL | null = null;
-  if (euaRewritePath && !platformHost) {
+  if (landingPath && !platformHost) {
     rewriteUrl = request.nextUrl.clone();
-    rewriteUrl.pathname = euaRewritePath;
+    rewriteUrl.pathname = landingPath;
   } else if (partnerRewriteSlug) {
     rewriteUrl = request.nextUrl.clone();
     rewriteUrl.pathname = `/parceiro/${partnerRewriteSlug}`;

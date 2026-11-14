@@ -6,7 +6,7 @@ import { resolveTenantForRequest } from "@/lib/tenant/resolve-by-host";
 import { resolvePartnerPublicRequest } from "@/lib/parceiros/public-site-loader";
 import { FASE3_PARCEIRO_PUBLIC_SITE_ENABLED } from "@/lib/parceiros/constants";
 import { resolveEmpresaIdForCatalog } from "./catalogo-autorizado";
-import { hostParaResolucaoTenant } from "@/lib/eua-landing/host";
+import { hostParaResolucaoTenant } from "@/lib/landings/subdominios";
 
 /**
  * Empresa para catálogo comercial a partir do tenant do proxy (RSC/pages).

@@ -95,6 +95,8 @@ export type InscricaoEventoPayload = {
   nomeConvidou?: string;
   empresaConvidou?: string;
   observacao?: string;
+  /** Idades dos filhos (página Herança Inteligente). A quantidade é o tamanho da lista. */
+  filhosIdades?: number[];
 };
 
 export type InscricaoEventoResult =

@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Página Herança Inteligente e subdomínios de landing (14/11/2026)
+`src/lib/landings/subdominios.ts` generaliza os subdomínios de landing
+(`eua.`, `filhos.`): cada um herda o tenant do domínio pai e mapeia caminhos
+curtos para a rota real. `filhos.raconsinop.com.br` serve `/filhos` (vendas),
+`/evento` (inscrição direta, destino do QR) e `/qr`.
+O encontro é o evento `heranca-inteligente` (limite de vagas e lista de espera
+do módulo de eventos). A inscrição aceita `filhosIdades`, registradas na
+observação do participante. O cadastro de informações grava leads `landing_heranca`.
+Relatório: `docs/relatorios-fases/PAGINA-HERANCA-INTELIGENTE-2026-11-14.md`.
+
 ### Página de vendas EUA e subdomínio eua.* (12/11/2026)
 `eua.<domínio>` herda o tenant do domínio pai no `proxy.ts`. A raiz desse host
 é reescrita para `/eua` (grupo `(landing-eua)`, sem chrome do site) e as demais

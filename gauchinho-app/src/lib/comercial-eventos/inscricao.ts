@@ -9,6 +9,7 @@ import {
   somarVagasUsadas,
   STATUS_OCUPA_VAGA,
 } from "./vagas";
+import { normalizarIdadesFilhos, resumoFilhos } from "./filhos";
 
 const MSG_LISTA_ESPERA =
   "As vagas estão esgotadas, mas seus dados foram registrados na lista de interesse. Se abrir vaga, entraremos em contato.";
@@ -34,6 +35,12 @@ export async function inscreverParticipanteEvento(
     throw new Error("Informe quem convidou você");
   }
 
+  const filhosIdades = normalizarIdadesFilhos(payload.filhosIdades);
+  const observacao =
+    [filhosIdades ? `Filhos: ${resumoFilhos(filhosIdades)}` : null, payload.observacao?.trim() || null]
+      .filter(Boolean)
+      .join(" · ") || null;
+
   const vagasNecessarias = quantidadeVagasInscricao(temAcompanhante && evento.permitir_acompanhante);
   const admin = createAdminClient();
 
@@ -56,7 +63,8 @@ export async function inscreverParticipanteEvento(
     empresa_convidou: empresaConvidou,
     tem_acompanhante: temAcompanhante && evento.permitir_acompanhante,
     nome_acompanhante: payload.nomeAcompanhante?.trim() || null,
-    observacao: payload.observacao?.trim() || null,
+    observacao,
+    ...(filhosIdades ? { quantidade_filhos: filhosIdades.length, idades_filhos: filhosIdades } : {}),
     status_inscricao: status,
   };
 
@@ -87,7 +95,7 @@ export async function inscreverParticipanteEvento(
     telefone_acompanhante: payload.telefoneAcompanhante?.trim() || null,
     nome_convidou: nomeConvidou,
     empresa_convidou: empresaConvidou,
-    observacao: payload.observacao?.trim() || null,
+    observacao,
     quantidade_vagas: vagasNecessarias,
     status,
   });

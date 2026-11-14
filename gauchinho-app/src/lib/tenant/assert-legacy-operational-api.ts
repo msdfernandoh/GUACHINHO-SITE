@@ -3,7 +3,7 @@ import { FASE3_PARCEIRO_PUBLIC_SITE_ENABLED } from "@/lib/parceiros/constants";
 import { resolvePartnerPublicRequest } from "@/lib/parceiros/public-site-loader";
 import { resolveTenantForRequest } from "./resolve-by-host";
 import { TENANT_EMPRESA_ID_HEADER, TENANT_SLUG_HEADER } from "./constants";
-import { hostParaResolucaoTenant } from "@/lib/eua-landing/host";
+import { hostParaResolucaoTenant } from "@/lib/landings/subdominios";
 
 export type OperationalApiGuardResult =
   | {
