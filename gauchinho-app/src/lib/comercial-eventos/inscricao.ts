@@ -10,6 +10,10 @@ import {
   STATUS_OCUPA_VAGA,
 } from "./vagas";
 import { normalizarIdadesFilhos, resumoFilhos } from "./filhos";
+import { localAtendimentoEvento, projetoDoEvento, quandoEvento } from "./projetos";
+
+/** Contexto confiável do site em que a inscrição foi feita (resolvido pelo servidor). */
+export type ContextoInscricao = { empresaId?: string | null; parceiroSiteId?: string | null };
 
 const MSG_LISTA_ESPERA =
   "As vagas estão esgotadas, mas seus dados foram registrados na lista de interesse. Se abrir vaga, entraremos em contato.";
@@ -17,6 +21,7 @@ const MSG_LISTA_ESPERA =
 export async function inscreverParticipanteEvento(
   evento: EventoRow,
   payload: InscricaoEventoPayload,
+  contexto: ContextoInscricao = {},
 ): Promise<InscricaoEventoResult> {
   const nome = payload.nomeParticipante.trim();
   const telefone = payload.telefoneParticipante.trim();
@@ -56,6 +61,7 @@ export async function inscreverParticipanteEvento(
   const status = temVaga ? "confirmado" : "lista_espera";
 
   const leadsConfig = await getConfigJsonPublic("leads", DEFAULT_LEADS);
+  const projeto = projetoDoEvento(evento.slug);
   const dadosInscricao = {
     evento_id: evento.id,
     evento_nome: evento.nome,
@@ -64,17 +70,26 @@ export async function inscreverParticipanteEvento(
     tem_acompanhante: temAcompanhante && evento.permitir_acompanhante,
     nome_acompanhante: payload.nomeAcompanhante?.trim() || null,
     observacao,
+    ...(projeto ? { projeto, local_atendimento: localAtendimentoEvento(evento) } : {}),
     ...(filhosIdades ? { quantidade_filhos: filhosIdades.length, idades_filhos: filhosIdades } : {}),
     status_inscricao: status,
   };
 
   const upsertRes = await upsertLeadPorTelefone(admin, {
+    ...(contexto.empresaId ? { empresa_id: contexto.empresaId } : {}),
+    ...(contexto.parceiroSiteId ? { parceiro_id: contexto.parceiroSiteId } : {}),
     nome,
     whatsapp: telefone,
     origem: "evento",
     origem_detalhe: evento.slug,
     tipo_interesse: "evento",
-    produto_interesse: null,
+    produto_interesse: projeto,
+    ...(projeto
+      ? {
+          preferencia_atendimento: localAtendimentoEvento(evento),
+          quando_atendimento: quandoEvento(evento.data_evento),
+        }
+      : {}),
     evento_id: evento.id,
     evento_nome: evento.nome,
     dados_simulacao: dadosInscricao,

@@ -72,3 +72,25 @@ card.
 1. Informar a data, a hora e o local do encontro no admin de eventos.
 2. Confirmar o limite de 30 vagas, que é editável no admin.
 3. Adicionar `filhos.raconsinop.com.br` ao projeto na Vercel.
+
+## Atualização — evento, admin e leads (14/11/2026)
+
+- Encontro definido: terça-feira, 17/11/2026, às 19h30 (Sinop), no Auditório
+  da UniFECAF, Av. Embaúbas, 2114 - Setor Comercial, com 30 vagas.
+- Admin → Eventos ganhou o botão **Herança Inteligente**
+  (`/admin/eventos/heranca-inteligente`). A página tem um formulário de dia,
+  horário, vagas, local e endereço, mostra vagas, confirmados, restantes e
+  lista de espera, e traz atalhos para os inscritos, a página, o QR e a edição
+  completa.
+- Leads do projeto: a inscrição em eventos passou a gravar a empresa e o site de
+  origem do tenant resolvido pelo servidor. Para eventos mapeados em
+  `src/lib/comercial-eventos/projetos.ts`, o lead também recebe o projeto
+  (`produto_interesse` = "Método Herança Inteligente"), o local de atendimento
+  (`preferencia_atendimento` = "Presencial · local · endereço · cidade") e a data
+  (`quando_atendimento`). O cadastro de informações também recebe o local e a
+  data do encontro.
+- Convites 9:16 (modelo original e modelo família, sem valores) e QR code em alta
+  resolução ficam em `docs/convites/`. O gerador é
+  `gauchinho-app/scripts/gerar-convite-heranca.mjs`.
+- Confirmação de inscrição: o botão "Salvar na agenda" ficou legível e o
+  convite agora diz "Compartilhe essa oportunidade com outros pais".

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Convite — Encontro Método Herança Inteligente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Inter:wght@400;600;800;900&display=block" rel="stylesheet" />
+<style>
+  /* Convite 9:16 (1080×1920). Os marcadores entre chaves duplas são preenchidos pelo gerador. */
+  @page { size: 1080px 1920px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; }
+  body {
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    color: #fff;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    overflow: hidden;
+  }
+  .page {
+    position: relative; width: 1080px; height: 1920px; overflow: hidden;
+    background:
+      radial-gradient(1300px 760px at 50% 104%, rgba(255,159,67,.95), rgba(255,200,97,.35) 38%, transparent 66%),
+      radial-gradient(900px 600px at 0% 0%, rgba(31,111,224,.5), transparent 70%),
+      linear-gradient(180deg, #050f2a 0%, #0b2a63 38%, #33295a 70%, #7a3d4a 100%);
+    padding: 58px 78px 50px;
+    display: flex; flex-direction: column;
+  }
+  .stars {
+    position: absolute; inset: 0 0 52% 0; pointer-events: none; opacity: .7;
+    background-image:
+      radial-gradient(rgba(255,255,255,.9) 1.4px, transparent 2px),
+      radial-gradient(rgba(255,255,255,.55) 1.2px, transparent 1.8px),
+      radial-gradient(rgba(255,255,255,.35) 1px, transparent 1.6px);
+    background-size: 210px 230px, 120px 140px, 70px 80px;
+    background-position: 30px 40px, 90px 10px, 15px 60px;
+    -webkit-mask-image: linear-gradient(180deg,#000 40%,transparent);
+  }
+  .glow { position: absolute; left: 50%; bottom: -260px; width: 900px; height: 520px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, rgba(255,214,140,.55), transparent); filter: blur(10px); }
+  .z { position: relative; z-index: 1; }
+
+  /* Marca */
+  .brand { display: flex; align-items: center; justify-content: center; gap: 22px; }
+  .rc { display: flex; flex-direction: column; align-items: center; line-height: .86; font-weight: 900; letter-spacing: -.03em; }
+  .rcW { font-size: 40px; }
+  .rcO { position: relative; display: inline-block; }
+  .rcO::before, .rcO::after { content: ""; position: absolute; left: -14%; right: -14%; height: .42em; border: 0 solid #12b5f5; border-radius: 50%; }
+  .rcO::before { top: -.24em; border-top-width: .11em; }
+  .rcO::after { bottom: -.2em; border-bottom-width: .11em; }
+  .rcC { font-size: 27px; margin-top: .28em; }
+  .sep { width: 3px; height: 74px; background: #12b5f5; }
+  .fr { display: flex; align-items: center; gap: 14px; }
+  .fr img { width: 62px; height: 62px; object-fit: contain; }
+  .fr small { display: block; color: #12b5f5; font-weight: 800; letter-spacing: .26em; font-size: 15px; }
+  .fr b { display: block; font-family: "Arial Narrow", Impact, sans-serif; font-weight: 900; letter-spacing: .04em; font-size: 32px; line-height: 1; }
+
+  .convite { margin: 36px auto 0; display: inline-flex; align-self: center; align-items: center; gap: 14px; padding: 14px 30px; border-radius: 999px; border: 2px solid rgba(255,200,97,.65); color: #ffc861; font-weight: 800; letter-spacing: .26em; font-size: 22px; background: rgba(255,200,97,.08); }
+  .convite i { width: 10px; height: 10px; border-radius: 50%; background: #ffc861; box-shadow: 0 0 14px #ffc861; }
+
+  .pergunta { margin-top: 28px; text-align: center; font-family: Fraunces, Georgia, serif; font-weight: 700; font-size: 70px; line-height: 1.02; letter-spacing: -.015em; }
+  .pergunta em { display: block; font-style: italic; color: #ffc861; }
+  .lead { margin: 22px auto 0; max-width: 860px; text-align: center; font-size: 28px; line-height: 1.38; color: #dfe5ff; }
+  .lead b { color: #fff; }
+
+  /* Cena da chave */
+  .cena { margin-top: 30px; display: flex; align-items: center; gap: 30px; padding: 26px 34px; border-radius: 34px; background: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.04)); border: 1.5px solid rgba(255,255,255,.22); }
+  .chave { flex: 0 0 auto; width: 150px; height: 150px; position: relative; }
+  .chave svg { width: 100%; height: 100%; filter: drop-shadow(0 0 26px rgba(255,200,97,.75)); }
+  .cena p { font-family: Fraunces, Georgia, serif; font-size: 34px; line-height: 1.2; }
+  .cena p span { display: block; font-family: Inter, sans-serif; font-size: 22px; font-weight: 800; letter-spacing: .14em; color: #ffc861; margin-bottom: 10px; }
+  .cena p em { color: #ffc861; }
+
+  /* Curiosidade */
+  .misterio { margin-top: 22px; display: grid; grid-template-columns: 1fr 70px 1fr; align-items: center; gap: 10px; }
+  .box { border-radius: 26px; padding: 18px 20px; text-align: center; background: rgba(5,15,42,.45); border: 1.5px solid rgba(255,255,255,.18); }
+  .box small { display: block; font-size: 22px; color: #c9d1f2; font-weight: 600; }
+  .box b { display: block; margin-top: 2px; font-size: 50px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .box.ouro { border-color: rgba(255,200,97,.7); background: rgba(255,200,97,.12); }
+  .box.ouro b { color: #ffc861; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: Fraunces, Georgia, serif; }
+  .tarja { display: inline-block; width: 42px; height: 52px; border-radius: 9px; background: linear-gradient(135deg,#ffc861,#ff9f43); box-shadow: inset 0 0 0 3px rgba(255,255,255,.25); }
+  .seta { text-align: center; font-size: 46px; color: #ffc861; font-weight: 900; }
+  .revela { margin-top: 14px; text-align: center; font-size: 25px; color: #fff; font-weight: 600; }
+  .revela b { color: #ffc861; }
+
+  /* Evento */
+  .evento { margin-top: 26px; background: #fff7ea; color: #12193a; border-radius: 34px; padding: 28px 32px; display: grid; grid-template-columns: 1fr 268px; gap: 30px; align-items: center; box-shadow: 0 40px 90px -30px rgba(0,0,0,.6); }
+  .evento .tag { display: inline-block; font-size: 18px; font-weight: 900; letter-spacing: .16em; color: #b45f06; }
+  .evento h2 { margin-top: 8px; font-family: Fraunces, Georgia, serif; font-size: 46px; line-height: 1.02; letter-spacing: -.01em; }
+  .evento h2 em { color: #c2620a; }
+  .info { margin-top: 14px; display: grid; gap: 8px; font-size: 22px; color: #2c3358; }
+  .info div { display: flex; gap: 12px; align-items: center; line-height: 1.25; }
+  .info b { color: #12193a; }
+  .info i { font-style: normal; width: 40px; height: 40px; flex: 0 0 auto; border-radius: 12px; display: grid; place-items: center; background: #ffe7bf; font-size: 22px; }
+  .vagas { margin-top: 14px; display: inline-flex; align-items: center; gap: 10px; background: #12193a; color: #ffc861; border-radius: 999px; padding: 10px 20px; font-weight: 900; font-size: 21px; letter-spacing: .04em; }
+  .vagas span { width: 10px; height: 10px; border-radius: 50%; background: #ff9f43; box-shadow: 0 0 0 6px rgba(255,159,67,.25); }
+  .qr { text-align: center; }
+  .qr .moldura { background: #fff; border-radius: 24px; padding: 14px; border: 4px solid #ff9f43; }
+  .qr svg { width: 100%; height: auto; display: block; }
+  .qr p { margin-top: 10px; font-size: 18px; font-weight: 800; color: #12193a; line-height: 1.2; }
+
+  .link { margin-top: 22px; display: flex; align-items: center; justify-content: center; gap: 16px; text-decoration: none; background: linear-gradient(135deg, #ffc861, #ff9f43); color: #2a1600; border-radius: 999px; padding: 22px 30px; font-size: 30px; font-weight: 900; box-shadow: 0 24px 60px -18px rgba(255,159,67,.9); }
+  .link small { font-weight: 700; font-size: 24px; opacity: .85; }
+
+  .frase { margin-top: auto; padding-top: 26px; text-align: center; font-size: 30px; line-height: 1.35; color: #fff4e0; }
+  .frase b { color: #fff; }
+  .assinatura { margin-top: 22px; text-align: center; font-family: Fraunces, Georgia, serif; font-style: italic; font-size: 36px; color: #fff; }
+  .assinatura span { display: block; margin-top: 8px; font-family: Inter, sans-serif; font-style: normal; font-size: 18px; color: rgba(255,255,255,.75); letter-spacing: .04em; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="stars"></div>
+    <div class="glow"></div>
+
+    <div class="z brand">
+      <div class="rc"><span class="rcW">Rac<span class="rcO">o</span>n</span><span class="rcC">Consórcios</span></div>
+      <div class="sep"></div>
+      <div class="fr"><img src="{{ICONE}}" alt="" /><div><small>FRANQUEADO</small><b>GAUCHINHO</b></div></div>
+    </div>
+
+    <div class="z convite"><i></i>VOCÊ ESTÁ CONVIDADO<i></i></div>
+
+    <h1 class="z pergunta">E se a maior herança<br />da sua vida<em>você pudesse entregar em vida?</em></h1>
+
+    <p class="z lead">
+      A maioria das heranças chega num dia de despedida.<br />
+      A que vamos te mostrar chega num <b>dia de festa</b> — e você está lá para ver.
+    </p>
+
+    <div class="z cena">
+      <div class="chave">
+        <svg viewBox="0 0 170 170" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="ouro" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#ffe3a3" /><stop offset=".55" stop-color="#ffc861" /><stop offset="1" stop-color="#ff9f43" />
+            </linearGradient>
+          </defs>
+          <circle cx="58" cy="58" r="40" fill="none" stroke="url(#ouro)" stroke-width="18" />
+          <circle cx="58" cy="58" r="13" fill="url(#ouro)" opacity=".35" />
+          <path d="M86 86 L150 150" stroke="url(#ouro)" stroke-width="18" stroke-linecap="round" />
+          <path d="M122 122 L138 106 M136 136 L152 120" stroke="url(#ouro)" stroke-width="14" stroke-linecap="round" />
+          <text x="58" y="66" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-weight="700" font-size="26" fill="#fff7ea">18</text>
+        </svg>
+      </div>
+      <p><span>IMAGINE ESSE DIA</span>Seu filho faz 18 anos. Em vez de um presente que acaba na semana seguinte, <em>você entrega uma chave.</em></p>
+    </div>
+
+    <div class="z misterio">
+      <div class="box"><small>Você começa hoje com</small><b>R$ 375</b><small>por mês</small></div>
+      <div class="seta">→</div>
+      <div class="box ouro"><small>E ele pode receber</small><b>R$ <i class="tarja"></i><i class="tarja"></i><i class="tarja"></i> mil</b><small>de patrimônio</small></div>
+    </div>
+    <p class="z revela">Quanto? <b>A gente revela no encontro.</b> E mostra como chegar lá.</p>
+
+    <div class="z evento">
+      <div>
+        <span class="tag">ENCONTRO PRESENCIAL E GRATUITO</span>
+        <h2>Método Herança <em>Inteligente</em></h2>
+        <div class="info">
+          <div><i>📅</i><span>{{DATA}}</span></div>
+          <div><i>📍</i><span>{{LOCAL}}</span></div>
+          <div><i>👨‍👩‍👧</i><span>Para pais e mães que pensam no amanhã</span></div>
+        </div>
+        <div class="vagas"><span></span>{{VAGAS}}</div>
+      </div>
+      <div class="qr">
+        <div class="moldura">{{QR}}</div>
+        <p>Aponte a câmera e garanta sua vaga</p>
+      </div>
+    </div>
+
+    <a class="z link" href="{{LINK}}">Quero minha vaga <small>· {{LINK_TXT}}</small></a>
+
+    <p class="z frase">Herança não é deixar bens.<br />É deixar <b>escolhas, oportunidades e liberdade.</b></p>
+
+    <p class="z assinatura">A herança que você vive junto.<span>Racon Consórcios · Grupo Randon desde 1949 · Franqueado Gauchinho · Sinop/MT</span></p>
+  </div>
+</body>
+</html>

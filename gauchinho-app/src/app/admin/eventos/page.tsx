@@ -40,6 +40,9 @@ export default async function EventosAdminPage() {
           <p className="text-sm text-zinc-500">Encontros comerciais, inscrições e participantes</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href="/admin/eventos/heranca-inteligente">
+            <Button variant="gold">🔑 Herança Inteligente</Button>
+          </Link>
           <Link href="/admin/eventos/nps">
             <Button variant="outline">Dashboard NPS</Button>
           </Link>

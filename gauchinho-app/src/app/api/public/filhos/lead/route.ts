@@ -5,6 +5,8 @@ import { registrarEvento } from "@/lib/eventos/registrar";
 import { DEFAULT_LEADS, getConfigJsonPublic } from "@/server/config";
 import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 import { HERANCA_LEAD_ORIGEM, parseHerancaLeadBody } from "@/lib/heranca-inteligente/lead";
+import { carregarEventoHeranca } from "@/lib/heranca-inteligente/evento";
+import { localAtendimentoEvento, quandoEvento } from "@/lib/comercial-eventos/projetos";
 
 export async function POST(request: Request) {
   const ingress = await authorizePublicIngress(request, "lead_landing_heranca", { limit: 10 });
@@ -16,8 +18,15 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
     const leadsConfig = await getConfigJsonPublic("leads", DEFAULT_LEADS);
     const referer = request.headers.get("referer");
+    const evento = await carregarEventoHeranca().catch(() => null);
     const result = await upsertLeadPorTelefone(admin, {
       ...parsed.payload,
+      ...(evento
+        ? {
+            preferencia_atendimento: localAtendimentoEvento({ local: evento.local, endereco: evento.endereco, cidade: evento.cidade, estado: null }),
+            quando_atendimento: `Encontro: ${quandoEvento(evento.dataIso) ?? "data a confirmar"}`,
+          }
+        : {}),
       empresa_id: ingress.empresaId,
       parceiro_id: ingress.parceiroSiteId ?? null,
       host_origem: request.headers.get("host"),
