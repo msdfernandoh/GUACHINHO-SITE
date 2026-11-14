@@ -35,3 +35,16 @@ export function quandoEvento(dataIso: string | null | undefined): string | null 
     .format(d)
     .replace(/,? (\d{2}:\d{2})$/, " às $1");
 }
+
+/**
+ * Link do Google Maps gerado a partir do endereço do evento (sem chave de API).
+ * Com endereço, busca pelo endereço + cidade (o CEP no endereço deixa o ponto
+ * exato); sem endereço, busca pelo nome do local na cidade.
+ */
+export function linkMapaEvento(evento: EventoLocal): string | null {
+  const cidade = [evento.cidade, evento.estado].filter(Boolean).join(" - ");
+  const base = evento.endereco?.trim() || evento.local?.trim();
+  if (!base) return null;
+  const consulta = [base, cidade].filter(Boolean).join(", ");
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(consulta)}`;
+}

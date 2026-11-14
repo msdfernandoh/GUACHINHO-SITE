@@ -54,7 +54,8 @@ export function HerancaEventoForm({ inicial }: { inicial: HerancaEventoFormValue
       </div>
       <div className="sm:col-span-2">
         <Label htmlFor="h-end">Endereço</Label>
-        <Input id="h-end" name="endereco" defaultValue={inicial.endereco} placeholder="Ex.: Av. Embaúbas, 2114 - Setor Comercial" />
+        <Input id="h-end" name="endereco" defaultValue={inicial.endereco} placeholder="Ex.: Av. das Embaúbas, 2114 - Setor Comercial, CEP 78550-110" />
+        <p className="mt-1 text-xs text-zinc-500">O link do mapa é gerado a partir deste endereço. Inclua o CEP para o ponto ficar exato.</p>
       </div>
       <div>
         <Label htmlFor="h-cidade">Cidade</Label>

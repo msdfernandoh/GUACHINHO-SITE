@@ -9,4 +9,5 @@ export type HerancaEventoView = {
   endereco: string | null;
   cidade: string | null;
   vagasRestantes: number | null;
+  mapaUrl: string | null;
 };

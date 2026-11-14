@@ -7,6 +7,7 @@ import { Button, Card } from "@/components/ui/form-primitives";
 import { eventoIsoToDatetimeLocal, formatarDataHoraEvento } from "@/lib/eventos-sorteio/timezone";
 import { HERANCA_EVENTO_SLUG } from "@/lib/heranca-inteligente/lead";
 import { HerancaEventoForm } from "./heranca-evento-form";
+import { linkMapaEvento } from "@/lib/comercial-eventos/projetos";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,7 @@ export default async function HerancaInteligenteAdminPage() {
   const espera = lista.filter((p) => p.status === "lista_espera").length;
   const restantes = evento.limite_participantes ? Math.max(0, evento.limite_participantes - confirmados) : null;
   const [data, hora] = eventoIsoToDatetimeLocal(evento.data_evento).split("T");
+  const mapa = linkMapaEvento(evento);
 
   return (
     <div className="space-y-6">
@@ -71,6 +73,11 @@ export default async function HerancaInteligenteAdminPage() {
           <a href="https://filhos.raconsinop.com.br" target="_blank" rel="noopener noreferrer">
             <Button variant="outline">Abrir página</Button>
           </a>
+          {mapa ? (
+            <a href={mapa} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline">📍 Ver no mapa</Button>
+            </a>
+          ) : null}
           <a href="https://filhos.raconsinop.com.br/qr" target="_blank" rel="noopener noreferrer">
             <Button variant="outline">QR code</Button>
           </a>

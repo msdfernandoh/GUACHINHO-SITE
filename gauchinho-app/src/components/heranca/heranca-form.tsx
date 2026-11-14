@@ -124,6 +124,16 @@ export function HerancaForm({
           <p>A data e o local chegam no seu WhatsApp.</p>
         )}
         <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
+          {evento?.mapaUrl ? (
+            <a className={`${s.btn} ${s.btnInk}`} href={linkLocalizacaoWhats(fone, evento)} target="_blank" rel="noopener noreferrer">
+              📍 Enviar a localização para o meu WhatsApp
+            </a>
+          ) : null}
+          {evento?.mapaUrl ? (
+            <a className={`${s.btn} ${s.btnLight}`} href={evento.mapaUrl} target="_blank" rel="noopener noreferrer">
+              🗺️ Abrir no mapa
+            </a>
+          ) : null}
           {agenda ? (
             <a className={`${s.btn} ${s.btnInk}`} href={agenda} target="_blank" rel="noopener noreferrer">
               📅 Salvar na agenda
@@ -209,6 +219,22 @@ export function HerancaForm({
       <p className={s.formNota}>🔒 Seus dados ficam com a equipe Racon Sinop · Franqueado Gauchinho.</p>
     </form>
   );
+}
+
+/** Abre o WhatsApp da própria pessoa com data, local e o link do mapa do encontro. */
+function linkLocalizacaoWhats(fone: string, evento: HerancaEventoView) {
+  let d = fone.replace(/\D/g, "");
+  if (!d.startsWith("55")) d = `55${d}`;
+  const texto = [
+    `📍 Encontro Método Herança Inteligente`,
+    evento.dataLabel ? `🗓️ ${evento.dataLabel}` : null,
+    evento.local ? `🏛️ ${evento.local}` : null,
+    evento.endereco ? `${evento.endereco}${evento.cidade ? ` · ${evento.cidade}` : ""}` : null,
+    evento.mapaUrl ? `Como chegar: ${evento.mapaUrl}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  return `https://wa.me/${d}?text=${encodeURIComponent(texto)}`;
 }
 
 /** No subdomínio filhos. a inscrição é /evento; no domínio principal, /filhos/evento. */

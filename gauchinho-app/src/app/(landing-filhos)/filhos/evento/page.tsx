@@ -43,6 +43,14 @@ export default async function HerancaEventoPage() {
                 <>
                   <b style={{ color: "#fff" }}>{evento.dataLabel}</b>
                   {evento.local ? ` · ${evento.local}` : ""}
+                  {evento.mapaUrl ? (
+                    <>
+                      {" · "}
+                      <a href={evento.mapaUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#ffc861", fontWeight: 800 }}>
+                        ver no mapa
+                      </a>
+                    </>
+                  ) : null}
                 </>
               ) : (
                 "Data e local confirmados pelo WhatsApp."

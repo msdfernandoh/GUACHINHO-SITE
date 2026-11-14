@@ -135,6 +135,13 @@
 .root button.btnInk {
   color: #fff;
 }
+.btnLight {
+  background: #fff;
+  border: 1.5px solid #e6d6b9;
+}
+.root a.btnLight {
+  color: #12193a;
+}
 
 /* Topo */
 .top {

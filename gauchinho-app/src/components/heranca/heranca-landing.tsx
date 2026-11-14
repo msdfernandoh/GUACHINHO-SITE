@@ -360,6 +360,11 @@ export function HerancaLanding({ evento, iconeUrl }: { evento: HerancaEventoView
                     <p style={{ margin: 0 }}>
                       <b>{evento.local ?? "Racon Sinop · Franqueado Gauchinho"}</b>
                       <small>{[evento.endereco, evento.cidade].filter(Boolean).join(" · ") || "Endereço enviado na confirmação"}</small>
+                      {evento.mapaUrl ? (
+                        <a href={evento.mapaUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", marginTop: 4, color: "#ffc861", fontWeight: 800, fontSize: 14 }}>
+                          Ver no mapa →
+                        </a>
+                      ) : null}
                     </p>
                   </div>
                 </div>

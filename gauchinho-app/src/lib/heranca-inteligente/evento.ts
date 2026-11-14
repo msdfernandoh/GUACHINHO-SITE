@@ -3,6 +3,7 @@ import "server-only";
 import { countVagasUsadasEvento, fetchPublicEventoBySlug } from "@/lib/comercial-eventos/public";
 import { vagasRestantes } from "@/lib/comercial-eventos/vagas";
 import { HERANCA_EVENTO_SLUG } from "./lead";
+import { linkMapaEvento } from "@/lib/comercial-eventos/projetos";
 
 export type HerancaEvento = {
   slug: string;
@@ -13,6 +14,8 @@ export type HerancaEvento = {
   cidade: string | null;
   /** null = sem limite ou vagas ocultas. */
   vagasRestantes: number | null;
+  /** Link do Google Maps gerado a partir do endereço. */
+  mapaUrl: string | null;
 };
 
 /** Evento do Método Herança Inteligente (ativo e publicado), com vagas restantes. */
@@ -28,6 +31,7 @@ export async function carregarEventoHeranca(): Promise<HerancaEvento | null> {
     endereco: evento.endereco,
     cidade: [evento.cidade, evento.estado].filter(Boolean).join("/") || null,
     vagasRestantes: evento.mostrar_vagas ? vagasRestantes(evento.limite_participantes, usadas) : null,
+    mapaUrl: linkMapaEvento(evento),
   };
 }
 
