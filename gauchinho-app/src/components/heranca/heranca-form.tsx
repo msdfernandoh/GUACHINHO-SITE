@@ -106,7 +106,9 @@ export function HerancaForm({
         ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(evento.nome)}&dates=${iso(evento.dataIso)}/${iso(new Date(new Date(evento.dataIso).getTime() + 90 * 60000).toISOString())}${evento.local ? `&location=${encodeURIComponent([evento.local, evento.endereco, evento.cidade].filter(Boolean).join(", "))}` : ""}`
         : null;
     const convite = `https://wa.me/?text=${encodeURIComponent(
-      `Vou participar do encontro do Método Herança Inteligente — a herança que a gente vive junto com os filhos. Vem comigo? ${linkEvento()}`,
+      `Conheci o Método Herança Inteligente: um jeito de construir o patrimônio dos filhos enquanto eles crescem — e estar junto no dia de entregar a chave. ` +
+        `Vai ter um encontro gratuito${evento?.dataLabel ? ` ${evento.dataLabel}` : ""}${evento?.local ? `, no ${evento.local}` : ""}, com vagas limitadas. ` +
+        `Garanta a sua: ${linkEvento()}`,
     )}`;
     return (
       <div className={`${s.form} ${s.ok}`}>
@@ -128,7 +130,7 @@ export function HerancaForm({
             </a>
           ) : null}
           <a className={`${s.btn} ${s.btnGold}`} href={convite} target="_blank" rel="noopener noreferrer">
-            Convidar o pai ou a mãe dos meus filhos
+            Compartilhe essa oportunidade com outros pais
           </a>
         </div>
       </div>

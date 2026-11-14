@@ -122,6 +122,19 @@
 .btnBlock {
   width: 100%;
 }
+/* Links herdam a cor do texto (.root a); os botões precisam vencer essa regra. */
+.root a.btnGold,
+.root button.btnGold {
+  color: #2a1600;
+}
+.root a.btnGhost,
+.root button.btnGhost {
+  color: #fff;
+}
+.root a.btnInk,
+.root button.btnInk {
+  color: #fff;
+}
 
 /* Topo */
 .top {
