@@ -42,6 +42,11 @@ const raconLandingCss = `
   .racon-parceiros .racon-network h2 { color: #ffffff !important; }
   .racon-parceiros .racon-network .racon-network-cta { background: #ffffff !important; color: #005db8 !important; box-shadow: 0 8px 24px rgba(0, 48, 112, .2); }
   .racon-parceiros .racon-network .racon-network-cta > span { color: #005db8 !important; }
+  .racon-parceiros .modelo-gerador-negocios > p:first-child,
+  .racon-parceiros .modelo-gerador-negocios .font-bold.text-white { color: #ffffff !important; }
+  .racon-parceiros .modelo-gerador-negocios .modelo-ganhos-cta { background-color: #ffffff !important; color: #0066cc !important; }
+  .racon-parceiros .modelo-gerador-negocios .modelo-ganhos-cta > span { color: #0066cc !important; }
+  .racon-parceiros .modelo-gerador-negocios .modelo-ganhos-cta:hover { background-color: #eaf5ff !important; }
 `;
 
 function Cta({ href, children, secondary = false, className = "" }: { href: string; children: React.ReactNode; secondary?: boolean; className?: string }) {
@@ -78,7 +83,7 @@ export function ParceirosLandingClient({ racon = false, brandName = "Gauchinho C
 
     <section id="modelos" className="border-y border-white/10 bg-zinc-900/60 px-5 py-20 sm:py-28">
       <div className="mx-auto max-w-6xl"><div className="max-w-3xl"><p className="text-sm font-black tracking-[.16em] text-amber-400">ESCOLHA SEU MODELO</p><h2 className="mt-4 text-3xl font-black sm:text-5xl">Quanto maior sua atuação, maior sua participação.</h2><p className="mt-5 text-zinc-300">Conheça as modalidades, compare o potencial e encontre a forma de começar que combina com seu momento.</p></div>
-        <div className="mt-10 grid gap-5 lg:grid-cols-3">{MODELOS_PROGRAMA_PARCEIROS.map((m, index) => <article key={m.id} className={`flex flex-col rounded-3xl border p-7 ${index === 1 ? "border-amber-400 bg-amber-400/10" : "border-white/10 bg-zinc-950"}`}><p className="text-sm font-black text-amber-400">{m.ganho} DA BASE LÍQUIDA</p><h3 className="mt-4 text-3xl font-black">{m.nome}</h3><p className="mt-3 min-h-18 text-zinc-300">{m.resumo}</p><div className="mt-6 border-y border-white/10 py-4"><p className="font-bold text-white">{m.meta}</p></div><ul className="mt-5 space-y-3 text-sm text-zinc-300">{m.vantagens.map((vantagem) => <li key={vantagem} className="flex gap-2"><span className="text-amber-400">✓</span>{vantagem}</li>)}</ul><div className="mt-8"><Cta href={`/parceiros/${m.slug}`}>Ver ganhos e condições</Cta></div></article>)}</div>
+        <div className="mt-10 grid gap-5 lg:grid-cols-3">{MODELOS_PROGRAMA_PARCEIROS.map((m, index) => <article key={m.id} className={`flex flex-col rounded-3xl border p-7 ${index === 1 ? "modelo-gerador-negocios border-amber-400 bg-amber-400/10" : "border-white/10 bg-zinc-950"}`}><p className="text-sm font-black text-amber-400">{m.ganho} DA BASE LÍQUIDA</p><h3 className="mt-4 text-3xl font-black">{m.nome}</h3><p className="mt-3 min-h-18 text-zinc-300">{m.resumo}</p><div className="mt-6 border-y border-white/10 py-4"><p className="font-bold text-white">{m.meta}</p></div><ul className="mt-5 space-y-3 text-sm text-zinc-300">{m.vantagens.map((vantagem) => <li key={vantagem} className="flex gap-2"><span className="text-amber-400">✓</span>{vantagem}</li>)}</ul><div className="mt-8"><Cta href={`/parceiros/${m.slug}`} className="modelo-ganhos-cta">Ver ganhos e condições</Cta></div></article>)}</div>
         <div className="mt-10 overflow-x-auto rounded-3xl border border-white/10 bg-zinc-950 p-2"><table className="min-w-[720px] w-full text-left text-sm"><thead className="text-amber-300"><tr><th className="p-4">Modelo</th><th className="p-4">Participação</th><th className="p-4">Para quem</th><th className="p-4">Meta</th></tr></thead><tbody>{MODELOS_PROGRAMA_PARCEIROS.map((m) => <tr key={m.id} className="border-t border-white/10 text-zinc-300"><td className="p-4 font-bold text-white">{m.nome}</td><td className="p-4">{m.ganho} da base líquida</td><td className="p-4">{m.publico[0]}</td><td className="p-4">{m.meta}</td></tr>)}</tbody></table></div>
       </div>
     </section>
