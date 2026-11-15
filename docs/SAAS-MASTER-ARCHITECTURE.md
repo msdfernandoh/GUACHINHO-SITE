@@ -4850,3 +4850,7 @@ Os resultados da carteira aparecem no início da assembleia nas duas visões, co
 ### Parcela reduzida após atualização da taxa (13/11/2026)
 
 A simulação e as opções de parcela priorizam os valores atualizados de parcelas_reduzidas. Campos legados por percentual são usados quando falta o valor atual. Relatório em docs/relatorios-fases/PARCELA-TAXA-ATUALIZADA-2026-11-13.md.
+
+
+### Meus contatos: tags e acesso direto às páginas (15/11/2026)
+Os filtros agrupam variações de escrita das tags e o editor sugere tags existentes. A navegação aceita número de página, preservando filtros. Os dados históricos não foram alterados; a consolidação é na apresentação e na busca. Relatório: `docs/relatorios-fases/CONTATOS-TAGS-PAGINACAO-2026-11-15.md`.

@@ -10,11 +10,13 @@ const digits = (value: string) => { const raw = value.replace(/\D/g, ""); if (ra
 const IMPORT_BATCH_SIZE = 500;
 const CONTACT_TAG_LIMIT = 20;
 
+function tagKey(value: string) { return value.replace(/^#/, "").trim().replace(/\s+/g, " ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR"); }
+
 function normalizeTags(tags: string[] = []) {
   const seen = new Set<string>();
   return tags.reduce<string[]>((normalized, tag) => {
     const value = tag.replace(/^#/, "").trim().replace(/\s+/g, " ").slice(0, 50);
-    const key = value.toLocaleLowerCase("pt-BR");
+    const key = tagKey(value);
     if (value && !seen.has(key) && normalized.length < CONTACT_TAG_LIMIT) {
       seen.add(key);
       normalized.push(value);
@@ -156,7 +158,10 @@ export async function listMyContacts(filters: ContactListFilters = {}) {
     .eq("usuario_id", usuario.id);
   if (filters.empresa) query = query.eq("empresa", filters.empresa);
   if (filters.profissao) query = query.eq("profissao", filters.profissao);
-  if (filters.tag) query = query.contains("tags", [filters.tag]);
+  if (filters.tag) {
+    const options = await listMyContactFilterOptions();
+    query = query.overlaps("tags", options.tagVariants[filters.tag] ?? [filters.tag]);
+  }
 
   const { data, error, count } = await query
     .order("nome")
@@ -184,9 +189,20 @@ export async function listMyContactFilterOptions() {
   }
 
   const unique = (values: Array<string | null | undefined>) => [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])].sort((first, second) => first.localeCompare(second, "pt-BR"));
+  const groups = new Map<string, string[]>();
+  for (const tag of rows.flatMap((row) => row.tags ?? [])) {
+    const key = tagKey(tag);
+    if (key) groups.set(key, [...(groups.get(key) ?? []), tag]);
+  }
+  const tagVariants: Record<string, string[]> = {};
+  for (const [key, variants] of groups) {
+    const canonical = key === "heranca inteligente" ? "Herança Inteligente" : key === "nao enviar" ? "Não Enviar" : variants[0].trim().replace(/\s+/g, " ");
+    tagVariants[canonical] = [...new Set(variants)];
+  }
   return {
+    tagVariants,
     empresas: unique(rows.map((row) => row.empresa)),
     profissoes: unique(rows.map((row) => row.profissao)),
-    tags: unique(rows.flatMap((row) => row.tags ?? [])),
+    tags: Object.keys(tagVariants).sort((a, b) => a.localeCompare(b, "pt-BR")),
   };
 }
