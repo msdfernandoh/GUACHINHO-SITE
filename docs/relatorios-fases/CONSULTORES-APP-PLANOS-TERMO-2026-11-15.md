@@ -9,3 +9,5 @@
 
 ## Validação
 TypeScript aprovado. 38 testes direcionados aprovados, incluindo proteções de credenciais administrativas/multiempresa e 27 casos de soma, imposto, etapas e arredondamento das tabelas. ESLint direcionado sem erros. Chromium confirmou cores computadas de texto selecionado e do evento. Build de produção Webpack aprovado. O Turbopack local falhou ao criar processo PostCSS; fallback Webpack compilou e gerou as 181 páginas com sucesso. Aviso preexistente de unpdf sem impedir build. Homologação autenticada de senha, remoção e aceite em produção depende do uso pelo gestor; nenhuma senha ou dado financeiro real foi alterado na implementação.
+
+Rotas novas redirecionam visitantes sem sessão ao login do app antes de carregar dados. TypeScript revalidado.
