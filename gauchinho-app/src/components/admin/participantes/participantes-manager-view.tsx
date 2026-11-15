@@ -7,9 +7,8 @@ import {
   createParticipanteAction,
   updateParticipanteAction,
   deleteParticipanteAction,
+  habilitarAppConsultorAction,
   updateParticipanteStatusAction,
-  verificarDependenciasParticipanteAction,
-  redefinirSenhaIndicadorAction,
   concluirRevisaoModeloParceiroAction,
 } from "@/app/admin/participantes/actions";
 import type { ParticipanteComTipos } from "@/lib/parceiros/types";
@@ -138,8 +137,7 @@ export function ParticipantesManagerView({
     setDeletePart(part);
     setIsCheckingDeps(true);
     try {
-      const res = await verificarDependenciasParticipanteAction(part.id);
-      setDeleteDeps(res);
+      setDeleteDeps({ pode_excluir: true, total_vinculos: 0, motivos: [] });
     } catch {
       setDeleteDeps({ pode_excluir: false, total_vinculos: 1, motivos: ["Erro ao validar vínculos"] });
     } finally {
@@ -149,6 +147,7 @@ export function ParticipantesManagerView({
 
   return (
     <div className="space-y-6">
+      <a href="/admin/participantes/programa" className="inline-flex rounded-xl bg-blue-600 px-4 py-2 font-bold text-white">Configurar termo de parceria</a>
       {/* HEADER & FILTROS */}
       <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
@@ -339,14 +338,14 @@ export function ParticipantesManagerView({
                           <Shield className="h-3.5 w-3.5" />
                         </button>
 
-                        {part.usuario_id && part.tipos.includes("INDICADOR") ? <button
+                        {<button
                           type="button"
                           onClick={() => { setSenhaPart(part); setNovaSenha(""); setSenhaError(null); }}
-                          title="Redefinir senha do indicador"
+                          title="Senha e acesso ao app do consultor"
                           className="flex h-7 w-7 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 cursor-pointer"
                         >
                           <Key className="h-3.5 w-3.5" />
-                        </button> : null}
+                        </button>}
 
                         <button
                           type="button"
@@ -411,7 +410,7 @@ export function ParticipantesManagerView({
               <input type="hidden" name="id" value={editingPart.id} />
               <input type="hidden" name="usuario_id" value={editingPart.usuario_id || ""} />
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <label className="mb-4 block text-sm font-bold">Nova senha / habilitar acesso ao app<input type="password" name="nova_senha" minLength={8} autoComplete="new-password" placeholder="Deixe vazio para manter a senha atual" className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900"/></label><div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300">Nome Completo *</label>
                   <input
@@ -802,14 +801,14 @@ export function ParticipantesManagerView({
             ) : deleteDeps?.pode_excluir ? (
               <div className="space-y-3 text-xs">
                 <p className="text-slate-600 dark:text-slate-300">
-                  Este participante foi criado recentemente e <strong>não possui nenhum vínculo histórico</strong> com
-                  vendas, cotas, propostas ou comissões.
+                  Este cadastro será retirado da lista e terá o acesso ao app bloqueado. Vendas, propostas e comissões serão preservadas.
                 </p>
-                <p className="text-rose-600 font-bold">Deseja realmente excluí-lo definitivamente?</p>
+                <p className="text-rose-600 font-bold">Deseja remover este consultor da lista?</p>
 
                 <form
                   action={async (fd) => {
-                    await deleteParticipanteAction(fd);
+                    const result = await deleteParticipanteAction(fd);
+                    if (!result.success) { window.alert(result.error || "Não foi possível excluir."); return; }
                     setDeletePart(null);
                     window.location.reload();
                   }}
@@ -883,7 +882,7 @@ export function ParticipantesManagerView({
         </div>
       )}
 
-      {senhaPart && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs" role="dialog" aria-modal="true" aria-label="Redefinir senha do indicador"><form onSubmit={async (event) => { event.preventDefault(); setIsSavingSenha(true); setSenhaError(null); try { const result = await redefinirSenhaIndicadorAction(senhaPart.id, novaSenha); if (!result.success) { setSenhaError(result.error || "Não foi possível redefinir a senha."); return; } setSenhaPart(null); } catch { setSenhaError("Não foi possível redefinir a senha."); } finally { setIsSavingSenha(false); } }} className="w-full max-w-md rounded-2xl bg-white p-6 text-sm text-slate-900 shadow-2xl dark:bg-slate-900 dark:text-white"><h3 className="text-lg font-black">Nova senha do indicador</h3><p className="mt-2 text-slate-600 dark:text-slate-300">Defina uma senha temporária para <b>{senhaPart.nome}</b> e entregue-a por um canal seguro. Ele poderá alterá-la pelo e-mail de recuperação.</p><label className="mt-5 block font-bold">Nova senha<input type="password" minLength={8} required autoComplete="new-password" value={novaSenha} onChange={(event) => setNovaSenha(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-300 p-3 text-slate-900" /></label>{senhaError ? <p className="mt-3 text-sm font-bold text-rose-700">{senhaError}</p> : null}<div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setSenhaPart(null)} disabled={isSavingSenha} className="rounded-xl border px-4 py-2 font-bold">Cancelar</button><button disabled={isSavingSenha} className="rounded-xl bg-amber-500 px-4 py-2 font-bold text-zinc-950">{isSavingSenha ? "Salvando..." : "Redefinir senha"}</button></div></form></div>}
+      {senhaPart && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs" role="dialog" aria-modal="true" aria-label="Redefinir senha do consultor"><form onSubmit={async (event) => { event.preventDefault(); setIsSavingSenha(true); setSenhaError(null); try { const result = await habilitarAppConsultorAction(senhaPart.id, novaSenha); if (!result.success) { setSenhaError(result.error || "Não foi possível redefinir a senha."); return; } setSenhaPart(null); } catch { setSenhaError("Não foi possível redefinir a senha."); } finally { setIsSavingSenha(false); } }} className="w-full max-w-md rounded-2xl bg-white p-6 text-sm text-slate-900 shadow-2xl dark:bg-slate-900 dark:text-white"><h3 className="text-lg font-black">Senha e acesso ao app</h3><p className="mt-2 text-slate-600 dark:text-slate-300">Defina uma senha temporária para <b>{senhaPart.nome}</b> e entregue-a por um canal seguro. Ele poderá alterá-la pelo e-mail de recuperação.</p><label className="mt-5 block font-bold">Nova senha<input type="password" minLength={8} required autoComplete="new-password" value={novaSenha} onChange={(event) => setNovaSenha(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-300 p-3 text-slate-900" /></label>{senhaError ? <p className="mt-3 text-sm font-bold text-rose-700">{senhaError}</p> : null}<div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setSenhaPart(null)} disabled={isSavingSenha} className="rounded-xl border px-4 py-2 font-bold">Cancelar</button><button disabled={isSavingSenha} className="rounded-xl bg-amber-500 px-4 py-2 font-bold text-zinc-950">{isSavingSenha ? "Salvando..." : "Redefinir senha"}</button></div></form></div>}
 
       {/* ───────────────────────────────────────────────────────────
           MODAL: NOVO PARTICIPANTE
@@ -928,7 +927,7 @@ export function ParticipantesManagerView({
             >
               <input type="hidden" name="empresa_id" value={empresaId} />
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <label className="mb-4 block text-sm font-bold">Senha de acesso ao app (consultor)<input type="password" name="nova_senha" minLength={8} autoComplete="new-password" className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900"/></label><div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300">Nome Completo *</label>
                   <input

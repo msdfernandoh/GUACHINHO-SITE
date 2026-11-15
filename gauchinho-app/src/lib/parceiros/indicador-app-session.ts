@@ -16,7 +16,7 @@ export async function resolveIndicadorAppSession(empresaId: string, usuarioId: s
   const admin = createAdminClient({ noStore: true });
   const { data: participantes, error: participantesError } = await admin
     .from("participantes_comerciais")
-    .select("id,nome,nome_exibicao,telefone,whatsapp,status")
+    .select("id,nome,nome_exibicao,telefone,whatsapp,status,cpf")
     .eq("empresa_id", empresaId)
     .eq("usuario_id", usuarioId);
 
@@ -51,8 +51,8 @@ export async function resolveIndicadorAppSession(empresaId: string, usuarioId: s
     const authUser = usuario?.auth_user_id
       ? (await admin.auth.admin.getUserById(usuario.auth_user_id)).data.user
       : null;
-    const cpf = String(authUser?.user_metadata?.cpf ?? "").replace(/\D/g, "");
-    const telefone = digitsOnlyPhone(usuario?.telefone ?? "");
+    const cpf = String((participantesAtivos[0] as ParticipanteApp & { cpf?: string }).cpf || authUser?.user_metadata?.cpf || "").replace(/\D/g, "");
+    const telefone = digitsOnlyPhone(participantesAtivos[0].whatsapp ?? participantesAtivos[0].telefone ?? usuario?.telefone ?? "");
     const participanteCanonico = participantesAtivos[0];
 
     if (/^\d{11}$/.test(cpf) && telefone.length >= 10 && telefone.length <= 13) {

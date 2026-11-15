@@ -20,6 +20,9 @@ const raconAppCss = `
   .racon-indicador [class*="from-amber"] [class*="text-zinc-"]:not(input):not(textarea),
   .racon-indicador [class*="bg-amber"] [class*="text-amber"],
   .racon-indicador [class*="from-amber"] [class*="text-amber"] { color: #ffffff; }
+  .racon-indicador .evento-app { background: #ffffff !important; color: #0b2855; }
+  .racon-indicador .evento-app > p, .racon-indicador .evento-app a:not([class*="bg-amber"]) { color: #385270 !important; }
+  .racon-indicador .evento-app a[class*="bg-amber"] { color: #ffffff; }
   .racon-indicador button[class*="bg-zinc-950"], .racon-indicador a[class*="bg-zinc-950"] { background: #0066cc; color: #ffffff; }
   .racon-indicador button[class*="bg-zinc-950"] *, .racon-indicador a[class*="bg-zinc-950"] * { color: #ffffff; }
 `;

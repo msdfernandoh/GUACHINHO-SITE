@@ -1,0 +1,6 @@
+import Link from "next/link";
+import { requireCurrentTenantContext } from "@/lib/tenant/context";
+import { requireGerenciarParticipantes } from "@/lib/parceiros/authorization";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { salvarTermoAction } from "@/app/app-indicador/parceria/actions";
+export default async function Page(){const {empresaAtiva}=await requireCurrentTenantContext();await requireGerenciarParticipantes(empresaAtiva.id);const {data}=await createAdminClient().from("empresas").select("configuracoes").eq("id",empresaAtiva.id).single();return <main className="mx-auto max-w-3xl space-y-5 p-5"><Link href="/erp/consultores">← Consultores</Link><h1 className="text-2xl font-bold">Termo de parceria</h1><p>Publique o texto que o parceiro deverá ler e aceitar no app. Alterações geram uma nova versão e exigem novo aceite.</p><form action={salvarTermoAction} className="space-y-4"><label className="block">Texto do termo<textarea name="termo" rows={20} maxLength={100000} defaultValue={data?.configuracoes?.termo_parceria?.texto??""} className="mt-2 w-full rounded-xl border bg-white p-4 text-slate-900"/></label><button className="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white">Publicar termo</button></form></main>}

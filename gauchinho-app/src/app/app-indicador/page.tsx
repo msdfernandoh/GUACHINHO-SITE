@@ -132,6 +132,7 @@ export default async function AppIndicadorPage() {
       >
         Conheça os nossos programas
       </Link>
+      <nav className="mt-3 grid grid-cols-2 gap-3"><Link href="/app-indicador/simulacao" className="rounded-2xl border p-4 font-bold">Simulação</Link><Link href="/app-indicador/parceria" className="rounded-2xl border p-4 font-bold">Recebimento e parceria</Link></nav>
       <InstalarAppIndicadorCard />
       {linkIndicacao && (
           <IndicadorLinkCard
@@ -157,7 +158,7 @@ export default async function AppIndicadorPage() {
             <b className="text-xl">{brl(pago)}</b>
           </div>
         </section>
-        {eventoAtivo ? <section className="mt-6 rounded-[2rem] border border-amber-400/30 bg-gradient-to-br from-amber-400/15 to-zinc-900 p-5">
+        {eventoAtivo ? <section className="evento-app mt-6 rounded-[2rem] border border-amber-400/30 bg-gradient-to-br from-amber-400/15 to-zinc-900 p-5">
           <p className="text-xs font-black tracking-[.16em] text-amber-300">EVENTO ATIVO</p>
           <h2 className="mt-2 text-2xl font-black">{eventoAtivo.nome}</h2>
           <p className="mt-2 text-sm text-zinc-200">{eventoAtivo.data_evento ? new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "America/Cuiaba" }).format(new Date(eventoAtivo.data_evento)) : "Data e horário a confirmar"}</p>

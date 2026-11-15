@@ -4857,3 +4857,6 @@ Os filtros agrupam variações de escrita das tags e o editor sugere tags existe
 
 ### Contraste do Gerador de Negócios (15/11/2026)
 Card Racon com percentual e meta brancos, botão branco com texto azul. Sem alteração operacional. TypeScript aprovado. Relatório: `docs/relatorios-fases/PARCEIROS-CONTRASTE-GERADOR-2026-11-15.md`.
+
+### Consultores: acesso ao app, planos e termo (15/11/2026)
+Remoção lógica preserva histórico; cadastro/edição incluem senha e habilitação do app por vínculo tenant. Perguntas e contraste corrigidos. Simulação autenticada usa tabelas imóveis 4%/veículos 3,5%, impostos 17,5%, micro 50% por etapa e geradores em 4/8 parcelas. Termo versionado por empresa e aceite auditado. Sem migration ou alteração retroativa financeira. Relatório: `docs/relatorios-fases/CONSULTORES-APP-PLANOS-TERMO-2026-11-15.md`.

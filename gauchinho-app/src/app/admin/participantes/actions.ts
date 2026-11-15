@@ -1,4 +1,6 @@
 "use server";
+import { habilitarAppConsultor } from "@/lib/parceiros/habilitar-app-consultor";
+import { requireGerenciarParticipantes as requireGestor } from "@/lib/parceiros/authorization";
 import { normalizarNomeConsultor } from "@/lib/erp/comissoes-consultores";
 
 import { revalidatePath } from "next/cache";
@@ -65,6 +67,7 @@ export async function fetchParticipantesList(filters?: {
       .order("created_at", { ascending: false });
 
     if (filters?.status) query = query.eq("status", filters.status);
+    else query = query.neq("status", "DESLIGADO");
     if (filters?.q?.trim()) {
       const q = filters.q.trim();
       query = query.or(`nome.ilike.%${q}%,email.ilike.%${q}%,whatsapp.ilike.%${q}%`);
@@ -160,6 +163,8 @@ export async function createParticipanteAction(formData: FormData): Promise<{ ok
     await assertAdminAccess(empresaId);
 
     const tipos = formData.getAll("tipos").map(String);
+    const senhaApp=String(formData.get("nova_senha")??"");
+    if(tipos.includes("CONSULTOR")){await requireGestor(empresaId);if(!formData.get("usuario_id")&&senhaApp.length<8)return {ok:false,success:false,error:"Defina uma senha de pelo menos 8 caracteres para o acesso do consultor ao app."};}
     const modulosArray = formData.getAll("modulos_permitidos").map(String);
     const modulosRaw = formData.get("modulos_permitidos");
     let modulosPermitidos: string[] = modulosArray.length > 0 ? modulosArray : [];
@@ -186,6 +191,7 @@ export async function createParticipanteAction(formData: FormData): Promise<{ ok
     const validated = validateParticipanteCreateInput(input);
     if (!validated.ok) return { ok: false, success: false, error: validated.error };
 
+    if(tipos.includes("CONSULTOR")&&input.status==="ATIVO"){const tel=String(input.whatsapp||input.telefone||"").replace(/\D/g,"");if(String(normalizeCpf(input.cpf)||"").length!==11||tel.length<10||tel.length>13)return {ok:false,success:false,error:"Informe CPF e WhatsApp válidos para habilitar o app do consultor."};if(!input.usuarioId&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email||""))return {ok:false,success:false,error:"Informe um e-mail válido para o acesso do consultor."};}
     const supabase = await createClient();
     const { data: cadastrados, error: cadastroError } = await supabase.from("participantes_comerciais")
       .select("id,nome,cpf,usuario_id").eq("empresa_id", empresaId);
@@ -317,6 +323,7 @@ export async function createParticipanteAction(formData: FormData): Promise<{ ok
       // Tolerar
     }
 
+    if(createdId&&tipos.includes("CONSULTOR")&&input.status==="ATIVO")await habilitarAppConsultor(empresaId,createdId,senhaApp||undefined);
     revalidatePath("/admin/participantes");
     revalidatePath("/erp/consultores");
     return { ok: true, success: true };
@@ -333,6 +340,8 @@ export async function updateParticipanteAction(formData: FormData): Promise<{ ok
     const id = String(formData.get("id") ?? "");
     if (!id) return { ok: false, success: false, error: "ID do participante obrigatório." };
 
+    const novaSenha=String(formData.get("nova_senha")??"");
+    if(novaSenha){await requireGestor(empresaId);if(novaSenha.length<8)return {ok:false,success:false,error:"A senha deve ter pelo menos 8 caracteres."};}
     const tipos = formData.getAll("tipos").map(String);
     const modulosArray = formData.getAll("modulos_permitidos").map(String);
     const modulosRaw = formData.get("modulos_permitidos");
@@ -461,6 +470,7 @@ export async function updateParticipanteAction(formData: FormData): Promise<{ ok
       // Tolerar
     }
 
+    if(novaSenha)await habilitarAppConsultor(empresaId,id,novaSenha);
     revalidatePath("/admin/participantes");
     revalidatePath("/erp/consultores");
     return { ok: true, success: true };
@@ -473,29 +483,16 @@ export async function updateParticipanteAction(formData: FormData): Promise<{ ok
 export async function deleteParticipanteAction(formData: FormData): Promise<{ success: boolean; error?: string }> {
   try {
     const empresaId = String(formData.get("empresa_id") || (await resolveEmpresaIdPadrao()));
-    await assertAdminAccess(empresaId);
+    await requireGestor(empresaId);
     const id = String(formData.get("id") ?? "");
     if (!id) return { success: false, error: "ID obrigatório para exclusão." };
 
-    const deps = await verificarDependenciasParticipanteAction(id);
-    if (!deps.pode_excluir) {
-      return {
-        success: false,
-        error: `Não é possível excluir o participante: possui histórico vinculado (${deps.motivos.join(", ")}). Recomenda-se inativar o cadastro.`,
-      };
-    }
-
     const supabase = await createClient();
-    await supabase.from("participante_tipos").delete().eq("participante_id", id).eq("empresa_id", empresaId);
-    await supabase.from("participante_organizacoes").delete().eq("participante_id", id).eq("empresa_id", empresaId);
-    const { error } = await supabase
-      .from("participantes_comerciais")
-      .delete()
-      .eq("id", id)
-      .eq("empresa_id", empresaId);
-
-    if (error) return { success: false, error: error.message };
-
+    const { data: removido, error } = await supabase.from("participantes_comerciais")
+      .update({ status: "DESLIGADO", data_saida: new Date().toISOString().slice(0, 10), updated_at: new Date().toISOString() })
+      .eq("id", id).eq("empresa_id", empresaId).select("id").single();
+    if (error || !removido) return { success: false, error: error?.message ?? "Cadastro não encontrado ou sem permissão." };
+    await supabase.from("participante_auditoria").insert({ participante_id: id, empresa_id: empresaId, acao: "DESLIGAR", motivo: "Removido da lista de consultores pelo gestor; histórico preservado." });
     revalidatePath("/admin/participantes");
     revalidatePath("/erp/consultores");
     return { success: true };
@@ -624,47 +621,7 @@ export async function canAccessParticipantesAdmin(): Promise<boolean> {
   }
 }
 
-export async function redefinirSenhaIndicadorAction(
-  participanteId: string,
-  novaSenha: string,
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    if (novaSenha.length < 8) return { success: false, error: "A senha deve ter pelo menos 8 caracteres." };
-    const empresaId = await resolveEmpresaIdPadrao();
-    await assertAdminAccess(empresaId);
-    const supabase = await createClient();
-    const { data: participante, error: participanteError } = await supabase
-      .from("participantes_comerciais")
-      .select("id,usuario_id,participante_tipos(tipo_codigo)")
-      .eq("empresa_id", empresaId)
-      .eq("id", participanteId)
-      .maybeSingle();
-    if (participanteError || !participante?.usuario_id) return { success: false, error: "Indicador sem login vinculado." };
-    const tipos = (participante.participante_tipos ?? []).map((item: { tipo_codigo: string }) => item.tipo_codigo);
-    if (!tipos.includes("INDICADOR")) return { success: false, error: "A redefinição nesta tela é exclusiva para indicadores." };
-
-    const admin = createAdminClient();
-    const { data: usuario, error: usuarioError } = await admin
-      .from("usuarios")
-      .select("auth_user_id")
-      .eq("id", participante.usuario_id)
-      .maybeSingle();
-    if (usuarioError || !usuario?.auth_user_id) return { success: false, error: "Não foi possível localizar a credencial do indicador." };
-    const { error: authError } = await admin.auth.admin.updateUserById(usuario.auth_user_id, { password: novaSenha });
-    if (authError) return { success: false, error: "Não foi possível redefinir a senha agora." };
-
-    await supabase.from("participante_auditoria").insert({
-      participante_id: participanteId,
-      empresa_id: empresaId,
-      acao: "REDEFINIR_SENHA_INDICADOR",
-      payload: { origem: "ADMIN_PARTICIPANTES" },
-    });
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Erro ao redefinir senha." };
-  }
-}
-
+export async function redefinirSenhaIndicadorAction(participanteId: string, novaSenha: string): Promise<{success:boolean;error?:string}> { return habilitarAppConsultorAction(participanteId,novaSenha); }
 
 export async function verificarDependenciasParticipanteAction(participanteId: string): Promise<{
   pode_excluir: boolean;
@@ -713,3 +670,5 @@ export async function verificarDependenciasParticipanteAction(participanteId: st
     };
   }
 }
+
+export async function habilitarAppConsultorAction(id: string, senha?: string) { try { const empresaId=await resolveEmpresaIdPadrao();await requireGestor(empresaId);await habilitarAppConsultor(empresaId,id,senha);revalidatePath("/erp/consultores");return {success:true}; }catch(e){return {success:false,error:e instanceof Error?e.message:"Erro ao habilitar acesso"};}}
