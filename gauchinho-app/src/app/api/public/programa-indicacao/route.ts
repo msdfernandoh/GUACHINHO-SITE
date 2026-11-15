@@ -262,8 +262,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Preencha nome, CPF, WhatsApp, e-mail e chave PIX." }, { status: 400 });
     }
     if (!['MICROFRANQUEADO','GERADOR_NEGOCIOS','GERADOR_POSSIBILIDADES','CONVERSAR_EQUIPE'].includes(modelo)) return NextResponse.json({ error: "Modelo de parceria inválido." }, { status: 400 });
-    const { data: existente } = await admin.from("programa_indicadores").select("id,participante_id").eq("empresa_id", ingress.empresaId).eq("cpf", cpf).maybeSingle();
+    const { data: existente } = await admin.from("programa_indicadores").select("id,participante_id,origem_cadastro").eq("empresa_id", ingress.empresaId).eq("cpf", cpf).maybeSingle();
     if (existente) {
+      if(existente.origem_cadastro==="COLABORADOR_FIXO_LINK")return NextResponse.json({error:"Este cadastro pertence à equipe de um parceiro. Entre no app com sua conta."},{status:409});
       const { error: atualizacaoError } = await admin.from("programa_indicadores").update({
         telefone,
         chave_pix: chavePix,

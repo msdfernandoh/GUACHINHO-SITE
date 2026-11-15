@@ -1,3 +1,4 @@
+import { obterPerfilAcessoApp } from "@/lib/app-indicador/perfil-acesso";
 import { redirect } from "next/navigation";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -40,6 +41,7 @@ type PrevisaoFranqueadora = {
 export default async function ComissoesDoAppPage() {
   const { empresaAtiva, usuario } = await getCurrentTenantContext();
   if (!empresaAtiva || !usuario) redirect("/app-indicador/login");
+ if(await obterPerfilAcessoApp(empresaAtiva.id,usuario.id)==="PRODUCAO")redirect("/app-indicador");
   // A sessão é validada antes do uso do cliente administrativo. Assim o app
   // lê somente as previsões do próprio participante, mas pode exibir o
   // snapshot fiscal canônico da franqueadora vinculado à mesma venda.

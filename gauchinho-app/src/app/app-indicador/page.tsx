@@ -1,3 +1,5 @@
+import { obterPerfilAcessoApp } from "@/lib/app-indicador/perfil-acesso";
+import { resumirIndicacao } from "@/lib/app-indicador/producao";
 import Link from "next/link";
 import { obterMicrofranquia } from "@/lib/microfranquia/access";
 import { redirect } from "next/navigation";
@@ -33,16 +35,17 @@ export default async function AppIndicadorPage() {
         Seu acesso ainda não está vinculado ao programa.
       </main>
     );
+  const somenteProducao=await obterPerfilAcessoApp(empresaAtiva.id,usuario.id)==="PRODUCAO";
   const [{ data: indicacoes }, { data: previsoes }, eventoAtivo] = await Promise.all([
     db
       .from("programa_indicacoes")
       .select(
-        "id,status,created_at,produto_interesse,credito_desejado,capacidade_mensal,lead:leads(nome,status),venda:vendas(valor_credito)",
+        "id,status,created_at,produto_interesse,credito_desejado,capacidade_mensal,lead:leads(nome,empresa_id,etapa_id,status,fechado),venda:vendas(empresa_id,status,valor_credito)",
       )
       .eq("empresa_id", empresaAtiva.id)
       .eq("indicador_id", indicador?.id ?? "")
       .order("created_at", { ascending: false }),
-    db
+    somenteProducao ? Promise.resolve({data:[]}) : db
       .from("comissao_previsoes_participantes")
       .select(
         "id,nome_etapa,competencia,valor_previsto,valor_pago,status,conferido_por_participante",
@@ -51,8 +54,12 @@ export default async function AppIndicadorPage() {
       .eq("participante_comercial_id", participante.id)
       .neq("status", "cancelada")
       .order("competencia", { ascending: false }),
-    fetchEventoAtivoParaPainelIndicador(),
+    somenteProducao ? Promise.resolve(null) : fetchEventoAtivoParaPainelIndicador(),
   ]);
+  const {data:etapas,error:erroEtapas}=await db.from("crm_funil_etapas").select("id,nome").eq("empresa_id",empresaAtiva.id);
+  if(erroEtapas)throw new Error("Não foi possível carregar as etapas do funil.");
+  const mapaEtapas=new Map((etapas??[]).map(e=>[e.id,e.nome]));
+  const producao=(indicacoes??[]).map(i=>resumirIndicacao(empresaAtiva.id,i,mapaEtapas));
   const total = (previsoes ?? []).reduce(
     (s, p) => s + Number(p.valor_previsto ?? 0),
     0,
@@ -80,7 +87,7 @@ export default async function AppIndicadorPage() {
     indicador?.codigo_indicacao_curto && host
       ? `${protocolo}://${host}/network/${indicador.codigo_indicacao_curto}`
       : null;
-  const microfranquia=await obterMicrofranquia(empresaAtiva.id,participante.id);
+  const microfranquia=somenteProducao?null:await obterMicrofranquia(empresaAtiva.id,participante.id);
   const modelos: Record<string, string> = {
     MICROFRANQUEADO: "Microfranqueado",
     GERADOR_NEGOCIOS: "Gerador de Negócios",
@@ -97,12 +104,12 @@ export default async function AppIndicadorPage() {
             <p className="text-sm font-bold text-amber-400">
               Olá, {participante.nome.split(" ")[0]}
             </p>
-            <h1 className="text-3xl font-black">Meu negócio</h1>
+            <h1 className="text-3xl font-black">{somenteProducao?"Minhas indicações":"Meu negócio"}</h1>
             <p className="mt-2 text-sm text-zinc-400">
-              Seu painel de indicações, negociações e comissões.
+              {somenteProducao?"Acompanhe suas indicações e o andamento das negociações.":"Seu painel de indicações, negociações e comissões."}
             </p>
             <span className="mt-3 inline-flex rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-black text-amber-300">
-              {modeloNegocio}
+              {somenteProducao?"Colaborador — somente produção":modeloNegocio}
             </span>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2"><Link href="/definir-senha?next=/app-indicador&modo=alterar" className="rounded-xl border border-zinc-700 px-3 py-2 text-xs font-bold">Mudar senha</Link><form action={logoutIndicadorAction}>
@@ -114,21 +121,21 @@ export default async function AppIndicadorPage() {
             </button>
           </form></div>
         </header>
-      <div className="mt-6 grid grid-cols-2 gap-3">
+      <div className={`mt-6 grid gap-3 ${somenteProducao?"grid-cols-1":"grid-cols-2"}`}>
         <Link
           href="/app-indicador/indicar"
             className="rounded-2xl bg-amber-500 p-5 font-black text-zinc-950"
           >
             + Nova indicação
           </Link>
-          <Link
+          {!somenteProducao&&<Link
             href="/app-indicador/comissoes"
             className="rounded-2xl border border-zinc-700 p-5 font-black"
           >
           Minhas comissões
-        </Link>
+        </Link>}
       </div>
-      <Link
+      {!somenteProducao&&<><Link
         href="/parceiros"
         className="mt-3 flex rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm font-black text-amber-300 transition hover:bg-amber-400/20"
       >
@@ -136,6 +143,7 @@ export default async function AppIndicadorPage() {
       </Link>
       <nav className="mt-3 grid grid-cols-2 gap-3"><Link href="/app-indicador/simulacao" className="rounded-2xl border p-4 font-bold">Simulação</Link><Link href="/app-indicador/parceria" className="rounded-2xl border p-4 font-bold">Recebimento e parceria</Link></nav>
       {microfranquia&&<Link href="/app-indicador/equipe" className="mt-3 flex rounded-2xl border border-zinc-700 p-5 font-black">Minha equipe · colaboradores e resultados</Link>}
+      <Link href="/app-indicador/equipe-fixa" className="mt-3 flex rounded-2xl border p-5 font-black">Colaboradores fixos · link de cadastro e produção</Link></>}
       <InstalarAppIndicadorCard />
       {linkIndicacao && (
           <IndicadorLinkCard
@@ -144,14 +152,14 @@ export default async function AppIndicadorPage() {
             descricao="Abre o formulário com as perguntas estratégicas e vincula o lead a você."
           />
         )}
-        {linkNetwork && (
+        {!somenteProducao && linkNetwork && (
           <IndicadorLinkCard
             url={linkNetwork}
             titulo="Convite do Network de Negócios"
             descricao="Compartilhe para confirmar presença no encontro de 29 de setembro, às 19h."
           />
         )}
-        <section className="mt-6 grid grid-cols-2 gap-3">
+        {somenteProducao?<section className="mt-6 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-zinc-900 p-4"><p>Indicações produzidas</p><b className="text-xl">{producao.length}</b></div><div className="rounded-2xl bg-zinc-900 p-4"><p>Negócios fechados</p><b className="text-xl">{producao.filter(i=>i.fechado).length}</b></div></section>:<section className="mt-6 grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-zinc-900 p-4">
             <p className="text-xs text-zinc-400">Comissões geradas</p>
             <b className="text-xl">{brl(total)}</b>
@@ -160,7 +168,7 @@ export default async function AppIndicadorPage() {
             <p className="text-xs text-zinc-400">Já recebido</p>
             <b className="text-xl">{brl(pago)}</b>
           </div>
-        </section>
+        </section>}
         {eventoAtivo ? <section className="evento-app mt-6 rounded-[2rem] border border-amber-400/30 bg-gradient-to-br from-amber-400/15 to-zinc-900 p-5">
           <p className="text-xs font-black tracking-[.16em] text-amber-300">EVENTO ATIVO</p>
           <h2 className="mt-2 text-2xl font-black">{eventoAtivo.nome}</h2>
@@ -174,27 +182,7 @@ export default async function AppIndicadorPage() {
             Acompanhe a negociação sem expor informações sensíveis.
           </p>
           <div className="mt-3 space-y-3">
-            {(indicacoes ?? []).map((i) => {
-              const lead = Array.isArray(i.lead) ? i.lead[0] : i.lead;
-              const venda = Array.isArray(i.venda) ? i.venda[0] : i.venda;
-              return (
-                <article key={i.id} className="rounded-2xl bg-zinc-900 p-4">
-                  <b>{lead?.nome ?? "Indicado"}</b>
-                  <p className="mt-1 text-sm text-amber-300">
-                    {lead?.status ?? i.status}
-                  </p>
-                  <p className="mt-2 text-xs text-zinc-400">
-                    {i.produto_interesse ?? "Interesse não informado"} ·
-                    Desejado:{" "}
-                    {i.credito_desejado ? brl(Number(i.credito_desejado)) : "—"}{" "}
-                    · Contratado:{" "}
-                    {venda?.valor_credito
-                      ? brl(Number(venda.valor_credito))
-                      : "Ainda não fechado"}
-                  </p>
-                </article>
-              );
-            })}
+            {producao.map(i=><article key={i.id} className="rounded-2xl bg-zinc-900 p-4"><b>{i.nome}</b><p className="mt-2 text-xs text-zinc-400">Etapa do funil</p><p className="text-sm font-bold text-amber-300">{i.etapa}</p><p className="mt-2 text-xs text-zinc-400">{i.produto??"Interesse não informado"}</p>{!somenteProducao&&<p className="mt-1 text-xs text-zinc-400">Crédito desejado: {i.creditoDesejado?brl(Number(i.creditoDesejado)):"—"}</p>}{i.fechado&&<p className="mt-2 font-bold">Valor fechado: {i.valorFechado==null?"A confirmar":brl(i.valorFechado)}</p>}</article>)}
             {!(indicacoes ?? []).length && (
               <p className="rounded-2xl bg-zinc-900 p-5 text-sm text-zinc-400">
                 Você ainda não cadastrou indicações.

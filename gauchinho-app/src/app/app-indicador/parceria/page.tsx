@@ -1,3 +1,4 @@
+import { obterPerfilAcessoApp } from "@/lib/app-indicador/perfil-acesso";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
@@ -8,7 +9,8 @@ import { isRaconModel } from "@/lib/tenant/model-family";
 import { AppIndicadorTheme } from "@/components/app-indicador/app-indicador-theme";
 import { aceitarTermoAction } from "./actions";
 export default async function Page(){
- const {empresaAtiva,usuario}=await getCurrentTenantContext();if(!empresaAtiva||!usuario)redirect("/app-indicador/login");const {indicador,participante}=await resolveIndicadorAppSession(empresaAtiva.id,usuario.id);if(!indicador||!participante)redirect("/app-indicador");
+ const {empresaAtiva,usuario}=await getCurrentTenantContext();if(!empresaAtiva||!usuario)redirect("/app-indicador/login");
+ if(await obterPerfilAcessoApp(empresaAtiva.id,usuario.id)==="PRODUCAO")redirect("/app-indicador");const {indicador,participante}=await resolveIndicadorAppSession(empresaAtiva.id,usuario.id);if(!indicador||!participante)redirect("/app-indicador");
  const db=createAdminClient();const {data:empresa}=await db.from("empresas").select("configuracoes").eq("id",empresaAtiva.id).single();const termo=empresa?.configuracoes?.termo_parceria;
  const {data:cadastro}=await db.from("programa_indicadores").select("chave_pix").eq("empresa_id",empresaAtiva.id).eq("id",indicador.id).single();
  const {data:aceites}=termo?.versao?await db.from("participante_auditoria").select("created_at").eq("empresa_id",empresaAtiva.id).eq("participante_id",participante.id).contains("payload",{tipo:"ACEITE_TERMO_PARCERIA",versao:termo.versao}).order("created_at",{ascending:false}).limit(1):{data:[]};

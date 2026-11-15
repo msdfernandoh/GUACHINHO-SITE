@@ -1,4 +1,5 @@
 "use server";
+import { obterPerfilAcessoApp } from "@/lib/app-indicador/perfil-acesso";
 import { createHash } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -18,7 +19,7 @@ export async function salvarTermoAction(form: FormData) {
  revalidatePath("/app-indicador/parceria");redirect("/admin/participantes/programa?salvo=1");
 }
 export async function aceitarTermoAction(form: FormData) {
- const {empresaAtiva,usuario}=await requireCurrentTenantContext();const db=createAdminClient();
+ const {empresaAtiva,usuario}=await requireCurrentTenantContext();if(await obterPerfilAcessoApp(empresaAtiva.id,usuario.id)==="PRODUCAO")throw new Error("Perfil sem acesso ao termo de parceria.");const db=createAdminClient();
  const {participante,indicador}=await resolveIndicadorAppSession(empresaAtiva.id,usuario.id);if(!participante||!indicador)throw new Error("Acesso ao programa não habilitado.");
  const {data:empresa,error}=await db.from("empresas").select("configuracoes").eq("id",empresaAtiva.id).single();if(error)throw new Error(error.message);
  const termo=empresa.configuracoes?.termo_parceria;

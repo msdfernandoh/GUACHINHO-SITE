@@ -1,4 +1,5 @@
 "use server";
+import { obterPerfilAcessoApp } from "@/lib/app-indicador/perfil-acesso";
 
 import { revalidatePath } from "next/cache";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
@@ -8,6 +9,7 @@ import { resolveIndicadorAppSession } from "@/lib/parceiros/indicador-app-sessio
 export async function confirmarRecebimentoNoAppAction(previsaoId: string) {
   const { empresaAtiva, usuario } = await getCurrentTenantContext();
   if (!empresaAtiva || !usuario) return { ok: false, error: "Sua sessão expirou." };
+  if(await obterPerfilAcessoApp(empresaAtiva.id,usuario.id)==="PRODUCAO")return {ok:false,error:"Perfil sem acesso financeiro."};
   const db = await createClient();
   const { participante, indicador } = await resolveIndicadorAppSession(empresaAtiva.id, usuario.id);
   if (!participante || !indicador) return { ok: false, error: "Participante não localizado." };

@@ -1,0 +1,22 @@
+import React from "react";
+import {renderToStaticMarkup} from "react-dom/server";
+import {beforeEach,describe,it,expect,vi} from "vitest";
+const m=vi.hoisted(()=>({tables:[] as string[],perfil:"PRODUCAO",event:vi.fn()}));
+vi.stubGlobal("React",React);
+vi.mock("next/headers",()=>({headers:async()=>new Headers({host:"exemplo.com"})}));
+vi.mock("@/lib/tenant/context",()=>({getCurrentTenantContext:async()=>({empresaAtiva:{id:"empresa"},usuario:{id:"usuario"}})}));
+vi.mock("@/lib/tenant/get-resolved-empresa",()=>({getResolvedTenant:async()=>({siteModel:"racon"})}));
+vi.mock("@/lib/parceiros/indicador-app-session",()=>({resolveIndicadorAppSession:async()=>({participante:{id:"p",nome:"Colaborador Teste"},indicador:{id:"i",codigo_indicacao_curto:"ABCD123456"}})}));
+vi.mock("@/lib/app-indicador/perfil-acesso",()=>({obterPerfilAcessoApp:async()=>m.perfil}));
+vi.mock("@/lib/microfranquia/access",()=>({obterMicrofranquia:async()=>null}));
+vi.mock("@/lib/parceiros/eventos-indicador",()=>({fetchEventoAtivoParaPainelIndicador:m.event}));
+vi.mock("@/components/app-indicador/app-indicador-theme",()=>({AppIndicadorTheme:({children}:{children:React.ReactNode})=>children}));
+vi.mock("@/components/app-indicador/instalar-app-indicador-card",()=>({InstalarAppIndicadorCard:()=>null}));
+vi.mock("@/components/app-indicador/indicador-link-card",()=>({IndicadorLinkCard:()=>null}));
+vi.mock("@/app/app-indicador/login/actions",()=>({logoutIndicadorAction:async()=>{}}));
+vi.mock("@/lib/supabase/admin",()=>({createAdminClient:()=>({from:(table:string)=>{m.tables.push(table);const data=table==="crm_funil_etapas"?[{id:"etapa",nome:"Proposta enviada"}]:table==="programa_indicacoes"?[{id:"ref1",status:"PENDENTE",lead:{nome:"Cliente Aberto",empresa_id:"empresa",etapa_id:"etapa",status:"Novo"},venda:null},{id:"ref2",status:"FECHADO",lead:{nome:"Cliente Fechado",empresa_id:"empresa",etapa_id:"etapa",status:"Fechado"},venda:{empresa_id:"empresa",status:"ativa",valor_credito:350000}}]:[];const q={select:()=>q,eq:()=>q,neq:()=>q,order:()=>q,then:(resolve:(v:unknown)=>unknown)=>Promise.resolve({data,error:null}).then(resolve)};return q;}})}));
+import Page from "@/app/app-indicador/page";
+describe("Painel somente producao",()=>{
+ beforeEach(()=>{m.tables=[];m.perfil="PRODUCAO";vi.clearAllMocks();});
+ it("renderiza funil e fechado sem buscar nem enviar financeiro ou datas",async()=>{const html=renderToStaticMarkup(await Page());expect(html).toContain("Proposta enviada");expect(html).toContain("Valor fechado");expect(html).toContain("350.000,00");expect(html).not.toMatch(/Minhas comissões|Simulação|Recebimento e parceria|Conheça os nossos programas|EVENTO ATIVO|comissoes|simulacao|parceria/);expect(m.tables).not.toContain("comissao_previsoes_participantes");expect(m.event).not.toHaveBeenCalled();});
+});
