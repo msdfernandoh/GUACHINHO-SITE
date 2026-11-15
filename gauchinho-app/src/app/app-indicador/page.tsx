@@ -105,14 +105,14 @@ export default async function AppIndicadorPage() {
               {modeloNegocio}
             </span>
           </div>
-          <form action={logoutIndicadorAction}>
+          <div className="flex shrink-0 flex-col items-end gap-2"><Link href="/definir-senha?next=/app-indicador&modo=alterar" className="rounded-xl border border-zinc-700 px-3 py-2 text-xs font-bold">Mudar senha</Link><form action={logoutIndicadorAction}>
             <button
               type="submit"
               className="rounded-xl border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-200"
             >
               Trocar usuário
             </button>
-          </form>
+          </form></div>
         </header>
       <div className="mt-6 grid grid-cols-2 gap-3">
         <Link

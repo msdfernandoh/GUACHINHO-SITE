@@ -12,9 +12,11 @@ export default function DefinirSenhaPage() {
   const [pronto, setPronto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [isRecuperacao, setIsRecuperacao] = useState(false);
+  const [isAlteracao, setIsAlteracao] = useState(false);
   const [mensagem, setMensagem] = useState("Validando seu acesso...");
 
   useEffect(() => {
+    setIsAlteracao(new URLSearchParams(window.location.search).get("modo") === "alterar");
     const supabase = createClient();
     void supabase.auth.getSession().then(({ data }) => {
       const user = data.session?.user;
@@ -62,7 +64,7 @@ export default function DefinirSenhaPage() {
     <main className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-10">
       <section className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-lg">
         <p className="text-xs font-bold uppercase tracking-widest text-cyan-700">
-          {isRecuperacao ? "Recuperação de acesso" : "Primeiro acesso"}
+          {isAlteracao ? "Alterar minha senha" : isRecuperacao ? "Recuperação de acesso" : "Primeiro acesso"}
         </p>
         <h1 className="mt-2 text-2xl font-extrabold text-zinc-900">Crie sua nova senha</h1>
         <p className={`mt-3 text-sm ${pronto ? "text-zinc-600" : "text-amber-700"}`}>{mensagem}</p>

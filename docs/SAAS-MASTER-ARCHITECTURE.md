@@ -4863,3 +4863,6 @@ Remoção lógica preserva histórico; cadastro/edição incluem senha e habilit
 
 ### Microfranquia: equipe e importação XLS (15/11/2026)
 Hierarquia direta por gestor_participante_id e empresa, sem alterar empresa_usuarios N:N. Microfranquia ativa/aprovada cadastra colaboradores, compartilha convite por código existente e consulta resultados limitados à equipe. Importação autenticada de indicações XLS/XLSX com prévia, modelos, validação e lotes de 25 linhas usa CRM canônico e preserva telefones preexistentes. Perfis financeiros existentes são vinculados sem novas regras ou alterações históricas. Sem migration. Relatório: `docs/relatorios-fases/MICROFRANQUIA-EQUIPE-IMPORTACAO-XLS-2026-11-15.md`.
+
+### Usuários: acesso ao app e conta única de Fernando (15/11/2026)
+Mudar senha no app reutiliza a troca autenticada e retorna ao painel. Senhas existentes preservadas por decisão do titular; CPFs pendentes serão completados em Consultores. Fernando, Eroni, Igor, Tayna, Enos e Mateus estão ativos. A identidade original de Fernando com Superadmin foi mantida e recebeu os vínculos multiempresa; três logins duplicados arquivados sem apagar histórico. Nove tabelas operacionais/financeiras preservadas por hashes e contagens. Relatório: `docs/relatorios-fases/USUARIOS-APP-E-CONSOLIDACAO-FERNANDO-2026-11-15.md`.

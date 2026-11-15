@@ -1,0 +1,142 @@
+{
+  "operacao": "CONSOLIDACAO_FERNANDO_ATIVACAO_EQUIPE_20261115",
+  "iniciado_em": "2026-11-15T21:30:11.206Z",
+  "finalizado_em": "2026-11-15T21:30:27.263Z",
+  "alteracoes": [
+    {
+      "tipo": "VINCULO_PRINCIPAL",
+      "empresa_id": "87df83a8-1d22-4bd1-9712-5cb08915c4a0",
+      "id": "238de854-3f95-4b50-bd2d-c38940790949"
+    },
+    {
+      "tipo": "VINCULO_PRINCIPAL",
+      "empresa_id": "8e4e13f9-80e6-44db-a21b-584a43b6f024",
+      "id": "aaa30f96-aad4-481a-8494-7bb29ba531db"
+    },
+    {
+      "tipo": "VINCULO_PRINCIPAL",
+      "empresa_id": "3b5d14ec-6e0f-4f8e-952a-75adbfaa0949",
+      "id": "aecbdbfa-0e74-4a43-9d91-f349137a4f9d"
+    },
+    {
+      "tipo": "PARTICIPANTE_ATIVO",
+      "id": "6e29a087-2d25-4ae0-97e0-d3bcce8906be",
+      "usuario_id": "3f8b7dd2-6646-412e-a700-114de65f7684"
+    },
+    {
+      "tipo": "LOGIN_DUPLICADO_ARQUIVADO",
+      "id": "e6c83851-b4f0-4efe-8576-0a2422eeeda3",
+      "email": "fernando@msdeducacao.com.br"
+    },
+    {
+      "tipo": "LOGIN_DUPLICADO_ARQUIVADO",
+      "id": "062a7336-468e-4f43-b3e0-c6b08aec400e",
+      "email": "hugo@msdeducacao.com.br"
+    },
+    {
+      "tipo": "LOGIN_DUPLICADO_ARQUIVADO",
+      "id": "ca545b91-8f6a-4855-945a-8a075ae8e441",
+      "email": "fernandohugomsd@gmail.com"
+    },
+    {
+      "tipo": "RESPONSAVEL_PRINCIPAL_CONSOLIDADO",
+      "empresa_id": "87df83a8-1d22-4bd1-9712-5cb08915c4a0"
+    },
+    {
+      "tipo": "RESPONSAVEL_PRINCIPAL_CONSOLIDADO",
+      "empresa_id": "8e4e13f9-80e6-44db-a21b-584a43b6f024"
+    },
+    {
+      "tipo": "RESPONSAVEL_PRINCIPAL_CONSOLIDADO",
+      "empresa_id": "3b5d14ec-6e0f-4f8e-952a-75adbfaa0949"
+    }
+  ],
+  "senhasAlteradas": 0,
+  "preservacao": {
+    "leads": true,
+    "propostas": true,
+    "vendas": true,
+    "cotas_definitivas": true,
+    "comissao_previsoes_participantes": true,
+    "financeiro_pagamentos": true,
+    "clientes": true,
+    "contratacoes_online": true,
+    "empresa_socios": true
+  },
+  "antes": {
+    "leads": {
+      "linhas": 249,
+      "sha256": "0d0e440657c635d4bc1259ee45e03ba9702d90788eceb6b7249f15a3f78a152d"
+    },
+    "propostas": {
+      "linhas": 189,
+      "sha256": "5cc4b797d20bf0d0e284f0f02a9f49d32b3352e128db798140455213b449210e"
+    },
+    "vendas": {
+      "linhas": 125,
+      "sha256": "8293917133abb52422c36b8fd17f56bfcfb4452070954edbf43d0216dc0bc599"
+    },
+    "cotas_definitivas": {
+      "linhas": 146,
+      "sha256": "1223e2ce56caac1040185f114fb2d3ae704fdf41d6337dfe9510f7f37dfc12a0"
+    },
+    "comissao_previsoes_participantes": {
+      "linhas": 365,
+      "sha256": "81e8549e83a901ed293d70b8cde4f6871831a64e85de6cfdac9e8766430560e3"
+    },
+    "financeiro_pagamentos": {
+      "linhas": 7,
+      "sha256": "546c0271c50aa2c8fa2ef3aca36d6c4fbe6eddcdd1eebd3d3e70873d8d0a38f8"
+    },
+    "clientes": {
+      "linhas": 69,
+      "sha256": "a5595dafb7561a65c412532fdd018de64341f35b940c95abc3053dcfe8cfc4cb"
+    },
+    "contratacoes_online": {
+      "linhas": 18,
+      "sha256": "5985061ecb3dee09980d9bee6d08a2000652777827842c5bca8b2116f4b80606"
+    },
+    "empresa_socios": {
+      "linhas": 2,
+      "sha256": "93fa84a3b825849df18b1af8a63b012fa384d7f3a510abbf3d2be6d9dbd65a70"
+    }
+  },
+  "depois": {
+    "leads": {
+      "linhas": 249,
+      "sha256": "0d0e440657c635d4bc1259ee45e03ba9702d90788eceb6b7249f15a3f78a152d"
+    },
+    "propostas": {
+      "linhas": 189,
+      "sha256": "5cc4b797d20bf0d0e284f0f02a9f49d32b3352e128db798140455213b449210e"
+    },
+    "vendas": {
+      "linhas": 125,
+      "sha256": "8293917133abb52422c36b8fd17f56bfcfb4452070954edbf43d0216dc0bc599"
+    },
+    "cotas_definitivas": {
+      "linhas": 146,
+      "sha256": "1223e2ce56caac1040185f114fb2d3ae704fdf41d6337dfe9510f7f37dfc12a0"
+    },
+    "comissao_previsoes_participantes": {
+      "linhas": 365,
+      "sha256": "81e8549e83a901ed293d70b8cde4f6871831a64e85de6cfdac9e8766430560e3"
+    },
+    "financeiro_pagamentos": {
+      "linhas": 7,
+      "sha256": "546c0271c50aa2c8fa2ef3aca36d6c4fbe6eddcdd1eebd3d3e70873d8d0a38f8"
+    },
+    "clientes": {
+      "linhas": 69,
+      "sha256": "a5595dafb7561a65c412532fdd018de64341f35b940c95abc3053dcfe8cfc4cb"
+    },
+    "contratacoes_online": {
+      "linhas": 18,
+      "sha256": "5985061ecb3dee09980d9bee6d08a2000652777827842c5bca8b2116f4b80606"
+    },
+    "empresa_socios": {
+      "linhas": 2,
+      "sha256": "93fa84a3b825849df18b1af8a63b012fa384d7f3a510abbf3d2be6d9dbd65a70"
+    }
+  }
+}
