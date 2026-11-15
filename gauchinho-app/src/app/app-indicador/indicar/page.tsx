@@ -50,7 +50,7 @@ export default async function IndicarNoAppPage({
           <p className="mt-8 text-xs font-black tracking-[.18em] text-amber-300">NOVA INDICAÇÃO</p>
           <h1 className="mt-2 text-3xl font-black">O que você deseja cadastrar?</h1>
           <p className="mt-2 text-sm text-zinc-400">Escolha o tipo para abrir o formulário correto.</p>
-          <div className="mt-7 grid gap-4">
+          <div className="mt-7 grid gap-4"><Link href="/app-indicador/indicar/importar" className="rounded-[2rem] border border-zinc-700 bg-zinc-900 p-6"><h2 className="text-xl font-black">Importar planilha XLS / XLSX</h2><p className="mt-1 text-sm text-zinc-400">Baixe o modelo e cadastre uma lista de clientes e imóveis.</p></Link>
             <Link href="/app-indicador/indicar?tipo=contato" className="rounded-[2rem] border border-zinc-700 bg-zinc-900 p-6 transition hover:border-amber-400">
               <UserRoundPlus className="h-10 w-10 rounded-2xl bg-amber-400 p-2 text-zinc-950" />
               <h2 className="mt-4 text-xl font-black">Contato</h2>

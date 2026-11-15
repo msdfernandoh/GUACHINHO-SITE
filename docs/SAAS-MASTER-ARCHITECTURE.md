@@ -4860,3 +4860,6 @@ Card Racon com percentual e meta brancos, botão branco com texto azul. Sem alte
 
 ### Consultores: acesso ao app, planos e termo (15/11/2026)
 Remoção lógica preserva histórico; cadastro/edição incluem senha e habilitação do app por vínculo tenant. Perguntas e contraste corrigidos. Simulação autenticada usa tabelas imóveis 4%/veículos 3,5%, impostos 17,5%, micro 50% por etapa e geradores em 4/8 parcelas. Termo versionado por empresa e aceite auditado. Rotas novas exigem sessão e redirecionam visitantes ao login. Sem migration ou alteração retroativa financeira. Relatório: `docs/relatorios-fases/CONSULTORES-APP-PLANOS-TERMO-2026-11-15.md`.
+
+### Microfranquia: equipe e importação XLS (15/11/2026)
+Hierarquia direta por gestor_participante_id e empresa, sem alterar empresa_usuarios N:N. Microfranquia ativa/aprovada cadastra colaboradores, compartilha convite por código existente e consulta resultados limitados à equipe. Importação autenticada de indicações XLS/XLSX com prévia, modelos, validação e lotes de 25 linhas usa CRM canônico e preserva telefones preexistentes. Perfis financeiros existentes são vinculados sem novas regras ou alterações históricas. Sem migration. Relatório: `docs/relatorios-fases/MICROFRANQUIA-EQUIPE-IMPORTACAO-XLS-2026-11-15.md`.

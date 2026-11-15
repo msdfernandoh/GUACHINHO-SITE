@@ -180,6 +180,7 @@ export async function proxy(request: NextRequest) {
             "/eventos",
             "/qr",
             ...LANDING_BASES,
+            "/modelos",
             "/manifest.webmanifest",
             "/manifest.json",
           ];

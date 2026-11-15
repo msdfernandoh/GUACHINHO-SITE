@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { obterMicrofranquia } from "@/lib/microfranquia/access";
 import { redirect } from "next/navigation";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
@@ -79,13 +80,14 @@ export default async function AppIndicadorPage() {
     indicador?.codigo_indicacao_curto && host
       ? `${protocolo}://${host}/network/${indicador.codigo_indicacao_curto}`
       : null;
+  const microfranquia=await obterMicrofranquia(empresaAtiva.id,participante.id);
   const modelos: Record<string, string> = {
     MICROFRANQUEADO: "Microfranqueado",
     GERADOR_NEGOCIOS: "Gerador de Negócios",
-    GERADOR_POSSIBILIDADES: "Gerador de Possibilidades",
+    GERADOR_POSSIBILIDADES: participante.gestor_participante_id ? "Gerador de Oportunidades" : "Gerador de Possibilidades",
     CONVERSAR_EQUIPE: "Em definição com a equipe",
   };
-  const modeloNegocio =
+  const modeloNegocio = microfranquia ? "Microfranqueado" :
     modelos[indicador?.modelo_interesse ?? ""] ?? "Gerador de Possibilidades";
   return (
     <AppIndicadorTheme racon={racon}>
@@ -133,6 +135,7 @@ export default async function AppIndicadorPage() {
         Conheça os nossos programas
       </Link>
       <nav className="mt-3 grid grid-cols-2 gap-3"><Link href="/app-indicador/simulacao" className="rounded-2xl border p-4 font-bold">Simulação</Link><Link href="/app-indicador/parceria" className="rounded-2xl border p-4 font-bold">Recebimento e parceria</Link></nav>
+      {microfranquia&&<Link href="/app-indicador/equipe" className="mt-3 flex rounded-2xl border border-zinc-700 p-5 font-black">Minha equipe · colaboradores e resultados</Link>}
       <InstalarAppIndicadorCard />
       {linkIndicacao && (
           <IndicadorLinkCard

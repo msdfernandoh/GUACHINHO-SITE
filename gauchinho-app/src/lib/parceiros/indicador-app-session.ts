@@ -6,6 +6,7 @@ import { digitsOnlyPhone } from "@/lib/utils/format";
 type ParticipanteApp = {
   id: string;
   nome: string;
+  gestor_participante_id?: string | null;
   nome_exibicao?: string | null;
   telefone: string | null;
   whatsapp: string | null;
@@ -16,7 +17,7 @@ export async function resolveIndicadorAppSession(empresaId: string, usuarioId: s
   const admin = createAdminClient({ noStore: true });
   const { data: participantes, error: participantesError } = await admin
     .from("participantes_comerciais")
-    .select("id,nome,nome_exibicao,telefone,whatsapp,status,cpf")
+    .select("id,nome,nome_exibicao,telefone,whatsapp,status,cpf,gestor_participante_id")
     .eq("empresa_id", empresaId)
     .eq("usuario_id", usuarioId);
 
