@@ -63,8 +63,7 @@ export function EventoInscricaoForm({ slug, permitirAcompanhante, exigirConvidou
   return (
     <form
       onSubmit={onSubmit}
-      data-site-tone="inverse"
-      className={cn("rounded-2xl border border-zinc-800 bg-zinc-950/80 p-6 sm:p-8", className)}
+      className={cn("evento-inscricao-card rounded-2xl border border-zinc-800 bg-zinc-950/80 p-6 sm:p-8", className)}
     >
       <h2 className="text-xl font-bold text-white">Inscrição</h2>
       <p className="mt-1 text-sm text-zinc-400">Preencha seus dados para participar.</p>

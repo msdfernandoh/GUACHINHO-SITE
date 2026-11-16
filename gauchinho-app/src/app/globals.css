@@ -581,3 +581,23 @@ body.tenant-root-independent {
 .erp-contemplacoes .contemplacoes-quantidade :is(strong, span) {
   color: #065f46 !important;
 }
+
+/* Inscrição de eventos no tema Racon: o tema já escurece títulos, rótulos e
+   textos claros; o cartão escuro precisa virar branco para manter o contraste. */
+.tenant-operational .evento-inscricao-card {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 0.08);
+}
+.tenant-operational .evento-inscricao-card :is(h2, p, label) {
+  color: #0f172a !important;
+}
+.tenant-operational .evento-inscricao-card :is(input, textarea, select) {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 2px solid #94a3b8 !important;
+  font-size: 16px;
+}
+.tenant-operational .evento-inscricao-card :is(input, textarea)::placeholder {
+  color: #64748b !important;
+}
