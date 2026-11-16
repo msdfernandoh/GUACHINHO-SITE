@@ -30,6 +30,12 @@ e as perguntas do check-in (sem NPS, a pedido em 16/11).
 - Evento `chaves-para-o-futuro` criado (prefixo `SPL-`, check-in `ativo_agora`) com sorteio.
 - Inativados: `network-de-negocios` e `do-salario-ao-patrimonio`.
 
+## QR impresso (migration 346)
+O QR dos materiais é `/qr/externo`, que abre o evento **externo** ativo mais recente.
+O "Chaves para o Futuro" virou `tipo_checkin = externo` e o "Sorteios e Oportunidades"
+foi inativado. O QR abre direto no cadastro do corretor. Depois do evento, reativar
+o `sorteios-e-oportunidades` para os panfletos voltarem ao fluxo normal.
+
 ## Código
 - `lib/spl/evento-tipos.ts`, `lib/spl/evento-checkin.ts`, `app/api/public/spl/evento/route.ts`
 - `components/spl/spl-evento-checkin.tsx` (+ `-server.tsx`), `app/(landing-spl)/spl/evento/page.tsx`
