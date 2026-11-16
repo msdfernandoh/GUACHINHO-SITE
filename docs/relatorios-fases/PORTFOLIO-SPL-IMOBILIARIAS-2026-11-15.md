@@ -77,3 +77,17 @@ como disponíveis e só depois inativa as ativas da mesma administradora.
 `lib/cartas/parser-lote.test.ts`, `lib/spl/combinacao-cartas.test.ts`,
 `lib/spl/validacao.test.ts`, `lib/spl/planilha.test.ts` e o caso `spl` em
 `lib/landings/subdominios.test.ts`.
+
+## Ajustes de 15/11/2026 (noite) — migration 341
+- Máscaras de celular, CNPJ e CPF (`lib/spl/mascaras.ts`); celular limitado a 11 números.
+- Chave PIX com tipo obrigatório (celular, CPF, CNPJ, e-mail ou aleatória), validada e
+  normalizada por tipo (`validarChavePix`); coluna `chave_pix_tipo` em imobiliárias e vendedores.
+- "Como pretende remunerar os vendedores": o percentual do vendedor sai do percentual da
+  imobiliária e não pode passar dele (`opcoesRemuneracaoVendedor`, validado também na API).
+  No mesmo modelo da imobiliária aparece o aviso de que ela repassa toda a comissão.
+- CNPJ opcional: o cadastro entra marcado como incompleto (aviso no cadastro, no painel e no admin).
+- Links com o nome da imobiliária: `/spl/painel/<nome>-<token>`, `/spl/e/<nome>-<convite>`,
+  `/spl/v/<nome>-<código>` (links antigos continuam válidos; `lib/spl/links.ts`).
+- Painel da SPL Engenharia, somente leitura e só com números agregados:
+  `/spl/dashboard/spl-engenharia-<token>` (token em `configuracoes_sistema.spl_dashboard`;
+  link exibido em `/admin/spl`).

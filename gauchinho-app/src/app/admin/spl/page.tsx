@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireTenantPermission } from "@/lib/tenant/context";
-import { listarClientesAdmin, listarEmpreendimentos, listarImobiliariasAdmin } from "@/lib/spl/repo";
+import { listarClientesAdmin, listarEmpreendimentos, listarImobiliariasAdmin, tokenDashboardSpl } from "@/lib/spl/repo";
+import { caminhoPainel } from "@/lib/spl/links";
 import { getSplConfig } from "@/lib/spl/config-server";
 import { labelDe, MODELOS_PARCERIA, MODELOS_VENDEDOR, SOLUCOES, STATUS_CLIENTE } from "@/lib/spl/types";
 import { formatCurrency } from "@/lib/utils/format";
@@ -25,11 +26,12 @@ const STATUS_COR: Record<string, string> = {
 export default async function AdminSplPage() {
   const ctx = await requireTenantPermission("gerenciar_imoveis");
   const empresaId = ctx.empresaAtiva!.id;
-  const [imobs, clientes, empreendimentos, config] = await Promise.all([
+  const [imobs, clientes, empreendimentos, config, tokenSpl] = await Promise.all([
     listarImobiliariasAdmin(empresaId),
     listarClientesAdmin(empresaId),
     listarEmpreendimentos(empresaId),
     getSplConfig(),
+    tokenDashboardSpl(),
   ]);
   const pendentes = imobs.filter((i) => i.status === "PENDENTE").length;
   const card = "rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900";
@@ -52,6 +54,19 @@ export default async function AdminSplPage() {
           </Link>
         </div>
       </div>
+
+      {tokenSpl ? (
+        <div className={`${card} flex flex-wrap items-center justify-between gap-3`}>
+          <div>
+            <p className="font-bold">Painel da SPL Engenharia</p>
+            <p className="text-sm text-zinc-500">Link somente leitura com os números de todas as imobiliárias. Envie para a SPL.</p>
+            <p className="mt-1 break-all font-mono text-xs">https://spl.raconsinop.com.br/spl/dashboard/spl-engenharia-{tokenSpl}</p>
+          </div>
+          <a href={`/spl/dashboard/spl-engenharia-${tokenSpl}`} target="_blank" rel="noreferrer" className="rounded-lg border px-3 py-2 text-sm font-semibold">
+            Abrir painel da SPL
+          </a>
+        </div>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-4">
         {[
@@ -89,7 +104,9 @@ export default async function AdminSplPage() {
                       ) : null}
                       <div>
                         <p className="font-semibold">{i.nome}</p>
-                        <p className="text-xs text-zinc-500">{i.cnpj ?? "sem CNPJ"} · PIX {i.chave_pix ?? "—"}</p>
+                        <p className="text-xs text-zinc-500">
+                          {i.cnpj ?? <span className="font-bold text-amber-600">sem CNPJ (incompleto)</span>} · PIX {i.chave_pix_tipo ? `${i.chave_pix_tipo.toLowerCase()} ` : ""}{i.chave_pix ?? "—"}
+                        </p>
                       </div>
                     </div>
                   </td>
@@ -144,7 +161,7 @@ export default async function AdminSplPage() {
                         </>
                       ) : null}
                     </div>
-                    <a href={`/spl/painel/${i.token_painel}`} target="_blank" rel="noreferrer" className="block text-xs font-semibold text-amber-600 underline">
+                    <a href={caminhoPainel(i.nome, i.token_painel)} target="_blank" rel="noreferrer" className="block text-xs font-semibold text-amber-600 underline">
                       Abrir painel da imobiliária
                     </a>
                   </td>

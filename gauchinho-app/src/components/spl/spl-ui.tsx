@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { BotaoCopiar } from "./spl-copiar";
+import { mascaraPix, PIX_TIPOS, type PixTipo } from "@/lib/spl/mascaras";
 
 export const brl = (v: number | null | undefined, casas = 0) =>
   v == null || !Number.isFinite(v)
@@ -134,6 +135,51 @@ export function LinkCopiavel({ titulo, url, mensagemWhatsapp }: { titulo: string
           </a>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/** Tipo da chave (botões) + chave com a máscara do tipo. Componente controlado. */
+export function CampoPix({
+  rotulo = "Chave PIX",
+  tipo,
+  valor,
+  onTipo,
+  onValor,
+}: {
+  rotulo?: string;
+  tipo: PixTipo | "";
+  valor: string;
+  onTipo: (t: PixTipo) => void;
+  onValor: (v: string) => void;
+}) {
+  const atual = PIX_TIPOS.find((t) => t.value === tipo);
+  return (
+    <div className="space-y-2">
+      <span className="block text-base font-bold text-slate-800">{rotulo}</span>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+        {PIX_TIPOS.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            onClick={() => {
+              onTipo(t.value);
+              onValor(mascaraPix(t.value, valor));
+            }}
+            className={`rounded-xl border-2 px-2 py-3 text-base font-bold ${tipo === t.value ? "border-[#153E90] bg-[#153E90] text-white" : "border-slate-200 bg-white text-slate-800"}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <input
+        className={inputGrande}
+        value={valor}
+        disabled={!tipo}
+        inputMode={tipo === "CELULAR" || tipo === "CPF" || tipo === "CNPJ" ? "numeric" : tipo === "EMAIL" ? "email" : "text"}
+        onChange={(e) => onValor(mascaraPix(tipo, e.target.value))}
+        placeholder={atual ? atual.placeholder : "Escolha o tipo da chave acima"}
+      />
     </div>
   );
 }

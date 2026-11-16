@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { upsertLeadPorTelefone } from "@/lib/crm/upsert-lead";
 import { uploadImagemPublica } from "@/lib/storage/imagens";
+import { extrairCodigo, extrairToken } from "./links";
 import { gerarCodigo, type CadastroClienteInput, type CadastroImobiliariaInput, type CadastroVendedorInput } from "./validacao";
 import {
   labelDe,
@@ -18,8 +19,8 @@ import {
 const db = () => createAdminClient({ noStore: true });
 
 const IMOB_COLS =
-  "id,empresa_id,nome,logo_url,responsavel,telefone,email,cnpj,chave_pix,modelo_parceria,quantidade_vendedores,modelo_vendedores,status,exibir_logo,codigo_convite,token_painel,created_at";
-const VEND_COLS = "id,imobiliaria_id,nome,telefone,email,cpf,chave_pix,modelo,codigo,ativo,created_at";
+  "id,empresa_id,nome,logo_url,responsavel,telefone,email,cnpj,chave_pix,chave_pix_tipo,modelo_parceria,quantidade_vendedores,modelo_vendedores,status,exibir_logo,codigo_convite,token_painel,created_at";
+const VEND_COLS = "id,imobiliaria_id,nome,telefone,email,cpf,chave_pix,chave_pix_tipo,modelo,codigo,ativo,created_at";
 const CLI_COLS =
   "id,imobiliaria_id,vendedor_id,nome,telefone,email,empreendimento_slug,unidade,situacao,valor_chaves,solucao,status,origem,proposta_expira_em,created_at";
 
@@ -122,7 +123,7 @@ export async function cadastrarImobiliaria(
   try {
     await cadastrarVendedor(
       imob,
-      { nome: imob.responsavel, telefone: imob.telefone, email: imob.email, cpf: null, chave_pix: null },
+      { nome: imob.responsavel, telefone: imob.telefone, email: imob.email, cpf: null, chave_pix: null, chave_pix_tipo: null },
       "PROPRIO",
     );
   } catch {
@@ -155,7 +156,8 @@ export async function cadastrarImobiliaria(
   return imob;
 }
 
-export async function imobiliariaPorToken(empresaId: string, token: string): Promise<ImobiliariaSpl | null> {
+export async function imobiliariaPorToken(empresaId: string, segmento: string): Promise<ImobiliariaSpl | null> {
+  const token = extrairToken(segmento);
   if (!/^[A-Za-z0-9_-]{32,64}$/.test(token)) return null;
   const { data } = await db()
     .from("spl_imobiliarias")
@@ -167,7 +169,8 @@ export async function imobiliariaPorToken(empresaId: string, token: string): Pro
   return (data as ImobiliariaSpl | null) ?? null;
 }
 
-export async function imobiliariaPorConvite(empresaId: string, codigo: string): Promise<ImobiliariaSpl | null> {
+export async function imobiliariaPorConvite(empresaId: string, segmento: string): Promise<ImobiliariaSpl | null> {
+  const codigo = extrairCodigo(segmento);
   if (!/^[A-Za-z0-9]{6,20}$/.test(codigo)) return null;
   const { data } = await db()
     .from("spl_imobiliarias")
@@ -203,7 +206,8 @@ export async function cadastrarVendedor(
   return data as VendedorSpl;
 }
 
-export async function vendedorPorCodigo(empresaId: string, codigo: string) {
+export async function vendedorPorCodigo(empresaId: string, segmento: string) {
+  const codigo = extrairCodigo(segmento);
   if (!/^[A-Za-z0-9]{6,20}$/.test(codigo)) return null;
   const { data } = await db()
     .from("spl_vendedores")
@@ -340,4 +344,90 @@ export async function listarClientesAdmin(empresaId: string) {
     .order("created_at", { ascending: false })
     .limit(500);
   return (data ?? []) as unknown as (ClienteSpl & { imobiliaria: { nome: string } | null; vendedor: { nome: string } | null })[];
+}
+
+/* ------------------------------ Painel da SPL ------------------------------ */
+
+export const SPL_DASHBOARD_CHAVE = "spl_dashboard";
+
+/** Token do painel da SPL (somente leitura), guardado em configuracoes_sistema. */
+export async function tokenDashboardSpl(): Promise<string | null> {
+  const { data } = await db().from("configuracoes_sistema").select("valor").eq("chave", SPL_DASHBOARD_CHAVE).maybeSingle();
+  const token = (data?.valor as { token?: string } | null)?.token;
+  return typeof token === "string" && token.length >= 32 ? token : null;
+}
+
+/** Números agregados de todas as imobiliárias: sem nomes ou telefones de clientes. */
+export async function dashboardSpl(empresaId: string) {
+  const [{ data: imobs }, { data: vends }, { data: clis }, empreendimentos] = await Promise.all([
+    db()
+      .from("spl_imobiliarias")
+      .select("id,nome,logo_url,status,modelo_parceria,quantidade_vendedores,cnpj,created_at")
+      .eq("empresa_id", empresaId)
+      .neq("status", "RECUSADA")
+      .order("created_at"),
+    db().from("spl_vendedores").select("imobiliaria_id").eq("empresa_id", empresaId).eq("ativo", true),
+    db().from("spl_clientes").select("imobiliaria_id,status,solucao,empreendimento_slug,valor_chaves,situacao").eq("empresa_id", empresaId),
+    listarEmpreendimentos(empresaId),
+  ]);
+  type Cli = { imobiliaria_id: string; status: string; solucao: string | null; empreendimento_slug: string | null; valor_chaves: number | null; situacao: string | null };
+  const clientes = (clis ?? []) as Cli[];
+  const trabalhado = (c: Cli) => c.status !== "NOVO" && c.status !== "PERDIDO";
+  const porStatus = (lista: Cli[], s: string) => lista.filter((c) => c.status === s).length;
+
+  const imobiliarias = ((imobs ?? []) as {
+    id: string;
+    nome: string;
+    logo_url: string | null;
+    status: string;
+    modelo_parceria: string;
+    quantidade_vendedores: number;
+    cnpj: string | null;
+    created_at: string;
+  }[]).map((i) => {
+    const cs = clientes.filter((c) => c.imobiliaria_id === i.id);
+    return {
+      ...i,
+      vendedores: (vends ?? []).filter((v: { imobiliaria_id: string }) => v.imobiliaria_id === i.id).length,
+      clientes: cs.length,
+      emAtendimento: cs.filter(trabalhado).length,
+      propostas: porStatus(cs, "PROPOSTA"),
+      fechados: porStatus(cs, "FECHADO"),
+      valorChaves: cs.reduce((a, c) => a + Number(c.valor_chaves ?? 0), 0),
+    };
+  });
+
+  const porEmpreendimento = empreendimentos.map((e) => {
+    const cs = clientes.filter((c) => c.empreendimento_slug === e.slug);
+    return {
+      slug: e.slug,
+      nome: e.nome,
+      cidade: e.cidade,
+      entrega: e.entrega_texto,
+      unidades: e.vendidas + e.disponiveis,
+      clientes: cs.length,
+      jaComprou: cs.filter((c) => c.situacao === "JA_COMPROU").length,
+      emAtendimento: cs.filter(trabalhado).length,
+      fechados: porStatus(cs, "FECHADO"),
+    };
+  });
+
+  const porSolucao = SOLUCOES.map((s) => ({ label: s.label, total: clientes.filter((c) => c.solucao === s.value).length }));
+
+  return {
+    totais: {
+      imobiliarias: imobiliarias.length,
+      aprovadas: imobiliarias.filter((i) => i.status === "APROVADA").length,
+      pendentes: imobiliarias.filter((i) => i.status === "PENDENTE").length,
+      vendedores: (vends ?? []).length,
+      clientes: clientes.length,
+      emAtendimento: clientes.filter(trabalhado).length,
+      propostas: porStatus(clientes, "PROPOSTA"),
+      fechados: porStatus(clientes, "FECHADO"),
+      carteira: empreendimentos.reduce((a, e) => a + e.vendidas + e.disponiveis, 0),
+    },
+    imobiliarias,
+    porEmpreendimento,
+    porSolucao,
+  };
 }

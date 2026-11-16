@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { labelDe, MODELOS_VENDEDOR, type ModeloVendedor } from "@/lib/spl/types";
-import { Aviso, BotaoGrande, Campo, Cartao, inputGrande, LinkCopiavel } from "./spl-ui";
+import { labelDe, MODELOS_VENDEDOR, PERCENTUAL_VENDEDOR, pct, type ModeloVendedor } from "@/lib/spl/types";
+import { mascaraCpf, mascaraTelefone, type PixTipo } from "@/lib/spl/mascaras";
+import { caminhoPortfolio } from "@/lib/spl/links";
+import { Aviso, BotaoGrande, Campo, CampoPix, Cartao, inputGrande, LinkCopiavel } from "./spl-ui";
 
 export function SplVendedorCadastro({ convite, imobiliaria, modelo }: { convite: string; imobiliaria: string; modelo: ModeloVendedor }) {
-  const [f, setF] = useState({ nome: "", telefone: "", email: "", cpf: "", chave_pix: "" });
+  const [f, setF] = useState({ nome: "", telefone: "", email: "", cpf: "", chave_pix: "", chave_pix_tipo: "" as PixTipo | "" });
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [codigo, setCodigo] = useState<string | null>(null);
-  const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
+  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
   const recebe = modelo !== "PROPRIO";
 
   async function enviar() {
@@ -32,7 +34,7 @@ export function SplVendedorCadastro({ convite, imobiliaria, modelo }: { convite:
   }
 
   if (codigo) {
-    const url = `${window.location.origin}/spl/v/${codigo}`;
+    const url = `${window.location.origin}${caminhoPortfolio(imobiliaria, codigo)}`;
     return (
       <Cartao className="space-y-5">
         <h2 className="text-3xl font-black text-[#0A1931]">Pronto, você está na rede {imobiliaria}!</h2>
@@ -49,27 +51,28 @@ export function SplVendedorCadastro({ convite, imobiliaria, modelo }: { convite:
     <Cartao className="space-y-4">
       <p className="text-sm font-bold uppercase tracking-wide text-[#153E90]">Rede {imobiliaria}</p>
       <h2 className="text-2xl font-black text-[#0A1931]">Cadastro de vendedor</h2>
-      <p className="text-slate-600">Modelo de trabalho: {labelDe(MODELOS_VENDEDOR, modelo)}</p>
+      <p className="text-slate-600">
+        Modelo de trabalho: {labelDe(MODELOS_VENDEDOR, modelo)}
+        {PERCENTUAL_VENDEDOR[modelo] ? ` · ${pct(PERCENTUAL_VENDEDOR[modelo])} da base líquida` : ""}
+      </p>
       <Campo rotulo="Seu nome completo">
         <input className={inputGrande} value={f.nome} onChange={(e) => set("nome", e.target.value)} />
       </Campo>
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="WhatsApp">
-          <input className={inputGrande} inputMode="tel" value={f.telefone} onChange={(e) => set("telefone", e.target.value)} placeholder="(66) 99999-0000" />
+          <input className={inputGrande} inputMode="tel" value={f.telefone} onChange={(e) => set("telefone", mascaraTelefone(e.target.value))} placeholder="(66) 99999-9999" />
         </Campo>
         <Campo rotulo="E-mail (opcional)">
           <input className={inputGrande} inputMode="email" value={f.email} onChange={(e) => set("email", e.target.value)} />
         </Campo>
       </div>
       {recebe ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <>
           <Campo rotulo="CPF">
-            <input className={inputGrande} inputMode="numeric" value={f.cpf} onChange={(e) => set("cpf", e.target.value)} />
+            <input className={inputGrande} inputMode="numeric" value={f.cpf} onChange={(e) => set("cpf", mascaraCpf(e.target.value))} placeholder="000.000.000-00" />
           </Campo>
-          <Campo rotulo="Chave PIX para comissões">
-            <input className={inputGrande} value={f.chave_pix} onChange={(e) => set("chave_pix", e.target.value)} />
-          </Campo>
-        </div>
+          <CampoPix rotulo="Chave PIX para comissões" tipo={f.chave_pix_tipo} valor={f.chave_pix} onTipo={(t) => set("chave_pix_tipo", t)} onValor={(v) => set("chave_pix", v)} />
+        </>
       ) : null}
       {erro ? <Aviso>{erro}</Aviso> : null}
       <BotaoGrande tipo="ouro" onClick={enviar} disabled={enviando} className="w-full">

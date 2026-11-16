@@ -1,8 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { MODELOS_PARCERIA, MODELOS_VENDEDOR, type ModeloParceria, type ModeloVendedor } from "@/lib/spl/types";
-import { Aviso, BotaoGrande, Campo, Cartao, inputGrande, LinkCopiavel } from "./spl-ui";
+import {
+  MODELOS_PARCERIA,
+  opcoesRemuneracaoVendedor,
+  PERCENTUAL_PARCERIA,
+  pct,
+  type ModeloParceria,
+  type ModeloVendedor,
+} from "@/lib/spl/types";
+import { mascaraCnpj, mascaraTelefone, type PixTipo } from "@/lib/spl/mascaras";
+import { caminhoConvite, caminhoPainel } from "@/lib/spl/links";
+import { Aviso, BotaoGrande, Campo, CampoPix, Cartao, inputGrande, LinkCopiavel } from "./spl-ui";
 
 type Resultado = { token: string; convite: string; nome: string };
 
@@ -19,12 +28,24 @@ export function SplCadastroImobiliaria() {
     email: "",
     cnpj: "",
     chave_pix: "",
+    chave_pix_tipo: "" as PixTipo | "",
     modelo_parceria: "" as ModeloParceria | "",
     quantidade_vendedores: "",
     modelo_vendedores: "PROPRIO" as ModeloVendedor,
   });
-  const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
+  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
   const soLibera = f.modelo_parceria === "SOMENTE_LIBERAR_CARTEIRA";
+  const semCnpj = f.cnpj.replace(/\D/g, "").length === 0;
+  const opcoes = opcoesRemuneracaoVendedor(f.modelo_parceria);
+  const daImob = f.modelo_parceria ? PERCENTUAL_PARCERIA[f.modelo_parceria] : 0;
+  const escolhida = opcoes.find((o) => o.value === f.modelo_vendedores);
+
+  function escolherModelo(m: ModeloParceria) {
+    setF((p) => {
+      const permitido = opcoesRemuneracaoVendedor(m).find((o) => o.value === p.modelo_vendedores)?.permitido;
+      return { ...p, modelo_parceria: m, modelo_vendedores: permitido ? p.modelo_vendedores : "PROPRIO" };
+    });
+  }
 
   function avancar() {
     setErro(null);
@@ -34,7 +55,13 @@ export function SplCadastroImobiliaria() {
       if (f.telefone.replace(/\D/g, "").length < 10) return setErro("Informe o telefone com DDD.");
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) return setErro("Informe um e-mail válido.");
     }
-    if (passo === 1 && !f.modelo_parceria) return setErro("Escolha o modelo de parceria.");
+    if (passo === 1) {
+      if (!f.modelo_parceria) return setErro("Escolha o modelo de parceria.");
+      if (!soLibera && !f.chave_pix_tipo) return setErro("Escolha o tipo da chave PIX.");
+      if (!soLibera && f.chave_pix.trim().length < 3) return setErro("Informe a chave PIX para receber as comissões.");
+      const cnpj = f.cnpj.replace(/\D/g, "");
+      if (cnpj && cnpj.length !== 14) return setErro("CNPJ incompleto. Confira os 14 números ou deixe em branco.");
+    }
     setPasso((p) => p + 1);
   }
 
@@ -49,11 +76,6 @@ export function SplCadastroImobiliaria() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Não foi possível cadastrar.");
       setResultado(data as Resultado);
-      try {
-        localStorage.setItem("spl_painel_token", data.token);
-      } catch {
-        // navegador sem armazenamento: o link do painel aparece na tela
-      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível cadastrar.");
     } finally {
@@ -63,6 +85,7 @@ export function SplCadastroImobiliaria() {
 
   if (resultado) {
     const origem = typeof window !== "undefined" ? window.location.origin : "";
+    const painel = caminhoPainel(resultado.nome, resultado.token);
     return (
       <Cartao className="space-y-5">
         <p className="text-sm font-bold uppercase tracking-wide text-emerald-700">Cadastro recebido</p>
@@ -71,16 +94,16 @@ export function SplCadastroImobiliaria() {
           Guarde o link do seu painel: é por ele que você sobe clientes e acompanha tudo. A logo aparece na página
           depois da aprovação da nossa equipe.
         </p>
-        <LinkCopiavel titulo="Seu painel (guarde este link)" url={`${origem}/spl/painel/${resultado.token}`} />
+        {semCnpj && !soLibera ? (
+          <Aviso tom="info">Seu cadastro ficou incompleto porque falta o CNPJ. Envie para a nossa equipe para liberar as comissões.</Aviso>
+        ) : null}
+        <LinkCopiavel titulo="Seu painel (guarde este link)" url={`${origem}${painel}`} />
         <LinkCopiavel
           titulo="Link para os seus vendedores se cadastrarem"
-          url={`${origem}/spl/e/${resultado.convite}`}
+          url={`${origem}${caminhoConvite(resultado.nome, resultado.convite)}`}
           mensagemWhatsapp={`Cadastre-se na rede ${resultado.nome} do portfólio SPL:`}
         />
-        <a
-          href={`/spl/painel/${resultado.token}`}
-          className="block rounded-2xl bg-[#153E90] px-6 py-4 text-center text-lg font-extrabold text-white"
-        >
+        <a href={painel} className="block rounded-2xl bg-[#153E90] px-6 py-4 text-center text-lg font-extrabold text-white">
           Abrir meu painel
         </a>
       </Cartao>
@@ -113,8 +136,14 @@ export function SplCadastroImobiliaria() {
             <input className={inputGrande} value={f.responsavel} onChange={(e) => set("responsavel", e.target.value)} placeholder="Nome completo" />
           </Campo>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Campo rotulo="Telefone / WhatsApp">
-              <input className={inputGrande} inputMode="tel" value={f.telefone} onChange={(e) => set("telefone", e.target.value)} placeholder="(66) 99999-0000" />
+            <Campo rotulo="Celular / WhatsApp">
+              <input
+                className={inputGrande}
+                inputMode="tel"
+                value={f.telefone}
+                onChange={(e) => set("telefone", mascaraTelefone(e.target.value))}
+                placeholder="(66) 99999-9999"
+              />
             </Campo>
             <Campo rotulo="E-mail">
               <input className={inputGrande} inputMode="email" value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="contato@imobiliaria.com.br" />
@@ -131,7 +160,7 @@ export function SplCadastroImobiliaria() {
               <button
                 key={m.value}
                 type="button"
-                onClick={() => set("modelo_parceria", m.value)}
+                onClick={() => escolherModelo(m.value)}
                 className={`rounded-2xl border-2 p-4 text-left transition ${f.modelo_parceria === m.value ? "border-[#153E90] bg-[#153E90]/5 ring-4 ring-[#153E90]/10" : "border-slate-200 bg-white"}`}
               >
                 <span className="flex items-baseline justify-between gap-3">
@@ -142,14 +171,25 @@ export function SplCadastroImobiliaria() {
               </button>
             ))}
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Campo rotulo={soLibera ? "CNPJ (opcional)" : "CNPJ"}>
-              <input className={inputGrande} inputMode="numeric" value={f.cnpj} onChange={(e) => set("cnpj", e.target.value)} placeholder="00.000.000/0000-00" />
-            </Campo>
-            <Campo rotulo={soLibera ? "Chave PIX (opcional)" : "Chave PIX para comissões"}>
-              <input className={inputGrande} value={f.chave_pix} onChange={(e) => set("chave_pix", e.target.value)} placeholder="CNPJ, e-mail ou telefone" />
-            </Campo>
-          </div>
+          <Campo rotulo="CNPJ" dica="Se não tiver agora, pode deixar em branco e enviar depois.">
+            <input
+              className={inputGrande}
+              inputMode="numeric"
+              value={f.cnpj}
+              onChange={(e) => set("cnpj", mascaraCnpj(e.target.value))}
+              placeholder="00.000.000/0000-00"
+            />
+          </Campo>
+          {semCnpj && f.modelo_parceria && !soLibera ? (
+            <Aviso tom="info">Sem o CNPJ o cadastro fica incompleto. Você pode concluir agora e enviar o CNPJ depois.</Aviso>
+          ) : null}
+          <CampoPix
+            rotulo={soLibera ? "Chave PIX (opcional)" : "Chave PIX para receber as comissões"}
+            tipo={f.chave_pix_tipo}
+            valor={f.chave_pix}
+            onTipo={(t) => set("chave_pix_tipo", t)}
+            onValor={(v) => set("chave_pix", v)}
+          />
         </div>
       ) : null}
 
@@ -161,24 +201,49 @@ export function SplCadastroImobiliaria() {
               className={inputGrande}
               inputMode="numeric"
               value={f.quantidade_vendedores}
-              onChange={(e) => set("quantidade_vendedores", e.target.value.replace(/\D/g, ""))}
+              onChange={(e) => set("quantidade_vendedores", e.target.value.replace(/\D/g, "").slice(0, 4))}
               placeholder="5"
             />
           </Campo>
-          <p className="text-base font-bold text-slate-800">Como os vendedores vão trabalhar?</p>
+          <div>
+            <p className="text-lg font-black text-[#0A1931]">Como pretende remunerar os vendedores?</p>
+            <p className="text-base text-slate-600">
+              {soLibera
+                ? "No modelo sem participação não há comissão para repassar: os vendedores ficam no modelo próprio."
+                : `A comissão do vendedor sai do seu percentual de ${pct(daImob)}.`}
+            </p>
+          </div>
           <div className="grid gap-3">
-            {MODELOS_VENDEDOR.map((m) => (
+            {opcoes.map((o) => (
               <button
-                key={m.value}
+                key={o.value}
                 type="button"
-                onClick={() => set("modelo_vendedores", m.value)}
-                className={`rounded-2xl border-2 p-4 text-left ${f.modelo_vendedores === m.value ? "border-[#153E90] bg-[#153E90]/5 ring-4 ring-[#153E90]/10" : "border-slate-200 bg-white"}`}
+                disabled={!o.permitido}
+                onClick={() => set("modelo_vendedores", o.value)}
+                className={`rounded-2xl border-2 p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${f.modelo_vendedores === o.value ? "border-[#153E90] bg-[#153E90]/5 ring-4 ring-[#153E90]/10" : "border-slate-200 bg-white"}`}
               >
-                <span className="block text-lg font-black text-[#0A1931]">{m.label}</span>
-                <span className="block text-base text-slate-600">{m.descricao}</span>
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="text-lg font-black text-[#0A1931]">{o.label}</span>
+                  <span className="text-xl font-black text-[#153E90]">{o.doVendedor ? pct(o.doVendedor) : "—"}</span>
+                </span>
+                <span className="block text-base text-slate-600">{o.descricao}</span>
+                {o.permitido && o.doVendedor > 0 && !soLibera ? (
+                  <span className="mt-1 block text-sm font-bold text-slate-700">
+                    Vendedor {pct(o.doVendedor)} · fica com a imobiliária {pct(o.ficaImobiliaria)}
+                  </span>
+                ) : null}
+                {!o.permitido ? (
+                  <span className="mt-1 block text-sm font-bold text-slate-500">Maior que o seu percentual de {pct(daImob)}.</span>
+                ) : null}
               </button>
             ))}
           </div>
+          {escolhida?.repassaTudo ? (
+            <Aviso tom="info">
+              Atenção: no mesmo modelo da imobiliária, você repassa toda a sua comissão ({pct(escolhida.doVendedor)}) ao vendedor. A
+              imobiliária não fica com percentual nessas vendas.
+            </Aviso>
+          ) : null}
         </div>
       ) : null}
 

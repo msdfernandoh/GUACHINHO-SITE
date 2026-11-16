@@ -6,16 +6,21 @@ import {
   labelDe,
   MODELOS_PARCERIA,
   MODELOS_VENDEDOR,
+  opcoesRemuneracaoVendedor,
+  pct,
   SOLUCOES,
   STATUS_CLIENTE,
   type ClienteSpl,
   type EmpreendimentoSpl,
   type ImobiliariaSpl,
+  type ModeloParceria,
   type ModeloVendedor,
   type VendedorSpl,
 } from "@/lib/spl/types";
+import { mascaraCpf, mascaraTelefone, type PixTipo } from "@/lib/spl/mascaras";
+import { caminhoConvite, caminhoPortfolio } from "@/lib/spl/links";
 import { baixarModeloCarteira, lerPlanilhaCarteira, type LinhaCarteira } from "@/lib/spl/planilha";
-import { Aviso, BotaoGrande, Campo, Cartao, fone, inputGrande, LinkCopiavel, brl } from "./spl-ui";
+import { Aviso, BotaoGrande, Campo, CampoPix, Cartao, fone, inputGrande, LinkCopiavel, brl } from "./spl-ui";
 
 type Props = {
   imob: Omit<ImobiliariaSpl, "token_painel">;
@@ -66,6 +71,10 @@ export function SplPainel({ imob, token, vendedores, clientes, empreendimentos }
         </span>
       </Cartao>
 
+      {!imob.cnpj && imob.modelo_parceria !== "SOMENTE_LIBERAR_CARTEIRA" ? (
+        <Aviso tom="info">Cadastro incompleto: falta o CNPJ da imobiliária. Envie para a nossa equipe para liberar as comissões.</Aviso>
+      ) : null}
+
       <div className="grid grid-cols-3 gap-3">
         {[
           [clientes.length, "clientes na carteira"],
@@ -88,7 +97,7 @@ export function SplPainel({ imob, token, vendedores, clientes, empreendimentos }
             <BotaoGrande onClick={() => setAba("planilha")}>Subir planilha de clientes</BotaoGrande>
             {responsavel ? (
               <a
-                href={`/spl/v/${responsavel.codigo}`}
+                href={caminhoPortfolio(imob.nome, responsavel.codigo)}
                 className="flex min-h-[60px] items-center justify-center rounded-2xl bg-[#16A34A] px-6 py-4 text-center text-lg font-extrabold text-white"
               >
                 Abrir portfólio para apresentar
@@ -101,7 +110,7 @@ export function SplPainel({ imob, token, vendedores, clientes, empreendimentos }
 
           <LinkCopiavel
             titulo="Link para seus vendedores entrarem na sua rede"
-            url={`${origem}/spl/e/${imob.codigo_convite}`}
+            url={`${origem}${caminhoConvite(imob.nome, imob.codigo_convite)}`}
             mensagemWhatsapp={`Cadastre-se na rede ${imob.nome} do portfólio SPL:`}
           />
 
@@ -116,7 +125,7 @@ export function SplPainel({ imob, token, vendedores, clientes, empreendimentos }
                       {fone(v.telefone)} · {labelDe(MODELOS_VENDEDOR, v.modelo)}
                     </p>
                   </div>
-                  <a href={`/spl/v/${v.codigo}`} className="rounded-xl border-2 border-[#153E90] px-3 py-2 text-sm font-bold text-[#153E90]">
+                  <a href={caminhoPortfolio(imob.nome, v.codigo)} className="rounded-xl border-2 border-[#153E90] px-3 py-2 text-sm font-bold text-[#153E90]">
                     Portfólio
                   </a>
                 </li>
@@ -165,7 +174,9 @@ export function SplPainel({ imob, token, vendedores, clientes, empreendimentos }
 
       {aba === "cliente" ? <FormCliente token={token} empreendimentos={empreendimentos} onFim={voltar} /> : null}
       {aba === "planilha" ? <FormPlanilha token={token} empreendimentos={empreendimentos} onFim={voltar} /> : null}
-      {aba === "vendedor" ? <FormVendedor token={token} padrao={imob.modelo_vendedores} onFim={voltar} /> : null}
+      {aba === "vendedor" ? (
+        <FormVendedor token={token} padrao={imob.modelo_vendedores} modeloImob={imob.modelo_parceria} nomeImob={imob.nome} onFim={voltar} />
+      ) : null}
     </div>
   );
 }
@@ -215,7 +226,7 @@ function FormCliente({ token, empreendimentos, onFim }: { token: string; empreen
       </Campo>
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="WhatsApp">
-          <input className={inputGrande} inputMode="tel" value={f.telefone} onChange={(e) => set("telefone", e.target.value)} placeholder="(66) 99999-0000" />
+          <input className={inputGrande} inputMode="tel" value={f.telefone} onChange={(e) => set("telefone", mascaraTelefone(e.target.value))} placeholder="(66) 99999-9999" />
         </Campo>
         <Campo rotulo="E-mail (opcional)">
           <input className={inputGrande} inputMode="email" value={f.email} onChange={(e) => set("email", e.target.value)} />
@@ -342,13 +353,27 @@ function FormPlanilha({ token, empreendimentos, onFim }: { token: string; empree
   );
 }
 
-function FormVendedor({ token, padrao, onFim }: { token: string; padrao: ModeloVendedor; onFim: () => void }) {
-  const [f, setF] = useState({ nome: "", telefone: "", email: "", cpf: "", chave_pix: "", modelo: padrao as string });
+function FormVendedor({
+  token,
+  padrao,
+  modeloImob,
+  nomeImob,
+  onFim,
+}: {
+  token: string;
+  padrao: ModeloVendedor;
+  modeloImob: ModeloParceria;
+  nomeImob: string;
+  onFim: () => void;
+}) {
+  const [f, setF] = useState({ nome: "", telefone: "", email: "", cpf: "", chave_pix: "", chave_pix_tipo: "" as PixTipo | "", modelo: padrao as string });
   const [erro, setErro] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
-  const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
+  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
   const recebe = f.modelo !== "PROPRIO";
+  const opcoes = opcoesRemuneracaoVendedor(modeloImob);
+  const escolhida = opcoes.find((o) => o.value === f.modelo);
 
   async function salvar() {
     setErro(null);
@@ -362,8 +387,8 @@ function FormVendedor({ token, padrao, onFim }: { token: string; padrao: ModeloV
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Não foi possível cadastrar.");
-      setOk(`${data.nome} entrou na sua rede. Portfólio: ${window.location.origin}/spl/v/${data.codigo}`);
-      setF({ nome: "", telefone: "", email: "", cpf: "", chave_pix: "", modelo: f.modelo });
+      setOk(`${data.nome} entrou na sua rede. Portfólio: ${window.location.origin}${caminhoPortfolio(nomeImob, data.codigo)}`);
+      setF({ nome: "", telefone: "", email: "", cpf: "", chave_pix: "", chave_pix_tipo: "", modelo: f.modelo });
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro ao cadastrar.");
     } finally {
@@ -375,38 +400,42 @@ function FormVendedor({ token, padrao, onFim }: { token: string; padrao: ModeloV
     <Cartao className="space-y-4">
       <Voltar onClick={onFim} />
       <h2 className="text-2xl font-black text-[#0A1931]">Cadastrar vendedor</h2>
+      <p className="text-base font-bold text-slate-800">Como vai remunerar este vendedor?</p>
       <div className="grid gap-2 sm:grid-cols-3">
-        {MODELOS_VENDEDOR.map((m) => (
+        {opcoes.map((o) => (
           <button
-            key={m.value}
+            key={o.value}
             type="button"
-            onClick={() => set("modelo", m.value)}
-            className={`rounded-2xl border-2 px-3 py-4 text-base font-bold ${f.modelo === m.value ? "border-[#153E90] bg-[#153E90] text-white" : "border-slate-200 bg-white"}`}
+            disabled={!o.permitido}
+            onClick={() => set("modelo", o.value)}
+            className={`rounded-2xl border-2 px-3 py-4 text-left text-base font-bold disabled:opacity-45 ${f.modelo === o.value ? "border-[#153E90] bg-[#153E90] text-white" : "border-slate-200 bg-white"}`}
           >
-            {m.label}
+            {o.label}
+            <span className="block text-sm font-semibold opacity-80">{o.doVendedor ? `${pct(o.doVendedor)} · fica ${pct(o.ficaImobiliaria)} com você` : "Você paga do seu jeito"}</span>
           </button>
         ))}
       </div>
+      {escolhida?.repassaTudo ? (
+        <Aviso tom="info">Neste modelo você repassa toda a sua comissão ({pct(escolhida.doVendedor)}) ao vendedor.</Aviso>
+      ) : null}
       <Campo rotulo="Nome">
         <input className={inputGrande} value={f.nome} onChange={(e) => set("nome", e.target.value)} />
       </Campo>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="WhatsApp">
-          <input className={inputGrande} inputMode="tel" value={f.telefone} onChange={(e) => set("telefone", e.target.value)} />
+        <Campo rotulo="Celular / WhatsApp">
+          <input className={inputGrande} inputMode="tel" value={f.telefone} onChange={(e) => set("telefone", mascaraTelefone(e.target.value))} placeholder="(66) 99999-9999" />
         </Campo>
         <Campo rotulo="E-mail (opcional)">
           <input className={inputGrande} value={f.email} onChange={(e) => set("email", e.target.value)} />
         </Campo>
       </div>
       {recebe ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <>
           <Campo rotulo="CPF">
-            <input className={inputGrande} inputMode="numeric" value={f.cpf} onChange={(e) => set("cpf", e.target.value)} />
+            <input className={inputGrande} inputMode="numeric" value={f.cpf} onChange={(e) => set("cpf", mascaraCpf(e.target.value))} placeholder="000.000.000-00" />
           </Campo>
-          <Campo rotulo="Chave PIX">
-            <input className={inputGrande} value={f.chave_pix} onChange={(e) => set("chave_pix", e.target.value)} />
-          </Campo>
-        </div>
+          <CampoPix tipo={f.chave_pix_tipo} valor={f.chave_pix} onTipo={(t) => set("chave_pix_tipo", t)} onValor={(v) => set("chave_pix", v)} />
+        </>
       ) : (
         <Aviso tom="info">No modelo próprio a imobiliária paga o vendedor. Ele não vê comissão nem forma de pagamento.</Aviso>
       )}

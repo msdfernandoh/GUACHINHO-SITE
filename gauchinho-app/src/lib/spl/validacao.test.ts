@@ -5,6 +5,7 @@ import {
   validarCadastroCliente,
   validarCadastroImobiliaria,
   validarCadastroVendedor,
+  validarChavePix,
   valorMonetarioBr,
 } from "./validacao";
 
@@ -15,6 +16,7 @@ const base = {
   email: "ana@norte.com.br",
   cnpj: "11.222.333/0001-81",
   chave_pix: "ana@norte.com.br",
+  chave_pix_tipo: "EMAIL",
   modelo_parceria: "GERADOR_NEGOCIOS",
   quantidade_vendedores: 5,
   modelo_vendedores: "PROPRIO",
@@ -30,9 +32,28 @@ describe("cadastro da imobiliária", () => {
     }
   });
 
-  it("exige CNPJ e PIX de quem participa do plano", () => {
-    expect(validarCadastroImobiliaria({ ...base, cnpj: "" }).ok).toBe(false);
+  it("aceita sem CNPJ (cadastro incompleto), mas exige PIX de quem participa", () => {
+    const r = validarCadastroImobiliaria({ ...base, cnpj: "" });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.data.cnpj).toBeNull();
     expect(validarCadastroImobiliaria({ ...base, chave_pix: "" }).ok).toBe(false);
+    expect(validarCadastroImobiliaria({ ...base, chave_pix_tipo: "" }).ok).toBe(false);
+  });
+
+  it("valida a chave PIX pelo tipo", () => {
+    expect(validarChavePix("CELULAR", "(66) 99608-6030")).toEqual({ ok: true, data: { tipo: "CELULAR", chave: "66996086030" } });
+    expect(validarChavePix("CPF", "529.982.247-25").ok).toBe(true);
+    expect(validarChavePix("CPF", "111.111.111-11").ok).toBe(false);
+    expect(validarChavePix("CNPJ", "11.222.333/0001-81").ok).toBe(true);
+    expect(validarChavePix("EMAIL", "nao-e-email").ok).toBe(false);
+    expect(validarChavePix("ALEATORIA", "123e4567-e89b-12d3-a456-426614174000").ok).toBe(true);
+    expect(validarChavePix("ALEATORIA", "abc").ok).toBe(false);
+  });
+
+  it("não deixa o vendedor ganhar mais que a imobiliária", () => {
+    expect(validarCadastroImobiliaria({ ...base, modelo_parceria: "GERADOR_OPORTUNIDADES", modelo_vendedores: "GERADOR_NEGOCIOS" }).ok).toBe(false);
+    expect(validarCadastroImobiliaria({ ...base, modelo_parceria: "GERADOR_OPORTUNIDADES", modelo_vendedores: "GERADOR_OPORTUNIDADES" }).ok).toBe(true);
+    expect(validarCadastroImobiliaria({ ...base, modelo_parceria: "SOMENTE_LIBERAR_CARTEIRA", cnpj: "", chave_pix: "", chave_pix_tipo: "", modelo_vendedores: "GERADOR_OPORTUNIDADES" }).ok).toBe(false);
   });
 
   it("quem só libera a carteira não precisa de CNPJ nem PIX", () => {
@@ -57,7 +78,7 @@ describe("cadastro do vendedor", () => {
     expect(validarCadastroVendedor({ nome: "João Lima", telefone: "66999990000" }, "GERADOR_NEGOCIOS").ok).toBe(false);
     expect(
       validarCadastroVendedor(
-        { nome: "João Lima", telefone: "66999990000", cpf: "529.982.247-25", chave_pix: "joao@pix" },
+        { nome: "João Lima", telefone: "66999990000", cpf: "529.982.247-25", chave_pix: "joao@pix.com", chave_pix_tipo: "EMAIL" },
         "GERADOR_NEGOCIOS",
       ).ok,
     ).toBe(true);

@@ -8,6 +8,7 @@ import { buildDadosSimulacaoGrupos } from "@/lib/contratacoes-online/build-grupo
 import { useIniciarContratacao } from "@/lib/contratacoes-online/use-iniciar-contratacao";
 import { simularFinanciamento } from "@/lib/simulador/financiamento";
 import { valorMonetarioBr } from "@/lib/spl/validacao";
+import { mascaraTelefone } from "@/lib/spl/mascaras";
 import type { EmpreendimentoSpl, ModeloVendedor, SolucaoSpl } from "@/lib/spl/types";
 import { Aviso, BotaoGrande, Campo, Cartao, brl, brl2, inputGrande } from "./spl-ui";
 
@@ -655,7 +656,7 @@ function TelaCliente({
         <input className={inputGrande} value={nome} onChange={(e) => setNome(e.target.value)} />
       </Campo>
       <Campo rotulo="WhatsApp do cliente">
-        <input className={inputGrande} inputMode="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(66) 99999-0000" />
+        <input className={inputGrande} inputMode="tel" value={telefone} onChange={(e) => setTelefone(mascaraTelefone(e.target.value))} placeholder="(66) 99999-9999" />
       </Campo>
       <Campo rotulo="Unidade (opcional)">
         <input className={inputGrande} value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="Torre 1 · 302" />

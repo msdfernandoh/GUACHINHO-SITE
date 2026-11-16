@@ -1,5 +1,7 @@
 import { isValidBrazilianPhone, normalizePhoneForLead } from "@/lib/crm/upsert-lead";
+import { PIX_TIPOS, type PixTipo } from "./mascaras";
 import {
+  remuneracaoVendedorPermitida,
   MODELOS_PARCERIA,
   MODELOS_VENDEDOR,
   SOLUCOES,
@@ -37,6 +39,38 @@ export function cpfValido(cpf: string): boolean {
   return true;
 }
 
+/** Valida e normaliza a chave PIX conforme o tipo escolhido. */
+export function validarChavePix(tipoRaw: unknown, valorRaw: unknown): Ok<{ tipo: PixTipo; chave: string }> | Erro {
+  const tipo = String(tipoRaw ?? "") as PixTipo;
+  const valor = String(valorRaw ?? "").trim();
+  if (!PIX_TIPOS.some((t) => t.value === tipo)) return { ok: false, error: "Escolha o tipo da chave PIX." };
+  if (tipo === "CELULAR") {
+    const d = valor.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+    if (!isValidBrazilianPhone(d)) return { ok: false, error: "Chave PIX de celular inválida. Inclua o DDD." };
+    return { ok: true, data: { tipo, chave: d } };
+  }
+  if (tipo === "CPF") {
+    const d = digitos(valor);
+    if (!cpfValido(d)) return { ok: false, error: "Chave PIX de CPF inválida." };
+    return { ok: true, data: { tipo, chave: d } };
+  }
+  if (tipo === "CNPJ") {
+    const d = digitos(valor);
+    if (!cnpjValido(d)) return { ok: false, error: "Chave PIX de CNPJ inválida." };
+    return { ok: true, data: { tipo, chave: d } };
+  }
+  if (tipo === "EMAIL") {
+    const e = valor.toLowerCase();
+    if (!emailValido(e) || e.length > 77) return { ok: false, error: "Chave PIX de e-mail inválida." };
+    return { ok: true, data: { tipo, chave: e } };
+  }
+  const a = valor.toLowerCase();
+  if (!/^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/.test(a)) {
+    return { ok: false, error: "Chave PIX aleatória inválida. Copie e cole a chave completa." };
+  }
+  return { ok: true, data: { tipo, chave: a } };
+}
+
 export type CadastroImobiliariaInput = {
   nome: string;
   responsavel: string;
@@ -44,6 +78,7 @@ export type CadastroImobiliariaInput = {
   email: string;
   cnpj: string | null;
   chave_pix: string | null;
+  chave_pix_tipo: PixTipo | null;
   modelo_parceria: ModeloParceria;
   quantidade_vendedores: number;
   modelo_vendedores: ModeloVendedor;
@@ -70,9 +105,17 @@ export function validarCadastroImobiliaria(raw: Record<string, unknown>): Ok<Cad
     return { ok: false, error: "Quantidade de vendedores inválida." };
   }
   const participa = modelo_parceria !== "SOMENTE_LIBERAR_CARTEIRA";
+  // CNPJ é opcional: sem ele o cadastro entra, mas fica marcado como incompleto.
   if (cnpj && !cnpjValido(cnpj)) return { ok: false, error: "CNPJ inválido." };
-  if (participa && !cnpj) return { ok: false, error: "Informe o CNPJ da imobiliária." };
-  if (participa && chave_pix.length < 3) return { ok: false, error: "Informe a chave PIX para receber as comissões." };
+  if (!remuneracaoVendedorPermitida(modelo_parceria, modelo_vendedores)) {
+    return { ok: false, error: "A remuneração dos vendedores não pode passar do percentual do seu modelo." };
+  }
+  let pix: { tipo: PixTipo; chave: string } | null = null;
+  if (participa || chave_pix) {
+    const r = validarChavePix(raw.chave_pix_tipo, chave_pix);
+    if (!r.ok) return participa ? r : { ok: false, error: r.error };
+    pix = r.data;
+  }
 
   return {
     ok: true,
@@ -82,7 +125,8 @@ export function validarCadastroImobiliaria(raw: Record<string, unknown>): Ok<Cad
       telefone,
       email,
       cnpj: cnpj || null,
-      chave_pix: participa ? chave_pix : chave_pix || null,
+      chave_pix: pix?.chave ?? null,
+      chave_pix_tipo: pix?.tipo ?? null,
       modelo_parceria,
       quantidade_vendedores,
       modelo_vendedores,
@@ -96,6 +140,7 @@ export type CadastroVendedorInput = {
   email: string | null;
   cpf: string | null;
   chave_pix: string | null;
+  chave_pix_tipo: PixTipo | null;
 };
 
 /** O PIX só é pedido quando o vendedor recebe comissão pela parceria. */
@@ -111,10 +156,22 @@ export function validarCadastroVendedor(raw: Record<string, unknown>, modelo: Mo
   const recebe = modelo !== "PROPRIO";
   if (recebe && !cpfValido(cpf)) return { ok: false, error: "Informe um CPF válido para receber as comissões." };
   if (!recebe && cpf && !cpfValido(cpf)) return { ok: false, error: "CPF inválido." };
-  if (recebe && chave_pix.length < 3) return { ok: false, error: "Informe a chave PIX para receber as comissões." };
+  let pix: { tipo: PixTipo; chave: string } | null = null;
+  if (recebe) {
+    const r = validarChavePix(raw.chave_pix_tipo, chave_pix);
+    if (!r.ok) return r;
+    pix = r.data;
+  }
   return {
     ok: true,
-    data: { nome, telefone, email: email || null, cpf: cpf || null, chave_pix: recebe ? chave_pix : null },
+    data: {
+      nome,
+      telefone,
+      email: email || null,
+      cpf: cpf || null,
+      chave_pix: pix?.chave ?? null,
+      chave_pix_tipo: pix?.tipo ?? null,
+    },
   };
 }
 

@@ -32,9 +32,9 @@ export const MODELOS_PARCERIA = [
 export type ModeloParceria = (typeof MODELOS_PARCERIA)[number]["value"];
 
 export const MODELOS_VENDEDOR = [
-  { value: "PROPRIO", label: "Modelo próprio", descricao: "A imobiliária paga o vendedor. Ele não vê comissão nem PIX no app." },
-  { value: "GERADOR_NEGOCIOS", label: "Gerador de negócios", descricao: "O vendedor participa das reuniões e vendas." },
-  { value: "GERADOR_OPORTUNIDADES", label: "Gerador de oportunidades", descricao: "O vendedor só indica clientes." },
+  { value: "PROPRIO", label: "Modelo próprio", descricao: "Você paga o vendedor do seu jeito. Ele não vê comissão nem PIX no app." },
+  { value: "GERADOR_NEGOCIOS", label: "Gerador de negócios", descricao: "O vendedor participa das reuniões e vendas e recebe 25%." },
+  { value: "GERADOR_OPORTUNIDADES", label: "Gerador de oportunidades", descricao: "O vendedor só indica clientes e recebe 12,5%." },
 ] as const;
 
 export type ModeloVendedor = (typeof MODELOS_VENDEDOR)[number]["value"];
@@ -90,6 +90,7 @@ export type ImobiliariaSpl = {
   email: string;
   cnpj: string | null;
   chave_pix: string | null;
+  chave_pix_tipo: string | null;
   modelo_parceria: ModeloParceria;
   quantidade_vendedores: number;
   modelo_vendedores: ModeloVendedor;
@@ -108,6 +109,7 @@ export type VendedorSpl = {
   email: string | null;
   cpf: string | null;
   chave_pix: string | null;
+  chave_pix_tipo: string | null;
   modelo: ModeloVendedor;
   codigo: string;
   ativo: boolean;
@@ -134,6 +136,44 @@ export type ClienteSpl = {
 
 export const labelDe = <T extends { value: string; label: string }>(lista: readonly T[], v: string | null | undefined) =>
   lista.find((i) => i.value === v)?.label ?? "—";
+
+/** Percentual da base líquida de cada modelo (consórcio). */
+export const PERCENTUAL_PARCERIA: Record<ModeloParceria, number> = {
+  GERADOR_OPORTUNIDADES: 12.5,
+  GERADOR_NEGOCIOS: 25,
+  MICROFRANQUIA: 50,
+  SOMENTE_LIBERAR_CARTEIRA: 0,
+};
+
+export const PERCENTUAL_VENDEDOR: Record<ModeloVendedor, number> = {
+  PROPRIO: 0,
+  GERADOR_OPORTUNIDADES: 12.5,
+  GERADOR_NEGOCIOS: 25,
+};
+
+export const pct = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
+
+/**
+ * Como a imobiliária pode remunerar os vendedores: o percentual do vendedor sai
+ * do percentual da imobiliária e não pode passar dele.
+ */
+export function opcoesRemuneracaoVendedor(modelo: ModeloParceria | "" | null | undefined) {
+  const daImobiliaria = modelo ? PERCENTUAL_PARCERIA[modelo] : 0;
+  return MODELOS_VENDEDOR.map((m) => {
+    const doVendedor = PERCENTUAL_VENDEDOR[m.value];
+    return {
+      ...m,
+      doVendedor,
+      ficaImobiliaria: Math.max(0, daImobiliaria - doVendedor),
+      permitido: doVendedor <= daImobiliaria,
+      repassaTudo: doVendedor > 0 && doVendedor === daImobiliaria,
+    };
+  });
+}
+
+export function remuneracaoVendedorPermitida(modelo: ModeloParceria, vendedor: ModeloVendedor): boolean {
+  return PERCENTUAL_VENDEDOR[vendedor] <= PERCENTUAL_PARCERIA[modelo];
+}
 
 /** Imobiliária no modelo de vendedor próprio não mostra comissão nem PIX ao vendedor. */
 export function vendedorVeComissao(modelo: ModeloVendedor | null | undefined): boolean {

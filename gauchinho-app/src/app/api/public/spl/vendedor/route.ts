@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { authorizePublicIngress } from "@/lib/security/public-ingress";
 import { validarCadastroVendedor } from "@/lib/spl/validacao";
 import { cadastrarVendedor, imobiliariaPorConvite, imobiliariaPorToken } from "@/lib/spl/repo";
-import { MODELOS_VENDEDOR, type ModeloVendedor } from "@/lib/spl/types";
+import { MODELOS_VENDEDOR, remuneracaoVendedorPermitida, type ModeloVendedor } from "@/lib/spl/types";
 
 /** Cadastro de vendedor: pelo link de convite (público) ou pelo painel (token da imobiliária). */
 export async function POST(request: Request) {
@@ -17,6 +17,9 @@ export async function POST(request: Request) {
     // Só o painel da imobiliária pode escolher outro modelo para um vendedor específico.
     const pedido = String(body.modelo ?? "") as ModeloVendedor;
     const modelo = body.token && MODELOS_VENDEDOR.some((m) => m.value === pedido) ? pedido : imob.modelo_vendedores;
+    if (!remuneracaoVendedorPermitida(imob.modelo_parceria, modelo)) {
+      return NextResponse.json({ error: "Esse modelo passa do percentual da imobiliária." }, { status: 400 });
+    }
     const parsed = validarCadastroVendedor(body, modelo);
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
     const vendedor = await cadastrarVendedor(imob, parsed.data, modelo);

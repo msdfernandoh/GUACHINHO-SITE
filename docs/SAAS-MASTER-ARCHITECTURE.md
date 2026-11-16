@@ -9,6 +9,9 @@ origem `spl_portfolio`. O consórcio usa `lib/spl/combinacao-cartas.ts` sobre o
 cálculo canônico da linha de grupo e segue para `/proposta/rascunho`.
 Atalho master `/admin/cartas-contempladas/importar` substitui as cartas a partir
 da conversa do WhatsApp, somando a margem configurável na entrada.
+Migration 341: tipo da chave PIX, CNPJ opcional (cadastro incompleto), remuneração do
+vendedor limitada ao percentual da imobiliária, links com o nome da imobiliária e painel
+somente leitura da SPL em `/spl/dashboard/<token>`.
 Relatório: `docs/relatorios-fases/PORTFOLIO-SPL-IMOBILIARIAS-2026-11-15.md`.
 
 ### Página Herança Inteligente e subdomínios de landing (14/11/2026)
