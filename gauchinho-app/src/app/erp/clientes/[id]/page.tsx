@@ -1,8 +1,9 @@
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { ArrowLeft, Bot, Ban, FileText, Pencil, Plus, UserRound, CheckCircle2, AlertCircle, ShieldCheck, MapPin } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
-import { inativarClienteAction, gerarCotaRealClienteAction, salvarAutomacaoClienteAction } from "../actions";
+import { iniciarNovaCotaClienteAction, inativarClienteAction, gerarCotaRealClienteAction, salvarAutomacaoClienteAction } from "../actions";
 import { CotaContemplacaoForm } from "@/components/erp/cota-contemplacao-form";
 import { ClienteDocumentoBtn } from "@/components/erp/cliente-documento-btn";
 
@@ -31,7 +32,9 @@ export default async function ClienteDetalhePage({
 }) {
   const { id } = await params;
   const { sucesso_cota, erro_cota } = await searchParams;
-  const { empresaAtiva } = await getCurrentTenantContext();
+  const { empresaAtiva, permissoes, vinculoAtivo } = await getCurrentTenantContext();
+  const podeIniciarCota = permissoes.has("formalizar_vendas") ||
+    ["admin_empresa", "super_admin"].includes(vinculoAtivo?.papel?.codigo ?? "");
   const supabase = await createClient();
   if (!empresaAtiva) return null;
 
@@ -298,12 +301,13 @@ export default async function ClienteDetalhePage({
             >
               <Pencil size={15} /> Editar cliente
             </Link>
-            <Link
-              href={`/erp/propostas/nova?cliente_id=${id}`}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-700 px-4 text-xs font-bold text-white shadow-sm hover:bg-blue-800 transition"
-            >
-              <Plus size={16} /> Nova cota
-            </Link>
+            {podeIniciarCota && <form action={iniciarNovaCotaClienteAction}>
+              <input type="hidden" name="cliente_id" value={id} />
+              <input type="hidden" name="request_id" value={randomUUID()} />
+              <button className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-700 px-4 text-xs font-bold text-white hover:bg-blue-800">
+                <Plus size={16} /> Nova cota
+              </button>
+            </form>}
           </div>
         </div>
       </section>

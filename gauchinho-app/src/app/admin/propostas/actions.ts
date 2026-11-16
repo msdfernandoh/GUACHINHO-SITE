@@ -13,6 +13,8 @@ import {
 } from "@/lib/proposta/generate-pdf";
 import { assertPropostaMinimum } from "@/lib/proposta/minimum";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
+import { opcoesGrupoProposta } from "@/lib/proposta/opcoes-grupo";
+import { assertSelecoesAutorizadasForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 import { randomUUID } from "node:crypto";
 import { PROPOSTAS_PDF_BUCKET, createPropostaPdfSignedUrl } from "@/lib/proposta/storage";
 
@@ -427,14 +429,25 @@ export async function searchLeadsForProposta(q: string) {
 export async function marcarPropostaContratadaAction(input: {
   propostaId: string;
   origemInterface?: "admin" | "erp";
+  indiceGrupo?: number;
 }): Promise<{ ok: true; contratacaoId: string; protocolo: string; redirectUrl: string } | { ok: false; error: string }> {
   try {
     const { empresaAtiva, usuario } = await requireTenantPermission("gerenciar_propostas");
     const admin = createAdminClient();
 
+    const { data: propostaAtual, error: leituraError } = await admin
+      .from("propostas").select("*")
+      .eq("id", input.propostaId).eq("empresa_id", empresaAtiva.id).is("excluido_at", null).single();
+    if (leituraError || !propostaAtual) throw new Error("Proposta não encontrada.");
+    const opcoes = opcoesGrupoProposta(propostaAtual.dados_simulacao);
+    if (opcoes.length > 1 && input.indiceGrupo == null) {
+      throw new Error("Abra a proposta e selecione a opção que o cliente aceitou.");
+    }
+    const usarOpcao = input.indiceGrupo != null || opcoes.length === 1;
+
     // 1. Tenta via RPC 218
     let contratacao: { id: string; protocolo: string } | null = null;
-    try {
+    if (!usarOpcao) try {
       const { data: rpcData, error: rpcError } = await admin.rpc("rpc_converter_proposta_em_contratacao", {
         p_empresa_id: empresaAtiva.id,
         p_proposta_id: input.propostaId,
@@ -450,25 +463,38 @@ export async function marcarPropostaContratadaAction(input: {
 
     // 2. Fallback resiliente se RPC não retornou
     if (!contratacao) {
-      const { data: prop, error: propErr } = await admin
-        .from("propostas")
-        .select("*")
-        .eq("id", input.propostaId)
-        .eq("empresa_id", empresaAtiva.id)
-        .single();
-      if (propErr || !prop) throw new Error("Proposta não encontrada neste tenant.");
+      const prop = propostaAtual;
 
       const { data: existing } = await admin
         .from("contratacoes_online")
         .select("id, protocolo")
         .eq("proposta_id", input.propostaId)
+        .eq("empresa_id", empresaAtiva.id)
         .maybeSingle();
 
       if (existing) {
-        await admin.from("propostas").update({ status: "Contratada", updated_at: new Date().toISOString() }).eq("id", input.propostaId);
+        await admin.from("propostas").update({ status: "Contratada", updated_at: new Date().toISOString() }).eq("id", input.propostaId).eq("empresa_id", empresaAtiva.id);
         contratacao = { id: existing.id, protocolo: existing.protocolo };
       } else {
         const fill = (prop.preenchimento_contratacao ?? {}) as Record<string, unknown>;
+        const alternativas = opcoesGrupoProposta(prop.dados_simulacao);
+        const opcao = usarOpcao
+          ? alternativas.find((item) => item.indice === (input.indiceGrupo ?? alternativas[0]?.indice))
+          : null;
+        if (usarOpcao && (!opcao || !opcao.credito || !opcao.parcela || !Number.isInteger(opcao.quantidade) || opcao.quantidade > 100)) {
+          throw new Error("A opção selecionada não tem grupo, quantidade, crédito e parcela válidos. Revise a simulação.");
+        }
+        const catalogo = opcao ? await assertSelecoesAutorizadasForEmpresa(empresaAtiva.id, [opcao]) : null;
+        const grupo = opcao ? catalogo?.grupos.get(opcao.grupoId) : null;
+        const dados = opcao ? {
+          selecoes: [opcao.linha],
+          valor_credito: opcao.credito,
+          valor_parcela: opcao.parcela,
+          quantidade_cotas: opcao.quantidade,
+          proposta_opcao_indice: opcao.indice,
+          proposta_grupo_id: opcao.grupoId,
+          proposta_cota_id: opcao.cotaId,
+        } : prop.dados_simulacao || {};
         const protocolo = `GC-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
         const token = prop.public_token || `ct_${crypto.randomUUID().replace(/-/g, "")}`;
 
@@ -476,10 +502,11 @@ export async function marcarPropostaContratadaAction(input: {
           .from("contratacoes_online")
           .insert({
             proposta_id: prop.id,
+            cliente_id: prop.cliente_id ?? null,
             empresa_id: empresaAtiva.id,
             public_token: token,
             protocolo,
-            origem: prop.origem_contratacao === "grupos" ? "grupos" : "simulador",
+            origem: opcao || prop.origem_contratacao === "grupos" ? "grupos" : "simulador",
             status: "aguardando_consultor",
             lead_id: prop.lead_id,
             gerado_por_usuario_id: usuario.id,
@@ -502,27 +529,36 @@ export async function marcarPropostaContratadaAction(input: {
             bairro: (fill.bairro as string) || null,
             cidade: (fill.cidade as string) || prop.cidade_cliente,
             uf: (fill.uf as string) || null,
-            tipo_bem: prop.tipo_bem,
-            credito_selecionado: prop.valor_credito,
-            parcela_estimada: prop.valor_parcela,
-            prazo: prop.prazo,
-            grupo_id: (fill.grupo_id as string) || null,
-            grupo_nome: (fill.grupo_nome as string) || null,
-            administradora: (fill.administradora as string) || null,
-            cota_id: (fill.cota_id as string) || null,
-            dados_simulacao: prop.dados_simulacao || {},
+            tipo_bem: grupo?.modalidade ?? prop.tipo_bem,
+            credito_selecionado: opcao?.credito ?? prop.valor_credito,
+            parcela_estimada: opcao?.parcela ?? prop.valor_parcela,
+            prazo: opcao?.prazo ?? grupo?.prazo_total ?? prop.prazo,
+            ...(opcao ? { quantidade_cotas: opcao.quantidade } : {}),
+            grupo_id: opcao?.grupoId || (fill.grupo_id as string) || null,
+            grupo_nome: opcao?.codigo || grupo?.codigo_grupo || (fill.grupo_nome as string) || null,
+            administradora: grupo?.administradora || (fill.administradora as string) || null,
+            cota_id: opcao?.cotaId || (fill.cota_id as string) || null,
+            dados_simulacao: dados,
             forma_pagamento: (fill.forma_pagamento as string) || null,
             observacao_cliente: (fill.observacao_cliente as string) || null,
             confirmado_em: new Date().toISOString(),
-            finalizado_em: new Date().toISOString(),
-            contrato_assinado: true,
-            contrato_assinado_em: new Date().toISOString(),
+            finalizado_em: opcao ? null : new Date().toISOString(),
+            contrato_assinado: !opcao,
+            contrato_assinado_em: opcao ? null : new Date().toISOString(),
             participante_comercial_id: prop.participante_comercial_id,
             organizacao_parceira_id: prop.organizacao_parceira_id,
           })
           .select("id, protocolo")
           .single();
 
+        if (novaErr?.code === "23505") {
+          const { data: concorrente } = await admin.from("contratacoes_online")
+            .select("id,protocolo").eq("empresa_id", empresaAtiva.id).eq("proposta_id", prop.id).maybeSingle();
+          if (concorrente) return {
+            ok: true, contratacaoId: concorrente.id, protocolo: concorrente.protocolo,
+            redirectUrl: `/${input.origemInterface === "erp" ? "erp" : "admin"}/contratacoes/${concorrente.id}`,
+          };
+        }
         if (novaErr || !nova) throw new Error(novaErr?.message || "Erro ao criar contratação");
         contratacao = { id: nova.id, protocolo: nova.protocolo };
 

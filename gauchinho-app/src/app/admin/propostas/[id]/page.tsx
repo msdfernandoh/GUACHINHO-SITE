@@ -39,6 +39,7 @@ export default async function PropostaDetailPage({
       </div>
 
       <MarcarPropostaContratadaButton
+        dadosSimulacao={(proposta as Record<string, unknown>).dados_simulacao}
         propostaId={id}
         contratacaoId={p.contratacao_id as string | undefined}
         contratacaoProtocolo={p.contratacao_protocolo as string | undefined}

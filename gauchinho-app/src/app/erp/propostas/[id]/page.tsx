@@ -63,6 +63,7 @@ export default async function ErpPropostaDetailPage({
 
       {/* Banner de Ação Rápida: Marcar Contratada */}
       <MarcarPropostaContratadaButton
+        dadosSimulacao={(proposta as Record<string, unknown>).dados_simulacao}
         propostaId={id}
         contratacaoId={p.contratacao_id as string | undefined}
         contratacaoProtocolo={p.contratacao_protocolo as string | undefined}

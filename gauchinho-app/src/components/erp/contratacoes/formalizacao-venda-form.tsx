@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo, useTransition } from "react";
 import { formalizarContratacaoAction } from "@/app/erp/contratacoes/actions";
 import { programaComissaoCompativelComTipoBem, resolverModalidadeRegraId } from "@/lib/erp/formalizacao-defaults";
+import { valoresNovaCota } from "@/lib/erp/valores-nova-cota";
+import { grupoUsaSeguroNaParcela } from "@/lib/grupos/calculos";
 import { Users, Calculator, UserCheck, Calendar, Info, Sparkles, ShieldCheck, Tag, Percent, PiggyBank, ArrowDownRight } from "lucide-react";
 import { MarcarContratoAssinadoButton } from "./marcar-contrato-assinado-button";
 
@@ -160,6 +162,9 @@ export function FormalizacaoVendaForm({
   condicaoComercialCongelada,
   dadosSimulacao,
 }: FormalizacaoVendaFormProps) {
+  const novaCotaCliente = dadosSimulacao?.origem_operacional === "NOVA_COTA_CLIENTE";
+  const produtoFixado = condicaoComercialCongelada || typeof dadosSimulacao?.proposta_opcao_indice === "number";
+  const [comSeguro, setComSeguro] = useState(dadosSimulacao?.usa_seguro === true);
   const [isPending, startTransition] = useTransition();
 
   const [selectedGrupoId, setSelectedGrupoId] = useState(initialGrupoId || "");
@@ -394,14 +399,20 @@ export function FormalizacaoVendaForm({
   const rawResultado0 = rawSelecao0?.resultado ?? null;
   const rawConfig0 = rawSelecao0?.config ?? null;
 
-  const seguroContratado = Boolean(
+  const grupoOfereceSeguro = Boolean(grupoAtual && grupoUsaSeguroNaParcela(grupoAtual));
+  const seguroEscolhido = grupoOfereceSeguro && comSeguro;
+  const parcelaCatalogo = cotaAtual?.modalidades.find((item) => item.id === selectedModalidadeId)?.valor_parcela ?? 0;
+  const valoresCatalogo = grupoAtual
+    ? valoresNovaCota(valorCreditoUnitario, parcelaCatalogo, grupoAtual, seguroEscolhido)
+    : null;
+  const seguroContratado = novaCotaCliente ? seguroEscolhido : Boolean(
     rawConfig0?.usaSeguro ??
     (dadosSimulacao as any)?.usa_seguro ??
     (dadosSimulacao as any)?.seguro_pos_contemplacao ??
     ((Number((dadosSimulacao as any)?.total_seguro ?? (dadosSimulacao as any)?.seguro ?? 0) > 0) ||
     grupoAtual?.seguro_habilitado)
   );
-  const seguroValorMensal = Number(
+  const seguroValorMensal = novaCotaCliente ? valoresCatalogo?.seguroMensal ?? 0 : Number(
     rawResultado0?.seguroMensal ??
     (dadosSimulacao as any)?.total_seguro ??
     (dadosSimulacao as any)?.seguro ??
@@ -438,8 +449,8 @@ export function FormalizacaoVendaForm({
     if (aplicarAjustePromo && parcelaAjustada !== "" && !Number.isNaN(Number(parcelaAjustada))) {
       return Number(parcelaAjustada);
     }
-    return parcelaAceita;
-  }, [aplicarAjustePromo, parcelaAjustada, parcelaAceita]);
+    return novaCotaCliente ? (valoresCatalogo?.parcela ?? 0) * quantidadeCotas : parcelaAceita;
+  }, [aplicarAjustePromo, parcelaAjustada, parcelaAceita, novaCotaCliente, valoresCatalogo?.parcela, quantidadeCotas]);
 
   const temAjustePromocionalAtivo = useMemo(() => {
     return (
@@ -561,9 +572,9 @@ export function FormalizacaoVendaForm({
           Grupo Canônico
           <select
             required
-            name={condicaoComercialCongelada ? undefined : "grupo_id"}
+            name={produtoFixado ? undefined : "grupo_id"}
             value={selectedGrupoId}
-            disabled={condicaoComercialCongelada}
+            disabled={produtoFixado}
             onChange={(e) => {
               setSelectedGrupoId(e.target.value);
               setSelectedCotaId("");
@@ -578,8 +589,8 @@ export function FormalizacaoVendaForm({
               </option>
             ))}
           </select>
-          {condicaoComercialCongelada ? <input type="hidden" name="grupo_id" value={selectedGrupoId} /> : null}
-          {condicaoComercialCongelada ? <span className="mt-1 block text-[10px] normal-case text-emerald-700">Condição aceita no site — bloqueada para edição</span> : null}
+          {produtoFixado ? <input type="hidden" name="grupo_id" value={selectedGrupoId} /> : null}
+          {produtoFixado ? <span className="mt-1 block text-[10px] normal-case text-emerald-700">Condição aceita no site — bloqueada para edição</span> : null}
         </label>
 
         <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
@@ -589,13 +600,13 @@ export function FormalizacaoVendaForm({
             type="number"
             min={1}
             max={100}
-            name={condicaoComercialCongelada ? undefined : "quantidade_cotas"}
+            name={produtoFixado ? undefined : "quantidade_cotas"}
             value={quantidadeCotas}
-            disabled={condicaoComercialCongelada}
+            disabled={produtoFixado}
             onChange={(event) => setQuantidadeCotas(Math.max(1, Math.min(100, Number(event.target.value) || 1)))}
             className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold shadow-2xs focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
           />
-          {condicaoComercialCongelada ? <input type="hidden" name="quantidade_cotas" value={quantidadeCotas} /> : null}
+          {produtoFixado ? <input type="hidden" name="quantidade_cotas" value={quantidadeCotas} /> : null}
           <span className="mt-1 block text-[10px] normal-case text-slate-500">
             A formalização gerará {quantidadeCotas} {quantidadeCotas === 1 ? "cota definitiva" : "cotas definitivas"} na mesma venda.
           </span>
@@ -605,9 +616,9 @@ export function FormalizacaoVendaForm({
           Produto / Cota Comercial
           <select
             required
-            name={condicaoComercialCongelada ? undefined : "opcao_cota_id"}
+            name={produtoFixado ? undefined : "opcao_cota_id"}
             value={selectedCotaId}
-            disabled={condicaoComercialCongelada}
+            disabled={produtoFixado}
             onChange={(e) => {
               setSelectedCotaId(e.target.value);
               setSelectedModalidadeId("");
@@ -621,7 +632,7 @@ export function FormalizacaoVendaForm({
               </option>
             ))}
           </select>
-          {condicaoComercialCongelada ? <input type="hidden" name="opcao_cota_id" value={selectedCotaId} /> : null}
+          {produtoFixado ? <input type="hidden" name="opcao_cota_id" value={selectedCotaId} /> : null}
         </label>
 
         <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
@@ -776,7 +787,28 @@ export function FormalizacaoVendaForm({
           </div>
         </div>
 
-        {/* Bloco Expansível: Ajuste Comercial / Promoção de Fechamento */}
+      {novaCotaCliente && (
+        <div className="grid gap-4 rounded-xl border p-4 md:grid-cols-2">
+        <label className="text-sm font-semibold">
+          Seguro da cota
+          <select name="usa_seguro" value={seguroEscolhido ? "sim" : "nao"}
+            onChange={(event) => setComSeguro(event.target.value === "sim")}
+            className="ml-3 rounded-lg border bg-white px-3 py-2 text-slate-900">
+            <option value="nao">Sem seguro</option>
+            <option value="sim" disabled={!grupoOfereceSeguro}>Com seguro</option>
+          </select>
+          {grupoAtual && !grupoOfereceSeguro && <span className="ml-3 font-normal">Grupo sem seguro disponível.</span>}
+        </label>
+        {quantidadeCotas === 1 && <label className="text-sm font-semibold">
+          Número da cota na administradora (se já atribuído)
+          <input name="numero_cota" inputMode="numeric" pattern="[0-9]{1,15}" maxLength={15}
+            defaultValue={String(dadosSimulacao?.numero_cota ?? "")}
+            className="mt-1 block w-full rounded-lg border bg-white px-3 py-2 text-slate-900" />
+        </label>}
+        </div>
+      )}
+
+        {!novaCotaCliente && (
         <div className="rounded-xl border border-amber-200/80 bg-amber-50/50 p-3.5 dark:border-amber-900/40 dark:bg-amber-950/20">
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -867,6 +899,7 @@ export function FormalizacaoVendaForm({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Modalidade comercial define somente a regra/cronograma de comissão. */}

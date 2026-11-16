@@ -273,3 +273,63 @@ export async function obterUrlDocumentoContratacaoAction(storagePath: string): P
     return null;
   }
 }
+export async function iniciarNovaCotaClienteAction(formData: FormData) {
+  const { empresaAtiva, usuario } = await requireErpRouteAccess("clientes");
+  const { requireTenantPermission } = await import("@/lib/tenant/context");
+  await requireTenantPermission("formalizar_vendas");
+  const clienteId = text(formData.get("cliente_id"));
+  const requestId = text(formData.get("request_id"));
+  const uuid = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
+  if (!uuid.test(clienteId) || !uuid.test(requestId)) throw new Error("Cliente inválido.");
+
+  const db = await createClient();
+  const { data: cliente, error } = await db.from("clientes")
+    .select("id,nome,tipo_pessoa,cpf_cnpj,representante_nome,telefone,email,cep,endereco,numero,bairro,cidade,uf,complemento,participante_comercial_id")
+    .eq("empresa_id", empresaAtiva.id).eq("id", clienteId).single();
+  if (error || !cliente) throw new Error("Cliente não encontrado nesta empresa.");
+
+  const { createHash } = await import("node:crypto");
+  const token = createHash("sha256").update(`nova-cota:${empresaAtiva.id}:${clienteId}:${usuario.id}:${requestId}`).digest("hex");
+  const protocolo = `GC-ERP-${token.slice(0, 24)}`;
+  const admin = createAdminClient();
+  const pessoaJuridica = cliente.tipo_pessoa === "PJ";
+  const { data, error: createError } = await admin.from("contratacoes_online").insert({
+    empresa_id: empresaAtiva.id,
+    cliente_id: cliente.id,
+    protocolo,
+    public_token: token,
+    origem: "grupos",
+    status: "link_gerado",
+    contrato_assinado: false,
+    gerado_por_usuario_id: usuario.id,
+    gerado_por_nome: usuario.nome,
+    nome: cliente.nome,
+    tipo_pessoa: pessoaJuridica ? "cnpj" : "cpf",
+    cpf: pessoaJuridica ? null : cliente.cpf_cnpj,
+    cnpj: pessoaJuridica ? cliente.cpf_cnpj : null,
+    razao_social: pessoaJuridica ? cliente.nome : null,
+    responsavel_nome: cliente.representante_nome,
+    telefone: cliente.telefone,
+    email: cliente.email,
+    cep: cliente.cep,
+    endereco: cliente.endereco,
+    numero: cliente.numero,
+    complemento: cliente.complemento,
+    bairro: cliente.bairro,
+    cidade: cliente.cidade,
+    uf: cliente.uf,
+    participante_comercial_id: cliente.participante_comercial_id,
+    forma_pagamento: "boleto",
+    dados_simulacao: { origem_operacional: "NOVA_COTA_CLIENTE" },
+  }).select("id").single();
+
+  if (createError?.code === "23505") {
+    const { data: existente } = await admin.from("contratacoes_online").select("id")
+      .eq("empresa_id", empresaAtiva.id).eq("cliente_id", clienteId).eq("public_token", token).maybeSingle();
+    if (existente) redirect(`/erp/contratacoes/${existente.id}`);
+  }
+  if (createError || !data) throw new Error("Não foi possível iniciar a nova cota.");
+  revalidatePath(`/erp/clientes/${clienteId}`);
+  revalidatePath("/erp/contratacoes");
+  redirect(`/erp/contratacoes/${data.id}`);
+}

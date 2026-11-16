@@ -7,6 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { converterContratacaoEmVenda } from "@/lib/vendas/vendas-service";
 import { assertSnapshotCalculoGruposIntegro, calcularHashSnapshotGrupos } from "@/lib/contratacoes-online/snapshot-calculo-grupos";
+import { assertSelecoesAutorizadasForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
+import { parcelaDaNovaCota, valoresNovaCota } from "@/lib/erp/valores-nova-cota";
 import { isPlatformSuperadmin } from "@/lib/auth/is-superadmin";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -76,8 +78,8 @@ export async function formalizarContratacaoAction(formData: FormData) {
   try {
     const { data: contratacao, error: contratacaoError } = await admin
       .from("contratacoes_online")
-      .select("id,nome,cpf,cnpj,email,telefone,cliente_id,lead_id,contrato_assinado,dados_simulacao,parcela_estimada")
-      .eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id).maybeSingle();
+      .select("id,nome,cpf,cnpj,email,telefone,cliente_id,lead_id,contrato_assinado,dados_simulacao,parcela_estimada,status,updated_at")
+      .eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id).is("excluido_at", null).maybeSingle();
     if (contratacaoError || !contratacao) throw new Error(contratacaoError?.message || "Contratação não encontrada.");
     dadosSimulacaoAtual = (contratacao.dados_simulacao ?? {}) as Record<string, unknown>;
     if (contratacao.lead_id) {
@@ -104,6 +106,11 @@ export async function formalizarContratacaoAction(formData: FormData) {
           fracao = "";
         }
       }
+    }
+    if (typeof dadosSimulacaoAtual.proposta_opcao_indice === "number" &&
+      (dadosSimulacaoAtual.proposta_grupo_id !== grupoId || dadosSimulacaoAtual.proposta_cota_id !== opcaoCotaId ||
+        Number(dadosSimulacaoAtual.quantidade_cotas) !== quantidadeCotas)) {
+      throw new Error("Use o grupo, a cota e a quantidade da opção escolhida na proposta.");
     }
     if (!contratacao.contrato_assinado) throw new Error("Contrato ainda não foi assinado.");
     assertSnapshotCalculoGruposIntegro(
@@ -218,6 +225,54 @@ export async function formalizarContratacaoAction(formData: FormData) {
       throw new Error("A quantidade de cotas deve ser um número inteiro entre 1 e 100.");
     }
 
+    if (contratacao.status !== "finalizada" && dadosSimulacaoAtual.origem_operacional === "NOVA_COTA_CLIENTE") {
+      if (!contratacao.cliente_id || taxaAjustadaRaw || parcelaAjustadaRaw) {
+        throw new Error("A nova cota requer cliente vinculado e condições do catálogo.");
+      }
+      const seguro = value(formData, "usa_seguro");
+      if (seguro !== "sim" && seguro !== "nao") throw new Error("Escolha com ou sem seguro.");
+      const catalogo = await assertSelecoesAutorizadasForEmpresa(empresaAtiva.id, [{ grupoId, cotaId: opcaoCotaId }]);
+      const grupo = catalogo.grupos.get(grupoId)!;
+      const cota = catalogo.cotas.get(opcaoCotaId)!;
+      const [{ data: habilitada, error: erroGrupo }, { data: homologada, error: erroValor }, { data: modalidade, error: erroModalidade }] = await Promise.all([
+        admin.from("grupos_modalidades_disponiveis").select("administradora_modalidade_id")
+          .eq("grupo_id", grupoId).eq("administradora_modalidade_id", modalidadeComissaoId).eq("ativo", true).maybeSingle(),
+        admin.from("grupo_cota_modalidade_valores").select("valor_parcela,percentual_reducao")
+          .eq("grupo_cota_id", opcaoCotaId).eq("administradora_modalidade_id", modalidadeComissaoId)
+          .eq("habilitado", true).eq("ativo", true).maybeSingle(),
+        admin.from("administradora_modalidades_comissao").select("codigo").eq("id", modalidadeComissaoId)
+          .eq("administradora_id", grupo.administradora_id).eq("ativo", true).maybeSingle(),
+      ]);
+      const credito = Number(cota.valor_credito);
+      const parcela = modalidade && parcelaDaNovaCota(grupo, cota, modalidade.codigo, homologada);
+      if (erroGrupo || erroModalidade || erroValor || !habilitada || !parcela || !Number.isFinite(credito) || credito <= 0) {
+        throw new Error("A modalidade não tem parcela disponível para esta cota.");
+      }
+      const numeroCota = value(formData, "numero_cota");
+      if (numeroCota && (!/^\d{1,15}$/.test(numeroCota) || quantidadeCotas !== 1)) {
+        throw new Error("Informe o número da cota somente para uma cota individual.");
+      }
+      const valores = valoresNovaCota(credito, parcela.valor_parcela, grupo, seguro === "sim");
+      if (seguro === "sim" && valores.seguroMensal <= 0) throw new Error("O grupo escolhido não oferece seguro.");
+      dadosSimulacaoAtual = {
+        ...dadosSimulacaoAtual,
+        grupoId,
+        cotaId: opcaoCotaId,
+        modalidade_comissao_id: modalidadeComissaoId,
+        usa_seguro: seguro === "sim",
+        total_seguro: valores.seguroMensal,
+        numero_cota: numeroCota || null,
+        valor_credito: credito * quantidadeCotas,
+        valor_parcela: Math.round(valores.parcela * quantidadeCotas * 100) / 100,
+      };
+      const { data: salva, error: erroSalvar } = await admin.from("contratacoes_online").update({
+        grupo_id: grupoId, grupo_nome: grupo.codigo_grupo, cota_id: opcaoCotaId, quantidade_cotas: quantidadeCotas,
+        credito_selecionado: dadosSimulacaoAtual.valor_credito, parcela_estimada: dadosSimulacaoAtual.valor_parcela,
+        dados_simulacao: dadosSimulacaoAtual,
+      }).eq("empresa_id", empresaAtiva.id).eq("id", contratacaoId).eq("updated_at", contratacao.updated_at).neq("status", "finalizada").select("id").maybeSingle();
+      if (erroSalvar || !salva) throw new Error(erroSalvar?.message ?? "A contratação foi atualizada. Recarregue antes de tentar novamente.");
+    }
+
     // Uma única RPC autenticada valida todos os UUIDs no tenant e congela o snapshot
     // comercial antes da conversão. Percentuais nunca são aceitos do navegador.
     const { error: prepararError } = await db.rpc("rpc_preparar_formalizacao_contratacao", {
@@ -275,7 +330,8 @@ export async function formalizarContratacaoAction(formData: FormData) {
       pendencia_codigo: codigo,
       pendencia_descricao: message,
     };
-    if (selecaoValida) {
+    if (dadosSimulacaoAtual.origem_operacional !== "NOVA_COTA_CLIENTE" &&
+      typeof dadosSimulacaoAtual.proposta_opcao_indice !== "number" && selecaoValida) {
       payloadPendencia.grupo_id = grupoId;
       payloadPendencia.cota_id = opcaoCotaId;
       payloadPendencia.participante_comercial_id = principalId;
@@ -296,7 +352,7 @@ export async function formalizarContratacaoAction(formData: FormData) {
         data_segunda_parcela: dataSegundaParcela,
       };
     }
-    await admin.from("contratacoes_online").update(payloadPendencia).eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id);
+    await admin.from("contratacoes_online").update(payloadPendencia).eq("id", contratacaoId).eq("empresa_id", empresaAtiva.id).neq("status", "finalizada");
     await admin.from("contratacoes_formalizacao_historico").insert({ empresa_id: empresaAtiva.id, contratacao_id: contratacaoId, evento: "PENDENCIA_REGISTRADA", descricao: message, dados: { codigo } });
     revalidatePath("/erp/contratacoes");
     redirect(`/erp/contratacoes/${contratacaoId}?erro=${encodeURIComponent(message)}`);
@@ -390,4 +446,43 @@ export async function alternarContratoAssinadoAction(input: {
       error: error instanceof Error ? error.message : "Falha ao alterar status de assinatura.",
     };
   }
+}
+export async function anexarDocumentoNovaCotaAction(formData: FormData) {
+  const { empresaAtiva } = await requireTenantPermission("formalizar_vendas");
+  const contratacaoId = value(formData, "contratacao_id");
+  if (!UUID.test(contratacaoId)) throw new Error("Contratação inválida.");
+  const admin = createAdminClient();
+  const { data: contratacao } = await admin.from("contratacoes_online")
+    .select("id,status,dados_simulacao").eq("empresa_id", empresaAtiva.id).eq("id", contratacaoId).is("excluido_at", null).maybeSingle();
+  if (!contratacao || contratacao.status === "finalizada" ||
+    (contratacao.dados_simulacao?.origem_operacional !== "NOVA_COTA_CLIENTE" &&
+      typeof contratacao.dados_simulacao?.proposta_opcao_indice !== "number")) {
+    throw new Error("Nova cota disponível para anexos não encontrada.");
+  }
+
+  const file = formData.get("documento");
+  const extensoes: Record<string, string> = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png" };
+  if (!(file instanceof File) || !Object.hasOwn(extensoes, file.type) || file.size === 0 || file.size > 850 * 1024) {
+    redirect(`/erp/contratacoes/${contratacaoId}?erro=Anexe%20um%20PDF%2C%20JPG%20ou%20PNG%20de%20at%C3%A9%20850%20KB.`);
+  }
+
+  const path = `${contratacao.id}/outro_${crypto.randomUUID()}.${extensoes[file.type]}`;
+  const bucket = admin.storage.from("contratacoes-documentos");
+  const { error: uploadError } = await bucket.upload(path, Buffer.from(await file.arrayBuffer()), {
+    contentType: file.type, upsert: false,
+  });
+  if (uploadError) throw new Error("Não foi possível enviar o documento.");
+  const { error } = await admin.from("contratacoes_documentos").insert({
+    contratacao_id: contratacao.id,
+    tipo_documento: "outro",
+    arquivo_url: path,
+    arquivo_nome: file.name.slice(0, 200),
+    mime_type: file.type,
+    tamanho_bytes: file.size,
+  });
+  if (error) {
+    await bucket.remove([path]);
+    throw new Error("Não foi possível vincular o documento à contratação.");
+  }
+  revalidatePath(`/erp/contratacoes/${contratacaoId}`);
 }

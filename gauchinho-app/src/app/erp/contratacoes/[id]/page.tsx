@@ -1,3 +1,7 @@
+import { resolveEmpresaGrupoPresentation, type EmpresaGrupoConfig } from "@/lib/grupos/empresa-grupos-config";
+import { parcelaDaNovaCota } from "@/lib/erp/valores-nova-cota";
+import type { GrupoConsorcio as GrupoCatalogo, GrupoCota as CotaCatalogo } from "@/lib/types";
+import { anexarDocumentoNovaCotaAction } from "../actions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -94,7 +98,7 @@ export default async function ConferirContratacaoPage({
       .eq("status", "ATIVA"),
     admin
       .from("empresa_grupos_config")
-      .select("grupo_id,visivel")
+      .select("grupo_id,visivel,destaque,modalidade_integral_habilitada,modalidade_reduzida_habilitada,alteracao_catalogo_status,alteracao_catalogo_payload")
       .eq("empresa_id", empresaAtiva.id),
   ]);
   if (administradorasEmpresaResult.error) {
@@ -130,7 +134,7 @@ export default async function ConferirContratacaoPage({
       .maybeSingle(),
     admin
       .from("grupos_consorcio")
-      .select("id,codigo_grupo,administradora_id,status_governanca,prazo_total,prazo_restante,parcelas_realizadas,parcelas_realizadas_base,data_base_parcelas,atualizacao_parcelas_automatica,tipo_administradora_id,modalidade_comissao_id,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_habilitado,seguro_percentual,seguro_valor,seguro_pos_contemplacao,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade:administradora_modalidades_comissao(nome),grupos_modalidades_disponiveis(administradora_modalidade_id,ativo),grupos_cotas(id,valor_credito,ativo,status,grupo_cota_modalidade_valores(administradora_modalidade_id,valor_parcela,percentual_reducao,habilitado,ativo,modalidade:administradora_modalidades_comissao(id,codigo,nome,ativo)))")
+      .select("id,codigo_grupo,administradora_id,status_governanca,ativo,status,visivel_franquia,prazo_total,prazo_restante,parcelas_realizadas,parcelas_realizadas_base,data_base_parcelas,atualizacao_parcelas_automatica,tipo_administradora_id,modalidade_comissao_id,taxa_administrativa_percentual,fundo_reserva_percentual,seguro_habilitado,seguro_percentual,seguro_valor,seguro_pos_contemplacao,tem_parcela_reduzida,percentuais_parcela_reduzida,percentual_parcela_reduzida,administradora:administradoras(nome),tipo:administradora_tipos(nome),modalidade:administradora_modalidades_comissao(nome),grupos_modalidades_disponiveis(administradora_modalidade_id,ativo),grupos_cotas(id,valor_credito,ativo,status,parcela_integral,parcela_reduzida,parcela_reduzida_50,parcela_reduzida_60,parcela_reduzida_70,parcelas_reduzidas,grupo_cota_modalidade_valores(administradora_modalidade_id,valor_parcela,percentual_reducao,habilitado,ativo,modalidade:administradora_modalidades_comissao(id,codigo,nome,ativo)))")
       .eq("ativo", true)
       .in("administradora_id", administradorasPermitidas.length ? administradorasPermitidas : ["00000000-0000-0000-0000-000000000000"])
       .order("codigo_grupo"),
@@ -224,9 +228,16 @@ export default async function ConferirContratacaoPage({
   const formalizada = Boolean(venda?.id && cota?.id);
 
   const modalidadesComissao = (modalidadesComissaoResult.data ?? []) as Array<Record<string, any>>;
+  const novaCotaCliente = c.dados_simulacao?.origem_operacional === "NOVA_COTA_CLIENTE";
+  const configPorGrupo = new Map((configuracoesGrupos ?? []).map((item) => [String(item.grupo_id), item as EmpresaGrupoConfig]));
   const grupos = ((gruposResult.data ?? []) as Array<Record<string, any>>)
     .filter((grupo) => !gruposOcultos.has(String(grupo.id)) || String(grupo.id) === c.grupo_id)
-    .map((grupo) => {
+    .flatMap((grupoOriginal) => {
+      const apresentacao = novaCotaCliente
+        ? resolveEmpresaGrupoPresentation(grupoOriginal as GrupoCatalogo, configPorGrupo.get(String(grupoOriginal.id)))
+        : null;
+      if (apresentacao && !apresentacao.exibirAoPublico) return [];
+      const grupo = { ...grupoOriginal, ...apresentacao?.grupo };
       const prazo = calcularPrazoGrupoFromRow(grupo as any);
       const modalidadesDaAdministradora = modalidadesComissao
         .filter((modalidade) => String(modalidade.administradora_id) === String(grupo.administradora_id))
@@ -237,7 +248,11 @@ export default async function ConferirContratacaoPage({
           valor_parcela: 0,
           percentual_reducao: null,
         }));
-      const gruposCotas = ((grupo.grupos_cotas ?? []) as Array<Record<string, any>>)
+      const modalidadesHabilitadas = new Set(
+        ((grupoOriginal.grupos_modalidades_disponiveis ?? []) as Array<{ administradora_modalidade_id: string; ativo: boolean }>)
+          .filter((item) => item.ativo).map((item) => item.administradora_modalidade_id),
+      );
+      const gruposCotas = ((grupoOriginal.grupos_cotas ?? []) as Array<Record<string, any>>)
         .filter((produto) => produto.ativo !== false && !["inativo", "esgotado"].includes(String(produto.status ?? "").toLowerCase()))
         .map((produto) => ({
           id: String(produto.id),
@@ -245,12 +260,27 @@ export default async function ConferirContratacaoPage({
           ativo: produto.ativo !== false,
           status: produto.status == null ? undefined : String(produto.status),
           grupo_codigo: String(grupo.codigo_grupo),
-          modalidades: modalidadesDaAdministradora,
+          modalidades: novaCotaCliente
+            ? modalidadesDaAdministradora.flatMap((modalidade) => {
+              const valores = (produto.grupo_cota_modalidade_valores ?? []) as Array<{
+                administradora_modalidade_id: string; valor_parcela: number;
+                percentual_reducao: number | null; habilitado: boolean; ativo: boolean;
+              }>;
+              const valor = valores.find((item) => item.administradora_modalidade_id === modalidade.id &&
+                item.habilitado && item.ativo && Number(item.valor_parcela) > 0);
+              if (!modalidadesHabilitadas.has(modalidade.id)) return [];
+              const parcela = parcelaDaNovaCota(grupo as GrupoCatalogo, produto as CotaCatalogo, modalidade.codigo, valor);
+              return parcela ? [{ ...modalidade, ...parcela }] : [];
+            })
+            : modalidadesDaAdministradora,
         }))
         .filter((produto) => produto.modalidades.length > 0);
 
       return {
-        ...grupo,
+        ...grupoOriginal,
+        seguro_percentual: grupo.seguro_percentual,
+        taxa_administrativa_percentual: grupo.taxa_administrativa_percentual,
+        fundo_reserva_percentual: grupo.fundo_reserva_percentual,
         prazo_total: prazo.prazoTotal,
         prazo_restante: prazo.prazoRestanteAtual,
         parcelas_realizadas: prazo.parcelasRealizadasAtuais,
@@ -451,6 +481,17 @@ export default async function ConferirContratacaoPage({
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
           <h2 className="text-lg font-bold">Documentos</h2>
           <p className="mt-1 text-sm text-slate-500">Arquivos privados da contratação; nenhuma cópia será criada.</p>
+          {podeFormalizar && !formalizada && (c.dados_simulacao?.origem_operacional === "NOVA_COTA_CLIENTE" ||
+            typeof c.dados_simulacao?.proposta_opcao_indice === "number") && (
+            <form action={anexarDocumentoNovaCotaAction} className="mt-4 flex flex-wrap items-end gap-2">
+              <input type="hidden" name="contratacao_id" value={id} />
+              <label className="text-sm font-semibold">
+                Documento da contratação (até 850 KB)
+                <input className="mt-1 block text-xs" required type="file" name="documento" accept=".pdf,.jpg,.jpeg,.png" />
+              </label>
+              <button className="rounded-lg border px-3 py-2 text-sm font-semibold">Anexar documento</button>
+            </form>
+          )}
           <div className="mt-4 space-y-3">
             {((documentosResult.data ?? []) as DocumentoContratacao[]).map((d) => (
               <div key={d.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
