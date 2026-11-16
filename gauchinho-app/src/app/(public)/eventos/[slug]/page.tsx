@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ConteudoHero, ConteudoPageShell } from "@/components/conteudo/conteudo-hero";
 import { EventoInscricaoForm } from "@/components/public/eventos/evento-inscricao-form";
 import {
@@ -27,6 +27,10 @@ export default async function EventoSlugPage({ params }: Props) {
   const { slug } = await params;
   const evento = await fetchPublicEventoBySlug(slug);
   if (!evento) notFound();
+  // Evento das imobiliárias SPL: a página do evento abre direto o cadastro do corretor.
+  if ((evento as { checkin_fluxo?: string | null }).checkin_fluxo === "spl_imobiliarias") {
+    redirect(`/eventos/${evento.slug}/sorteio`);
+  }
 
   const [posts, vagasUsadas] = await Promise.all([
     fetchPublicEventoPosts(evento.id),
