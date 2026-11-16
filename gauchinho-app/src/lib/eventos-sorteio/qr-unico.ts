@@ -229,15 +229,19 @@ export async function resolveQrPublicBySlug(slug: string): Promise<ResolveQrPubl
     // Os dois endereços impressos resolvem a modalidade, sem depender do slug
     // ou de um vínculo temporário da edição anterior. As palestras usam a
     // edição ativa de data mais recente; externos usam a última ação ativada.
-    const { data: evExterno, error: evExtErr } = await admin
+    // Palestras: um evento com check-in "ativo agora" tem prioridade sobre outro
+    // ativo apenas agendado (ex.: evento com QR próprio marcado para outra data).
+    const { data: candidatos, error: evExtErr } = await admin
       .from("eventos")
-      .select("id, nome, slug, ativo, checkin_interativo_ativo")
+      .select("id, nome, slug, ativo, checkin_interativo_ativo, checkin_modo")
       .eq("tipo_checkin", externo ? "externo" : "evento")
       .eq("ativo", true)
       .order(externo ? "updated_at" : "data_evento", { ascending: false, nullsFirst: false })
       .order("id", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+      .limit(20);
+    const evExterno = externo
+      ? candidatos?.[0]
+      : (candidatos?.find((e) => e.checkin_modo === "ativo_agora") ?? candidatos?.[0]);
 
     if (evExtErr || !evExterno) {
       return {

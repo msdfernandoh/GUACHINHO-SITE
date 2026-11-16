@@ -1,5 +1,18 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Check-in SPL "Pesquisa, Sorteio e Desafio" (16/11/2026)
+`eventos.checkin_fluxo` (`padrao` | `spl_imobiliarias`, migration 345) troca o
+check-in público de um evento pelo fluxo de corretores (`components/spl/spl-evento-checkin.tsx`):
+corretor + imobiliária pré-cadastrada + função (proprietário completa os dados
+da imobiliária) → clientes (1 cupom `indicacao` por cliente, meta incentivada de 5)
+→ desafio do primeiro consórcio → perguntas do check-in (sem NPS). O QR abre
+direto no cadastro; `spl.<domínio>/evento` (botão do site) mostra antes a
+apresentação. Vale em `/eventos/<slug>/sorteio`, `/qr/<slug>` e `/spl/evento`.
+O QR fixo `/qr/network` agora prefere o evento com `checkin_modo = ativo_agora`.
+Imobiliárias do evento ficam na empresa `gauchinho` (eventos são globais).
+API: `POST /api/public/spl/evento`. Relatório:
+`docs/relatorios-fases/CHECKIN-SPL-PESQUISA-SORTEIO-DESAFIO-2026-11-16.md`.
+
 ### Portfólio SPL para imobiliárias e subdomínio spl.* (15/11/2026)
 - 2026-11-16: termos de parceria SPL por modelo (Indicador/Negócio/Microfranquia), preenchidos com o cadastro e a empresa contratante; migration 344 (endereço).
 `spl.<domínio>` herda o tenant do domínio pai (`lib/landings/subdominios.ts`) e

@@ -276,7 +276,7 @@ export async function cadastrarCliente(args: {
   imob: ImobiliariaSpl;
   vendedor: VendedorSpl | null;
   input: CadastroClienteInput;
-  origem: "PAINEL" | "PLANILHA" | "PORTFOLIO";
+  origem: "PAINEL" | "PLANILHA" | "PORTFOLIO" | "EVENTO";
   dados?: Record<string, unknown>;
   status?: ClienteSpl["status"];
   propostaExpiraEm?: string | null;

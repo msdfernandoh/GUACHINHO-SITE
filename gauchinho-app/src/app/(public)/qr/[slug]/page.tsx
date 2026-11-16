@@ -6,6 +6,7 @@ import { EventoCheckinFechado } from "@/components/public/eventos/evento-checkin
 import { QrUnicoSemEventoForm } from "@/components/public/eventos/qr-unico-sem-evento-form";
 import { resolveQrPublicBySlug } from "@/lib/eventos-sorteio/qr-unico";
 import { resolverStatusCheckinEvento } from "@/lib/eventos-sorteio/disponibilidade";
+import { SplEventoCheckinServer } from "@/components/spl/spl-evento-checkin-server";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,14 @@ export default async function QrUnicoPublicPage({ params }: { params: Promise<{ 
         </main>
       );
     }
+  }
+
+  if (resolved.mode === "evento" && resolved.sorteio.checkinFluxo === "spl_imobiliarias") {
+    return (
+      <main className="px-4">
+        <SplEventoCheckinServer eventoId={resolved.sorteio.eventoId} eventoNome={resolved.sorteio.eventoNome} inicioDireto />
+      </main>
+    );
   }
 
   return (

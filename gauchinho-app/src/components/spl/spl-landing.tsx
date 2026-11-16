@@ -60,6 +60,9 @@ export function SplLanding({ stats }: Props) {
             <a href="#modelos" className="rounded-2xl border-2 border-white/30 px-7 py-4 text-lg font-bold text-white">
               Ver modelos de parceria
             </a>
+            <Link href="/spl/evento" className="rounded-2xl border-2 border-[#00AEEF] bg-[#00AEEF]/10 px-7 py-4 text-lg font-bold text-white">
+              Pesquisa, Sorteio e Desafio
+            </Link>
           </div>
         </div>
       </section>

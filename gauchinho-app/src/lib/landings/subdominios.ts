@@ -11,7 +11,7 @@ import { normalizeHost } from "@/lib/tenant/dominio";
 export const LANDING_SUBDOMINIOS = {
   eua: { base: "/eua", rotas: { "/": "/eua" } },
   filhos: { base: "/filhos", rotas: { "/": "/filhos", "/evento": "/filhos/evento", "/qr": "/filhos/qr" } },
-  spl: { base: "/spl", rotas: { "/": "/spl", "/cadastro": "/spl/cadastro" } },
+  spl: { base: "/spl", rotas: { "/": "/spl", "/cadastro": "/spl/cadastro", "/evento": "/spl/evento" } },
 } as const satisfies Record<string, { base: string; rotas: Record<string, string> }>;
 
 export type LandingSubdominio = keyof typeof LANDING_SUBDOMINIOS;

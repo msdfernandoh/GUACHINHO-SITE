@@ -7,6 +7,7 @@ import { fetchPublicSorteioByEventoSlug } from "@/lib/eventos-sorteio/public";
 import { resolverStatusCheckinEvento } from "@/lib/eventos-sorteio/disponibilidade";
 import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
 import { isStaff } from "@/lib/auth/permissions";
+import { SplEventoCheckinServer } from "@/components/spl/spl-evento-checkin-server";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,14 @@ export default async function EventoSorteioPublicPage({ params, searchParams }: 
         </main>
       );
     }
+  }
+
+  if (sorteio.checkinFluxo === "spl_imobiliarias") {
+    return (
+      <main className="px-4">
+        <SplEventoCheckinServer eventoId={sorteio.eventoId} eventoNome={sorteio.eventoNome} inicioDireto />
+      </main>
+    );
   }
 
   return (

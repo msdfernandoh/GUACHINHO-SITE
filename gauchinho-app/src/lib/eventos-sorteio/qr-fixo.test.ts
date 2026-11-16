@@ -23,17 +23,19 @@ vi.mock("@/lib/supabase/admin", () => ({
         eq: (key: string, value: unknown) => { filters.push([key, value]); return query; },
         order: (key: string, opts: { ascending: boolean }) => { orders.push([key, opts.ascending]); return query; },
         limit: () => query,
-        maybeSingle: async () => {
-          rows = rows.filter(row => filters.every(([key, value]) => row[key as keyof typeof row] === value));
-          rows.sort((a, b) => {
-            for (const [key, ascending] of orders) {
-              const result = String(a[key as keyof typeof a]).localeCompare(String(b[key as keyof typeof b]));
-              if (result) return ascending ? result : -result;
-            }
-            return 0;
-          });
-          return { data: rows[0] ?? null, error: null };
-        },
+        maybeSingle: async () => ({ data: resolver()[0] ?? null, error: null }),
+        then: (ok: (v: { data: unknown[]; error: null }) => unknown) => Promise.resolve({ data: resolver(), error: null }).then(ok),
+      };
+      const resolver = () => {
+        rows = rows.filter(row => filters.every(([key, value]) => row[key as keyof typeof row] === value));
+        rows.sort((a, b) => {
+          for (const [key, ascending] of orders) {
+            const result = String(a[key as keyof typeof a]).localeCompare(String(b[key as keyof typeof b]));
+            if (result) return ascending ? result : -result;
+          }
+          return 0;
+        });
+        return rows;
       };
       return query;
     },
@@ -98,6 +100,14 @@ describe("QR fixo por modalidade", () => {
     const segundo = await resolveQrPublicBySlug("externo");
     expect(segundo?.qr.slug).toBe("externo");
     expect(segundo?.mode === "evento" && segundo.sorteio.whatsappEquipe).toBe("11988887777");
+  });
+
+  it("network prefere a palestra com check-in ativo agora a outra só agendada", async () => {
+    state.slug = "network";
+    state.eventos.push({ id: "agendada-futura", tipo_checkin: "evento", ativo: true, data_evento: "2026-11-17T23", checkin_modo: "agendado" });
+    state.eventos.push({ id: "spl-agora", tipo_checkin: "evento", ativo: true, data_evento: "2026-11-17T12", checkin_modo: "ativo_agora" });
+    const result = await resolveQrPublicBySlug("network");
+    expect(result?.mode === "evento" && result.sorteio.eventoId).toBe("spl-agora");
   });
 
   it("reutiliza network para a palestra ativa mais recente sem vínculo manual", async () => {

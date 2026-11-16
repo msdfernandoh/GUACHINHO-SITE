@@ -150,7 +150,7 @@ export type ClienteSpl = {
   valor_chaves: number | null;
   solucao: SolucaoSpl | null;
   status: StatusClienteSpl;
-  origem: "PAINEL" | "PLANILHA" | "PORTFOLIO";
+  origem: "PAINEL" | "PLANILHA" | "PORTFOLIO" | "EVENTO";
   proposta_expira_em: string | null;
   created_at: string;
 };

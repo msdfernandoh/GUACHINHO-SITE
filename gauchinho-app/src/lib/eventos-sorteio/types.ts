@@ -88,6 +88,8 @@ export type PublicSorteioView = {
   corSecundaria?: string | null;
   logoPersonalizadoUrl?: string | null;
   prefixoCodigoSorteio?: string | null;
+  /** padrao | spl_imobiliarias (check-in de corretores do evento SPL) */
+  checkinFluxo?: "padrao" | "spl_imobiliarias";
 };
 
 export type HomeSorteioDestaque = {

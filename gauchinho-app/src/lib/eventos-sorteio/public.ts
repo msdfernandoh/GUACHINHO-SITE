@@ -30,6 +30,7 @@ function mapPublicView(
     prefixo_codigo_sorteio?: string | null;
     tipo_checkin?: string | null;
     whatsapp_equipe?: string | null;
+    checkin_fluxo?: string | null;
   },
   npsPerguntas?: NpsPerguntaPublica[],
 ): PublicSorteioView {
@@ -55,6 +56,7 @@ function mapPublicView(
     corSecundaria: evento.cor_secundaria ?? null,
     logoPersonalizadoUrl: evento.logo_personalizado_url ?? null,
     prefixoCodigoSorteio: evento.prefixo_codigo_sorteio ?? null,
+    checkinFluxo: evento.checkin_fluxo === "spl_imobiliarias" ? "spl_imobiliarias" : "padrao",
   };
 }
 
@@ -108,14 +110,14 @@ export async function fetchPublicSorteioByEventoId(
   const admin = createAdminClient();
   let evQuery = admin
     .from("eventos")
-    .select("id, nome, slug, data_evento, ativo, publicado, checkin_interativo_ativo, checkin_modo, checkin_abertura_antecipada_minutos, cor_primaria, cor_secundaria, logo_personalizado_url, prefixo_codigo_sorteio, tipo_checkin, whatsapp_equipe")
+    .select("id, nome, slug, data_evento, ativo, publicado, checkin_interativo_ativo, checkin_modo, checkin_abertura_antecipada_minutos, cor_primaria, cor_secundaria, logo_personalizado_url, prefixo_codigo_sorteio, tipo_checkin, whatsapp_equipe, checkin_fluxo")
     .eq("id", eventoId)
     .eq("ativo", true);
   if (requirePublicado) {
     evQuery = evQuery.eq("publicado", true);
   }
   let { data: evento, error: evErr } = await evQuery.maybeSingle();
-  if (evErr && /checkin_interativo_ativo|checkin_modo|checkin_abertura_antecipada_minutos|cor_primaria|prefixo_codigo_sorteio|tipo_checkin|Could not find/i.test(evErr.message)) {
+  if (evErr && /checkin_fluxo|checkin_interativo_ativo|checkin_modo|checkin_abertura_antecipada_minutos|cor_primaria|prefixo_codigo_sorteio|tipo_checkin|Could not find/i.test(evErr.message)) {
     // Fallback para schema sem as colunas novas
     let retryQuery = admin
       .from("eventos")
@@ -136,6 +138,7 @@ export async function fetchPublicSorteioByEventoId(
           prefixo_codigo_sorteio: "",
           tipo_checkin: "evento",
           whatsapp_equipe: null,
+          checkin_fluxo: "padrao",
         }
       : null;
     evErr = retry.error;
