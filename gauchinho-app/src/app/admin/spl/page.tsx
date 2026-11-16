@@ -161,6 +161,14 @@ export default async function AdminSplPage() {
                         </>
                       ) : null}
                     </div>
+                    <a
+                      href={`https://wa.me/55${i.telefone}?text=${encodeURIComponent(`Olá, ${i.responsavel}! Este é o sistema da ${i.nome} no portfólio SPL. Abra no celular e instale na tela inicial:\nhttps://spl.raconsinop.com.br${caminhoPainel(i.nome, i.token_painel)}`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block text-xs font-semibold text-emerald-700 underline"
+                    >
+                      Enviar o sistema no WhatsApp
+                    </a>
                     <a href={caminhoPainel(i.nome, i.token_painel)} target="_blank" rel="noreferrer" className="block text-xs font-semibold text-amber-600 underline">
                       Abrir ou editar o painel da imobiliária
                     </a>

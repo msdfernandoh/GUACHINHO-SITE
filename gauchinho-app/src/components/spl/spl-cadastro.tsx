@@ -100,7 +100,16 @@ export function SplCadastroImobiliaria() {
         {semCnpj && !soLibera ? (
           <Aviso tom="info">Seu cadastro ficou incompleto porque falta o CNPJ. Envie para a nossa equipe para liberar as comissões.</Aviso>
         ) : null}
-        <LinkCopiavel titulo="Seu painel (guarde este link)" url={`${origem}${painel}`} />
+        <LinkCopiavel
+          titulo="Seu painel (guarde este link)"
+          url={`${origem}${painel}`}
+          mensagemWhatsapp={`Painel da ${resultado.nome} no portfólio SPL:`}
+          whatsappPara={f.telefone}
+          rotuloWhatsapp="Mandar para o meu WhatsApp"
+        />
+        <p className="text-base text-slate-600">
+          Dica: abra o painel no celular e toque em <b>Instalar</b> para ele virar um app na tela inicial.
+        </p>
         <LinkCopiavel
           titulo="Link para os seus vendedores se cadastrarem"
           url={`${origem}${caminhoConvite(resultado.nome, resultado.convite)}`}

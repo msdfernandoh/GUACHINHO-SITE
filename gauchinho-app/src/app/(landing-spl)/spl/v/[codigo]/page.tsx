@@ -5,6 +5,8 @@ import { listarEmpreendimentos, vendedorPorCodigo } from "@/lib/spl/repo";
 import { getSplConfig } from "@/lib/spl/config-server";
 import { vendedorVeComissao } from "@/lib/spl/types";
 import { acharGrupoPorCodigo } from "@/lib/spl/combinacao-cartas";
+import { caminhoPortfolio } from "@/lib/spl/links";
+import { metadataAppSpl } from "@/lib/spl/app-metadata";
 import { fetchPublicGruposAggregatesForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 import { fetchPublicCartasAutorizadasForEmpresa } from "@/lib/cartas/catalogo-autorizado-cartas";
 import { DEFAULT_CONTATO, getConfigJsonPublic } from "@/server/config";
@@ -12,7 +14,17 @@ import { SplPortfolio, type CartaPortfolio, type PlanoPortfolio } from "@/compon
 import { SplShell } from "@/components/spl/spl-ui";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: { absolute: "Portfólio SPL" }, robots: { index: false, follow: false } };
+export async function generateMetadata({ params }: { params: Promise<{ codigo: string }> }): Promise<Metadata> {
+  const { codigo } = await params;
+  const tenant = await getResolvedTenant();
+  const acesso = tenant ? await vendedorPorCodigo(tenant.empresaId, codigo) : null;
+  return metadataAppSpl({
+    titulo: acesso ? `Portfólio SPL · ${acesso.vendedor.nome}` : "Portfólio SPL",
+    inicio: acesso ? caminhoPortfolio(acesso.imobiliaria.nome, acesso.vendedor.codigo) : "/spl",
+    nomeApp: acesso ? `Portfólio SPL · ${acesso.imobiliaria.nome}` : "Portfólio SPL",
+    curto: "Portfólio SPL",
+  });
+}
 
 export default async function SplPortfolioPage({ params }: { params: Promise<{ codigo: string }> }) {
   const { codigo } = await params;

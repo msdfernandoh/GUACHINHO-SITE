@@ -6,9 +6,21 @@ import { dashboardSpl, tokenDashboardSpl } from "@/lib/spl/repo";
 import { extrairToken } from "@/lib/spl/links";
 import { labelDe, MODELOS_PARCERIA } from "@/lib/spl/types";
 import { brl, SplShell } from "@/components/spl/spl-ui";
+import { SplInstalarApp } from "@/components/spl/spl-instalar-app";
+import { metadataAppSpl } from "@/lib/spl/app-metadata";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: { absolute: "Painel SPL · Imobiliárias parceiras" }, robots: { index: false, follow: false } };
+export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
+  const { token } = await params;
+  const esperado = await tokenDashboardSpl();
+  const valido = !!esperado && tokenConfere(extrairToken(token), esperado);
+  return metadataAppSpl({
+    titulo: "Painel SPL · Imobiliárias parceiras",
+    inicio: valido ? `/spl/dashboard/spl-engenharia-${esperado}` : "/spl",
+    nomeApp: "SPL · Imobiliárias parceiras",
+    curto: "Painel SPL",
+  });
+}
 
 function tokenConfere(recebido: string, esperado: string) {
   const a = Buffer.from(recebido);
@@ -41,6 +53,8 @@ export default async function SplDashboardPage({ params }: { params: Promise<{ t
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#153E90]">SPL Engenharia · Chaves para o Futuro</p>
           <h1 className="text-3xl font-black text-[#0A1931]">Painel das imobiliárias parceiras</h1>
         </div>
+
+        <SplInstalarApp texto="Coloque este painel na tela inicial do celular" />
 
         <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[

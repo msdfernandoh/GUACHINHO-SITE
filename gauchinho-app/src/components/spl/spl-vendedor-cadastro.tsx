@@ -49,7 +49,14 @@ export function SplVendedorCadastro({
       <Cartao className="space-y-5">
         <h2 className="text-3xl font-black text-[#0A1931]">Pronto, você está na rede {imobiliaria}!</h2>
         <p className="text-lg text-slate-700">Este é o seu portfólio. Salve na tela inicial do celular e use na frente do cliente.</p>
-        <LinkCopiavel titulo="Seu portfólio" url={url} />
+        <LinkCopiavel
+          titulo="Seu portfólio"
+          url={url}
+          mensagemWhatsapp={`Meu portfólio SPL (${imobiliaria}):`}
+          whatsappPara={f.telefone}
+          rotuloWhatsapp="Mandar para o meu WhatsApp"
+        />
+        <p className="text-base text-slate-600">Abra o portfólio no celular e toque em <b>Instalar</b> para ele virar um app.</p>
         <a href={url} className="block rounded-2xl bg-[#16A34A] px-6 py-4 text-center text-lg font-extrabold text-white">
           Abrir meu portfólio
         </a>

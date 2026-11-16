@@ -101,3 +101,10 @@ como disponíveis e só depois inativa as ativas da mesma administradora.
   para o vendedor não trocar o modelo pelo endereço.
 - Portfólio: valor das chaves com máscara em reais (padrão R$ 350.000,00) e opção
   "Apenas pelo saldo bruto" (o valor vira o crédito da carta, sem lance embutido).
+
+## App na tela inicial e envio pelo WhatsApp (15/11/2026)
+- Painel da imobiliária, portfólio do vendedor e painel da SPL viram app (PWA): manifesto por
+  link pessoal em `/api/public/spl/manifest` (`start_url` = o próprio link), ícones
+  `public/spl-img/app-icon-*.png` e botão "Instalar" (`components/spl/spl-instalar-app.tsx`).
+- Botões "Mandar para o meu WhatsApp" (painel e portfólio), "Enviar no WhatsApp" do portfólio de
+  cada vendedor no painel e "Enviar o sistema no WhatsApp" para cada imobiliária no admin.

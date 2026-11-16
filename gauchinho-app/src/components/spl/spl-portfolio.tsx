@@ -11,6 +11,7 @@ import { valorMonetarioBr } from "@/lib/spl/validacao";
 import { mascaraTelefone } from "@/lib/spl/mascaras";
 import type { EmpreendimentoSpl, ModeloVendedor, SolucaoSpl } from "@/lib/spl/types";
 import { Aviso, BotaoGrande, Campo, Cartao, brl, brl2, inputGrande } from "./spl-ui";
+import { SplInstalarApp } from "./spl-instalar-app";
 
 export type CartaPortfolio = {
   id: string;
@@ -168,6 +169,8 @@ export function SplPortfolio(props: Props) {
           <p className="text-slate-600">Vendedor: {vendedor.nome}</p>
         </div>
       </div>
+
+      {passo === "inicio" ? <SplInstalarApp texto="Coloque o portfólio na tela inicial do celular" /> : null}
 
       {passo === "inicio" ? (
         <Cartao className="space-y-5">

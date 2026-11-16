@@ -4,12 +4,24 @@ import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { imobiliariaPorToken, listarClientes, listarEmpreendimentos, listarVendedores } from "@/lib/spl/repo";
 import { SplPainel, type ConviteModelo } from "@/components/spl/spl-painel";
 import { parametrosConviteModelo } from "@/lib/spl/convite";
-import { caminhoConvite } from "@/lib/spl/links";
+import { caminhoConvite, caminhoPainel } from "@/lib/spl/links";
+import { metadataAppSpl } from "@/lib/spl/app-metadata";
 import { opcoesRemuneracaoVendedor } from "@/lib/spl/types";
 import { SplShell } from "@/components/spl/spl-ui";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: { absolute: "Painel da imobiliária · Portfólio SPL" }, robots: { index: false, follow: false } };
+export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
+  const { token } = await params;
+  const tenant = await getResolvedTenant();
+  const imob = tenant ? await imobiliariaPorToken(tenant.empresaId, token) : null;
+  const nome = imob?.nome ?? "Imobiliária";
+  return metadataAppSpl({
+    titulo: `${nome} · Painel SPL`,
+    inicio: imob ? caminhoPainel(imob.nome, imob.token_painel) : "/spl",
+    nomeApp: `${nome} · Painel SPL`,
+    curto: "Painel SPL",
+  });
+}
 
 export default async function SplPainelPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

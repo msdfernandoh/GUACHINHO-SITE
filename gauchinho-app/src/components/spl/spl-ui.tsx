@@ -117,7 +117,26 @@ export function Aviso({ children, tom = "erro" }: { children: ReactNode; tom?: "
   );
 }
 
-export function LinkCopiavel({ titulo, url, mensagemWhatsapp }: { titulo: string; url: string; mensagemWhatsapp?: string }) {
+/** Link wa.me para um número brasileiro (ou para escolher o contato, sem número). */
+export function linkWhatsapp(texto: string, telefone?: string | null) {
+  const d = String(telefone ?? "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+  return `https://wa.me/${d ? `55${d}` : ""}?text=${encodeURIComponent(texto)}`;
+}
+
+export function LinkCopiavel({
+  titulo,
+  url,
+  mensagemWhatsapp,
+  whatsappPara,
+  rotuloWhatsapp = "Enviar no WhatsApp",
+}: {
+  titulo: string;
+  url: string;
+  mensagemWhatsapp?: string;
+  /** Telefone de destino; sem ele o WhatsApp pede para escolher o contato. */
+  whatsappPara?: string | null;
+  rotuloWhatsapp?: string;
+}) {
   return (
     <div className="rounded-2xl border-2 border-dashed border-[#153E90]/30 bg-[#153E90]/5 p-4">
       <p className="text-sm font-bold uppercase tracking-wide text-[#153E90]">{titulo}</p>
@@ -126,12 +145,12 @@ export function LinkCopiavel({ titulo, url, mensagemWhatsapp }: { titulo: string
         <BotaoCopiar texto={url} />
         {mensagemWhatsapp ? (
           <a
-            href={`https://wa.me/?text=${encodeURIComponent(`${mensagemWhatsapp}\n${url}`)}`}
+            href={linkWhatsapp(`${mensagemWhatsapp}\n${url}`, whatsappPara)}
             target="_blank"
             rel="noreferrer"
             className="rounded-xl bg-[#16A34A] px-4 py-3 text-base font-bold text-white"
           >
-            Enviar no WhatsApp
+            {rotuloWhatsapp}
           </a>
         ) : null}
       </div>

@@ -24,7 +24,8 @@ import {
 import { mascaraCnpj, mascaraCpf, mascaraPix, mascaraTelefone, type PixTipo } from "@/lib/spl/mascaras";
 import { caminhoPainel, caminhoPortfolio } from "@/lib/spl/links";
 import { baixarModeloCarteira, lerPlanilhaCarteira, type LinhaCarteira } from "@/lib/spl/planilha";
-import { Aviso, BotaoGrande, Campo, CampoPix, Cartao, fone, inputGrande, LinkCopiavel, brl } from "./spl-ui";
+import { Aviso, BotaoGrande, Campo, CampoPix, Cartao, fone, inputGrande, LinkCopiavel, brl, linkWhatsapp } from "./spl-ui";
+import { SplInstalarApp } from "./spl-instalar-app";
 
 export type ConviteModelo = { modelo: string; titulo: string; caminho: string };
 
@@ -97,6 +98,7 @@ export function SplPainel({ imob, token, convites, vendedores, clientes, empreen
 
       {aba === "inicio" ? (
         <>
+          <SplInstalarApp texto="Coloque este painel na tela inicial do celular" />
           <div className="grid gap-3 sm:grid-cols-2">
             <BotaoGrande tipo="ouro" onClick={() => setAba("cliente")}>
               + Cadastrar cliente
@@ -127,6 +129,14 @@ export function SplPainel({ imob, token, convites, vendedores, clientes, empreen
             />
           ))}
 
+          <LinkCopiavel
+            titulo="Link deste painel (sistema da imobiliária)"
+            url={`${origem}${caminhoPainel(imob.nome, token)}`}
+            mensagemWhatsapp={`Painel da ${imob.nome} no portfólio SPL:`}
+            whatsappPara={imob.telefone}
+            rotuloWhatsapp="Mandar para o meu WhatsApp"
+          />
+
           <BotaoGrande tipo="secundario" onClick={() => setAba("editar")} className="w-full">
             Editar dados da imobiliária
           </BotaoGrande>
@@ -142,9 +152,19 @@ export function SplPainel({ imob, token, convites, vendedores, clientes, empreen
                       {fone(v.telefone)} · {labelDe(MODELOS_VENDEDOR, v.modelo)}
                     </p>
                   </div>
-                  <a href={caminhoPortfolio(imob.nome, v.codigo)} className="rounded-xl border-2 border-[#153E90] px-3 py-2 text-sm font-bold text-[#153E90]">
-                    Portfólio
-                  </a>
+                  <div className="flex gap-2">
+                    <a
+                      href={linkWhatsapp(`Seu portfólio SPL da ${imob.nome}. Salve na tela inicial do celular:\n${origem}${caminhoPortfolio(imob.nome, v.codigo)}`, v.telefone)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-xl bg-[#16A34A] px-3 py-2 text-sm font-bold text-white"
+                    >
+                      Enviar no WhatsApp
+                    </a>
+                    <a href={caminhoPortfolio(imob.nome, v.codigo)} className="rounded-xl border-2 border-[#153E90] px-3 py-2 text-sm font-bold text-[#153E90]">
+                      Portfólio
+                    </a>
+                  </div>
                 </li>
               ))}
               {!vendedores.length ? <li className="py-3 text-slate-500">Nenhum vendedor ainda. Envie o link acima.</li> : null}
