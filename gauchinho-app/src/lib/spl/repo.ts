@@ -12,6 +12,7 @@ import {
   type ClienteSpl,
   type EmpreendimentoSpl,
   type ImobiliariaSpl,
+  modeloPadraoVendedor,
   type ModeloVendedor,
   type VendedorSpl,
 } from "./types";
@@ -182,6 +183,43 @@ export async function imobiliariaPorConvite(empresaId: string, segmento: string)
   return (data as ImobiliariaSpl | null) ?? null;
 }
 
+/**
+ * Edição pelo painel. O modelo de parceria só muda enquanto o cadastro está em
+ * aprovação; depois disso a mudança é feita pela equipe (mexe em comissão).
+ */
+export async function atualizarImobiliaria(
+  imob: ImobiliariaSpl,
+  input: CadastroImobiliariaInput,
+  logo: File | null,
+): Promise<ImobiliariaSpl> {
+  const dados: Partial<CadastroImobiliariaInput> & { logo_url?: string } = { ...input };
+  if (imob.status !== "PENDENTE") dados.modelo_parceria = imob.modelo_parceria;
+  if (input.telefone !== imob.telefone) {
+    const { data: outro } = await db()
+      .from("spl_imobiliarias")
+      .select("id")
+      .eq("empresa_id", imob.empresa_id)
+      .eq("telefone", input.telefone)
+      .neq("id", imob.id)
+      .maybeSingle();
+    if (outro) throw new Error("Esse telefone já está em outra imobiliária.");
+  }
+  if (logo && logo.size > 0) {
+    if (logo.size > 5 * 1024 * 1024) throw new Error("A logo pode ter até 5 MB.");
+    if (!/^image\/(png|jpe?g|webp|gif)$/.test(logo.type)) throw new Error("Envie a logo em PNG, JPG ou WEBP.");
+    dados.logo_url = await uploadImagemPublica("imobiliarias", `spl/${imob.empresa_id}/${imob.id}-${Date.now()}`, logo);
+  }
+  const { data, error } = await db()
+    .from("spl_imobiliarias")
+    .update(dados)
+    .eq("id", imob.id)
+    .eq("empresa_id", imob.empresa_id)
+    .select(IMOB_COLS)
+    .single();
+  if (error || !data) throw new Error("Não foi possível salvar as alterações agora.");
+  return data as ImobiliariaSpl;
+}
+
 /* -------------------------------- Vendedores ------------------------------- */
 
 export async function cadastrarVendedor(
@@ -199,7 +237,7 @@ export async function cadastrarVendedor(
   const codigo = await codigoLivre("spl_vendedores", "codigo", imob.empresa_id);
   const { data, error } = await db()
     .from("spl_vendedores")
-    .insert({ ...input, empresa_id: imob.empresa_id, imobiliaria_id: imob.id, modelo: modelo ?? imob.modelo_vendedores, codigo })
+    .insert({ ...input, empresa_id: imob.empresa_id, imobiliaria_id: imob.id, modelo: modelo ?? modeloPadraoVendedor(imob.modelo_vendedores), codigo })
     .select(VEND_COLS)
     .single();
   if (error || !data) throw new Error("Não foi possível cadastrar o vendedor agora.");

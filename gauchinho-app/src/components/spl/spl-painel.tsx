@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import {
   labelDe,
   MODELOS_PARCERIA,
+  labelModeloVendedores,
   MODELOS_VENDEDOR,
+  modeloPadraoVendedor,
   opcoesRemuneracaoVendedor,
+  POR_VENDEDOR_OPCAO,
   pct,
   SOLUCOES,
   STATUS_CLIENTE,
@@ -15,24 +18,28 @@ import {
   type ImobiliariaSpl,
   type ModeloParceria,
   type ModeloVendedor,
+  type ModeloVendedoresImob,
   type VendedorSpl,
 } from "@/lib/spl/types";
-import { mascaraCpf, mascaraTelefone, type PixTipo } from "@/lib/spl/mascaras";
-import { caminhoConvite, caminhoPortfolio } from "@/lib/spl/links";
+import { mascaraCnpj, mascaraCpf, mascaraPix, mascaraTelefone, type PixTipo } from "@/lib/spl/mascaras";
+import { caminhoPainel, caminhoPortfolio } from "@/lib/spl/links";
 import { baixarModeloCarteira, lerPlanilhaCarteira, type LinhaCarteira } from "@/lib/spl/planilha";
 import { Aviso, BotaoGrande, Campo, CampoPix, Cartao, fone, inputGrande, LinkCopiavel, brl } from "./spl-ui";
+
+export type ConviteModelo = { modelo: string; titulo: string; caminho: string };
 
 type Props = {
   imob: Omit<ImobiliariaSpl, "token_painel">;
   token: string;
+  convites: ConviteModelo[];
   vendedores: VendedorSpl[];
   clientes: ClienteSpl[];
   empreendimentos: EmpreendimentoSpl[];
 };
 
-type Aba = "inicio" | "cliente" | "planilha" | "vendedor";
+type Aba = "inicio" | "cliente" | "planilha" | "vendedor" | "editar";
 
-export function SplPainel({ imob, token, vendedores, clientes, empreendimentos }: Props) {
+export function SplPainel({ imob, token, convites, vendedores, clientes, empreendimentos }: Props) {
   const router = useRouter();
   const [aba, setAba] = useState<Aba>("inicio");
   const origem = typeof window !== "undefined" ? window.location.origin : "";
@@ -61,7 +68,7 @@ export function SplPainel({ imob, token, vendedores, clientes, empreendimentos }
           <h1 className="text-2xl font-black text-[#0A1931]">{imob.nome}</h1>
           <p className="text-slate-600">
             {modelo?.label}
-            {modelo && modelo.percentual !== "—" ? ` · ${modelo.percentual}` : ""} · Vendedores: {labelDe(MODELOS_VENDEDOR, imob.modelo_vendedores)}
+            {modelo && modelo.percentual !== "—" ? ` · ${modelo.percentual}` : ""} · Vendedores: {labelModeloVendedores(imob.modelo_vendedores)}
           </p>
         </div>
         <span
@@ -108,11 +115,21 @@ export function SplPainel({ imob, token, vendedores, clientes, empreendimentos }
             </BotaoGrande>
           </div>
 
-          <LinkCopiavel
-            titulo="Link para seus vendedores entrarem na sua rede"
-            url={`${origem}${caminhoConvite(imob.nome, imob.codigo_convite)}`}
-            mensagemWhatsapp={`Cadastre-se na rede ${imob.nome} do portfólio SPL:`}
-          />
+          {convites.length > 1 ? (
+            <p className="text-lg font-black text-[#0A1931]">Links de convite: envie o link do modelo de cada vendedor</p>
+          ) : null}
+          {convites.map((c) => (
+            <LinkCopiavel
+              key={c.modelo}
+              titulo={c.titulo}
+              url={`${origem}${c.caminho}`}
+              mensagemWhatsapp={`Cadastre-se na rede ${imob.nome} do portfólio SPL:`}
+            />
+          ))}
+
+          <BotaoGrande tipo="secundario" onClick={() => setAba("editar")} className="w-full">
+            Editar dados da imobiliária
+          </BotaoGrande>
 
           <Cartao>
             <h2 className="text-xl font-black text-[#0A1931]">Vendedores</h2>
@@ -175,9 +192,162 @@ export function SplPainel({ imob, token, vendedores, clientes, empreendimentos }
       {aba === "cliente" ? <FormCliente token={token} empreendimentos={empreendimentos} onFim={voltar} /> : null}
       {aba === "planilha" ? <FormPlanilha token={token} empreendimentos={empreendimentos} onFim={voltar} /> : null}
       {aba === "vendedor" ? (
-        <FormVendedor token={token} padrao={imob.modelo_vendedores} modeloImob={imob.modelo_parceria} nomeImob={imob.nome} onFim={voltar} />
+        <FormVendedor token={token} padrao={modeloPadraoVendedor(imob.modelo_vendedores)} modeloImob={imob.modelo_parceria} nomeImob={imob.nome} onFim={voltar} />
+      ) : null}
+      {aba === "editar" ? (
+        <FormEditar
+          imob={imob}
+          token={token}
+          onFim={(novoNome) => {
+            if (novoNome && novoNome !== imob.nome) {
+              window.location.href = caminhoPainel(novoNome, token);
+              return;
+            }
+            voltar();
+          }}
+        />
       ) : null}
     </div>
+  );
+}
+
+function FormEditar({
+  imob,
+  token,
+  onFim,
+}: {
+  imob: Omit<ImobiliariaSpl, "token_painel">;
+  token: string;
+  onFim: (novoNome?: string) => void;
+}) {
+  const pixTipo = (imob.chave_pix_tipo ?? "") as PixTipo | "";
+  const [f, setF] = useState({
+    nome: imob.nome,
+    responsavel: imob.responsavel,
+    telefone: mascaraTelefone(imob.telefone),
+    email: imob.email,
+    cnpj: imob.cnpj ? mascaraCnpj(imob.cnpj) : "",
+    chave_pix_tipo: pixTipo,
+    chave_pix: imob.chave_pix ? (pixTipo ? mascaraPix(pixTipo, imob.chave_pix) : imob.chave_pix) : "",
+    modelo_parceria: imob.modelo_parceria as ModeloParceria,
+    quantidade_vendedores: String(imob.quantidade_vendedores ?? 0),
+    modelo_vendedores: imob.modelo_vendedores as ModeloVendedoresImob,
+  });
+  const [logo, setLogo] = useState<File | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
+  const podeMudarModelo = imob.status === "PENDENTE";
+  const soLibera = f.modelo_parceria === "SOMENTE_LIBERAR_CARTEIRA";
+  const opcoes = opcoesRemuneracaoVendedor(f.modelo_parceria);
+
+  async function salvar() {
+    setErro(null);
+    setSalvando(true);
+    try {
+      const body = new FormData();
+      body.set("token", token);
+      Object.entries(f).forEach(([k, v]) => body.set(k, String(v)));
+      if (logo) body.set("logo", logo);
+      const res = await fetch("/api/public/spl/imobiliaria/editar", { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Não foi possível salvar.");
+      onFim(data.nome);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível salvar.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Cartao className="space-y-4">
+      <Voltar onClick={() => onFim()} />
+      <h2 className="text-2xl font-black text-[#0A1931]">Editar dados da imobiliária</h2>
+      <Campo rotulo="Nome da imobiliária">
+        <input className={inputGrande} value={f.nome} onChange={(e) => set("nome", e.target.value)} />
+      </Campo>
+      <Campo rotulo="Trocar logo (opcional)" dica="PNG, JPG ou WEBP de até 5 MB.">
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          onChange={(e) => setLogo(e.target.files?.[0] ?? null)}
+          className="block w-full rounded-2xl border-2 border-dashed border-slate-300 bg-white p-4 text-base"
+        />
+      </Campo>
+      <Campo rotulo="Responsável">
+        <input className={inputGrande} value={f.responsavel} onChange={(e) => set("responsavel", e.target.value)} />
+      </Campo>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Campo rotulo="Celular / WhatsApp">
+          <input className={inputGrande} inputMode="tel" value={f.telefone} onChange={(e) => set("telefone", mascaraTelefone(e.target.value))} />
+        </Campo>
+        <Campo rotulo="E-mail">
+          <input className={inputGrande} inputMode="email" value={f.email} onChange={(e) => set("email", e.target.value)} />
+        </Campo>
+      </div>
+      <Campo rotulo="CNPJ">
+        <input className={inputGrande} inputMode="numeric" value={f.cnpj} onChange={(e) => set("cnpj", mascaraCnpj(e.target.value))} placeholder="00.000.000/0000-00" />
+      </Campo>
+      <CampoPix
+        rotulo={soLibera ? "Chave PIX (opcional)" : "Chave PIX para receber as comissões"}
+        tipo={f.chave_pix_tipo}
+        valor={f.chave_pix}
+        onTipo={(t) => set("chave_pix_tipo", t)}
+        onValor={(v) => set("chave_pix", v)}
+      />
+      <div>
+        <p className="text-base font-bold text-slate-800">Modelo de parceria</p>
+        {podeMudarModelo ? (
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {MODELOS_PARCERIA.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => set("modelo_parceria", m.value)}
+                className={`rounded-2xl border-2 px-3 py-3 text-left text-base font-bold ${f.modelo_parceria === m.value ? "border-[#153E90] bg-[#153E90] text-white" : "border-slate-200 bg-white"}`}
+              >
+                {m.label} {m.percentual !== "—" ? `· ${m.percentual}` : ""}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-1 text-base text-slate-600">
+            {labelDe(MODELOS_PARCERIA, imob.modelo_parceria)}. Depois da aprovação, a mudança de modelo é feita pela nossa equipe.
+          </p>
+        )}
+      </div>
+      <Campo rotulo="Quantos vendedores trabalham com você?">
+        <input className={inputGrande} inputMode="numeric" value={f.quantidade_vendedores} onChange={(e) => set("quantidade_vendedores", e.target.value.replace(/\D/g, "").slice(0, 4))} />
+      </Campo>
+      <p className="text-base font-bold text-slate-800">Como pretende remunerar os vendedores?</p>
+      <div className="grid gap-2">
+        {opcoes.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            disabled={!o.permitido}
+            onClick={() => set("modelo_vendedores", o.value)}
+            className={`rounded-2xl border-2 px-4 py-3 text-left text-base font-bold disabled:opacity-45 ${f.modelo_vendedores === o.value ? "border-[#153E90] bg-[#153E90] text-white" : "border-slate-200 bg-white"}`}
+          >
+            {o.label} {o.doVendedor ? `· vendedor ${pct(o.doVendedor)} · fica ${pct(o.ficaImobiliaria)} com você` : ""}
+          </button>
+        ))}
+        {!soLibera ? (
+          <button
+            type="button"
+            onClick={() => set("modelo_vendedores", "POR_VENDEDOR")}
+            className={`rounded-2xl border-2 px-4 py-3 text-left text-base font-bold ${f.modelo_vendedores === "POR_VENDEDOR" ? "border-[#153E90] bg-[#153E90] text-white" : "border-dashed border-slate-300 bg-white"}`}
+          >
+            {POR_VENDEDOR_OPCAO.label}
+          </button>
+        ) : null}
+      </div>
+      {erro ? <Aviso>{erro}</Aviso> : null}
+      <BotaoGrande tipo="ouro" onClick={salvar} disabled={salvando} className="w-full">
+        {salvando ? "Salvando…" : "Salvar alterações"}
+      </BotaoGrande>
+    </Cartao>
   );
 }
 

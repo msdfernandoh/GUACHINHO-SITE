@@ -78,6 +78,13 @@ describe("sugerirComposicoes", () => {
     }
   });
 
+  it("saldo bruto: sem embutido, o crédito da carta é o valor pedido", () => {
+    const [abaixo] = sugerirComposicoes({ grupo, cotas, modalidades: [], plano: { reduzida: 70, embutido: 0 }, valorLiquidoDesejado: 500_000 });
+    expect(abaixo.creditoContratado).toBe(500_000);
+    expect(abaixo.creditoLiquido).toBe(500_000);
+    expect(abaixo.lanceEmbutido).toBe(0);
+  });
+
   it("ignora cotas inativas e sem crédito", () => {
     const lista = [...cotas, { ...cota(100_000, 9), ativo: false }, { ...cota(0, 10) }];
     expect(cotasElegiveis(lista).map((c) => c.valor_credito)).toEqual([200_000, 250_000, 275_000, 300_000]);

@@ -46,7 +46,7 @@ type Props = {
 };
 
 type Escolha =
-  | { tipo: "consorcio"; plano: PlanoPortfolio; opcao: OpcaoComposicao }
+  | { tipo: "consorcio"; plano: PlanoPortfolio; opcao: OpcaoComposicao; apenasBruto: boolean }
   | { tipo: "carta"; carta: CartaPortfolio }
   | { tipo: "financiamento"; valor: number; parcela: number; prazo: number; taxa: number }
   | { tipo: "home_equity"; valor: number; garantia: number; parcela: number; prazo: number; taxa: number };
@@ -71,8 +71,12 @@ function resumoEscolha(e: Escolha): { titulo: string; linhas: [string, string][]
       linhas: [
         ["Cartas", o.resumo],
         ["Crédito contratado", brl(o.creditoContratado)],
-        ["Lance embutido", `${brl(o.lanceEmbutido)} (${e.plano.embutido}%)`],
-        ["Crédito na mão para as chaves", brl(o.creditoLiquido)],
+        ...(e.apenasBruto
+          ? ([["Lance embutido", "Sem embutido (saldo bruto)"]] as [string, string][])
+          : ([
+              ["Lance embutido", `${brl(o.lanceEmbutido)} (${e.plano.embutido}%)`],
+              ["Crédito na mão para as chaves", brl(o.creditoLiquido)],
+            ] as [string, string][])),
         [`Parcela reduzida ${e.plano.reduzida}% até contemplar`, brl2(o.parcelaAteContemplar)],
         ["Parcela após a contemplação", brl2(o.parcelaPosContemplacao)],
         ["Reajuste", e.plano.reajuste],
@@ -136,12 +140,13 @@ export function SplPortfolio(props: Props) {
   const { vendedor, imobiliaria, veComissao, empreendimentos, planos, cartas, taxas } = props;
   const [passo, setPasso] = useState<Passo>("inicio");
   const [emp, setEmp] = useState<EmpreendimentoSpl | null>(null);
-  const [valorTxt, setValorTxt] = useState("");
+  const [valorTxt, setValorTxt] = useState(mascaraMoeda("35000000"));
+  const [apenasBruto, setApenasBruto] = useState(false);
   const [planoAtivo, setPlanoAtivo] = useState<PlanoPortfolio["chave"]>("CONSORCIO_SPL");
   const [escolha, setEscolha] = useState<Escolha | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [cliente, setCliente] = useState<DadosCliente | null>(null);
-  const valor = valorMonetarioBr(valorTxt) ?? 0;
+  const valor = valorDaMascara(valorTxt);
 
   const irPara = (p: Passo) => {
     setErro(null);
@@ -193,13 +198,24 @@ export function SplPortfolio(props: Props) {
               className={`${inputGrande} text-3xl font-black`}
               inputMode="numeric"
               value={valorTxt}
-              onChange={(e) => {
-                const d = e.target.value.replace(/\D/g, "");
-                setValorTxt(d ? Number(d).toLocaleString("pt-BR") : "");
-              }}
-              placeholder="350.000"
+              onChange={(e) => setValorTxt(mascaraMoeda(e.target.value))}
+              placeholder="R$ 350.000,00"
             />
           </Campo>
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-slate-200 bg-white p-4">
+            <input
+              type="checkbox"
+              checked={apenasBruto}
+              onChange={(e) => setApenasBruto(e.target.checked)}
+              className="mt-1 h-7 w-7 shrink-0 accent-[#153E90]"
+            />
+            <span>
+              <span className="block text-lg font-black text-[#0A1931]">Apenas pelo saldo bruto</span>
+              <span className="block text-base text-slate-600">
+                O valor acima vira o crédito da carta, sem lance embutido. Sem marcar, o sistema calcula para sobrar esse valor líquido na mão.
+              </span>
+            </span>
+          </label>
           {erro ? <Aviso>{erro}</Aviso> : null}
           <BotaoGrande
             tipo="ouro"
@@ -256,11 +272,12 @@ export function SplPortfolio(props: Props) {
           ativo={planoAtivo}
           setAtivo={setPlanoAtivo}
           valor={valor}
+          apenasBruto={apenasBruto}
           veComissao={veComissao}
           modeloVendedor={vendedor.modelo}
           onVoltar={() => irPara("solucoes")}
           onEscolher={(plano, opcao) => {
-            setEscolha({ tipo: "consorcio", plano, opcao });
+            setEscolha({ tipo: "consorcio", plano, opcao, apenasBruto });
             irPara("cliente");
           }}
         />
@@ -337,6 +354,7 @@ function TelaConsorcio({
   ativo,
   setAtivo,
   valor,
+  apenasBruto,
   veComissao,
   modeloVendedor,
   onVoltar,
@@ -346,6 +364,7 @@ function TelaConsorcio({
   ativo: PlanoPortfolio["chave"];
   setAtivo: (c: PlanoPortfolio["chave"]) => void;
   valor: number;
+  apenasBruto: boolean;
   veComissao: boolean;
   modeloVendedor: ModeloVendedor;
   onVoltar: () => void;
@@ -358,10 +377,11 @@ function TelaConsorcio({
       grupo: plano.agg.grupo,
       cotas: plano.agg.cotas,
       modalidades: plano.agg.modalidades,
-      plano: { reduzida: plano.reduzida, embutido: plano.embutido },
+      // Saldo bruto: o valor é o crédito da carta, sem lance embutido (líquido = crédito).
+      plano: { reduzida: plano.reduzida, embutido: apenasBruto ? 0 : plano.embutido },
       valorLiquidoDesejado: valor,
     });
-  }, [plano, valor]);
+  }, [plano, valor, apenasBruto]);
   const pctVend = PERCENTUAL_VENDEDOR[modeloVendedor];
   const participantes = (p: PlanoPortfolio) => {
     const g = p.agg?.grupo as unknown as { quantidade_cotas_sorteio?: number | null } | undefined;
@@ -371,7 +391,10 @@ function TelaConsorcio({
   return (
     <Cartao className="space-y-5">
       <Voltar onClick={onVoltar} />
-      <h1 className="text-3xl font-black text-[#0A1931]">Consórcio para {brl(valor)} na mão</h1>
+      <h1 className="text-3xl font-black text-[#0A1931]">
+        {apenasBruto ? `Consórcio de ${brl(valor)} de crédito` : `Consórcio para ${brl(valor)} na mão`}
+      </h1>
+      {apenasBruto ? <Aviso tom="info">Saldo bruto: carta do valor pedido, sem lance embutido.</Aviso> : null}
       <div className="grid grid-cols-2 gap-3">
         {planos.map((p) => (
           <button
@@ -383,7 +406,7 @@ function TelaConsorcio({
             <span className="block text-xl font-black">{p.nome}</span>
             <span className={`block text-sm ${ativo === p.chave ? "text-white/70" : "text-slate-500"}`}>Grupo {p.codigo}</span>
             <span className="mt-2 block text-sm font-semibold">
-              Parcela {p.reduzida}% · embutido {p.embutido}%
+              Parcela {p.reduzida}% · {apenasBruto ? "sem embutido" : `embutido ${p.embutido}%`}
             </span>
             <span className="block text-sm">Reajuste: {p.reajuste}</span>
             {p.chave === "CONSORCIO_SPL" ? (
@@ -409,7 +432,7 @@ function TelaConsorcio({
             <div key={o.posicao + o.resumo} className="flex flex-col rounded-3xl border-2 border-slate-200 bg-[#F4F7FB] p-5">
               <p className="text-sm font-bold uppercase text-slate-500">{o.posicao === "abaixo" ? "Um pouco menos" : "Um pouco mais"}</p>
               <p className="text-4xl font-black text-[#153E90]">{brl(o.creditoLiquido)}</p>
-              <p className="text-base text-slate-600">na mão para as chaves</p>
+              <p className="text-base text-slate-600">{apenasBruto ? "de crédito na carta" : "na mão para as chaves"}</p>
               <dl className="mt-3 space-y-1 text-base">
                 <div className="flex justify-between gap-2">
                   <dt className="text-slate-600">Parcela até contemplar</dt>
@@ -809,4 +832,16 @@ function TelaPronto({
       </div>
     </div>
   );
+}
+
+/** "35000000" → "R$ 350.000,00" (os dígitos são centavos). */
+function mascaraMoeda(v: string): string {
+  const d = v.replace(/\D/g, "").replace(/^0+/, "").slice(0, 12);
+  if (!d) return "";
+  return (Number(d) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function valorDaMascara(v: string): number {
+  const d = v.replace(/\D/g, "");
+  return d ? Number(d) / 100 : 0;
 }

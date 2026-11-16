@@ -3,7 +3,7 @@ import { requireTenantPermission } from "@/lib/tenant/context";
 import { listarClientesAdmin, listarEmpreendimentos, listarImobiliariasAdmin, tokenDashboardSpl } from "@/lib/spl/repo";
 import { caminhoPainel } from "@/lib/spl/links";
 import { getSplConfig } from "@/lib/spl/config-server";
-import { labelDe, MODELOS_PARCERIA, MODELOS_VENDEDOR, SOLUCOES, STATUS_CLIENTE } from "@/lib/spl/types";
+import { labelDe, labelModeloVendedores, MODELOS_PARCERIA, SOLUCOES, STATUS_CLIENTE } from "@/lib/spl/types";
 import { formatCurrency } from "@/lib/utils/format";
 import { Button, Input, Label } from "@/components/ui/form-primitives";
 import {
@@ -116,7 +116,7 @@ export default async function AdminSplPage() {
                   </td>
                   <td className="p-3">
                     {labelDe(MODELOS_PARCERIA, i.modelo_parceria)}
-                    <p className="text-xs text-zinc-500">Vendedores: {labelDe(MODELOS_VENDEDOR, i.modelo_vendedores)}</p>
+                    <p className="text-xs text-zinc-500">Vendedores: {labelModeloVendedores(i.modelo_vendedores)}</p>
                   </td>
                   <td className="p-3">
                     {i.vendedores} cadastrados
@@ -162,7 +162,7 @@ export default async function AdminSplPage() {
                       ) : null}
                     </div>
                     <a href={caminhoPainel(i.nome, i.token_painel)} target="_blank" rel="noreferrer" className="block text-xs font-semibold text-amber-600 underline">
-                      Abrir painel da imobiliária
+                      Abrir ou editar o painel da imobiliária
                     </a>
                   </td>
                 </tr>

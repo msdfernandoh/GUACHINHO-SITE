@@ -91,3 +91,13 @@ como disponíveis e só depois inativa as ativas da mesma administradora.
 - Painel da SPL Engenharia, somente leitura e só com números agregados:
   `/spl/dashboard/spl-engenharia-<token>` (token em `configuracoes_sistema.spl_dashboard`;
   link exibido em `/admin/spl`).
+
+## Ajustes de 15/11/2026 (noite) — migration 342
+- Painel da imobiliária: "Editar dados da imobiliária" (nome, logo, responsável, contatos,
+  CNPJ, PIX, equipe e remuneração). O modelo de parceria só muda enquanto o cadastro
+  está em aprovação (`POST /api/public/spl/imobiliaria/editar`).
+- Remuneração "Escolher para cada vendedor" (`POR_VENDEDOR`): o painel gera um link de
+  convite por modelo permitido, assinado com HMAC do token do painel (`lib/spl/convite.ts`),
+  para o vendedor não trocar o modelo pelo endereço.
+- Portfólio: valor das chaves com máscara em reais (padrão R$ 350.000,00) e opção
+  "Apenas pelo saldo bruto" (o valor vira o crédito da carta, sem lance embutido).

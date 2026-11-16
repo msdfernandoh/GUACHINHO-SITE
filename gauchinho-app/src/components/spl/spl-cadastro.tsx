@@ -4,10 +4,11 @@ import { useState } from "react";
 import {
   MODELOS_PARCERIA,
   opcoesRemuneracaoVendedor,
+  POR_VENDEDOR_OPCAO,
   PERCENTUAL_PARCERIA,
   pct,
   type ModeloParceria,
-  type ModeloVendedor,
+  type ModeloVendedoresImob,
 } from "@/lib/spl/types";
 import { mascaraCnpj, mascaraTelefone, type PixTipo } from "@/lib/spl/mascaras";
 import { caminhoConvite, caminhoPainel } from "@/lib/spl/links";
@@ -31,7 +32,7 @@ export function SplCadastroImobiliaria() {
     chave_pix_tipo: "" as PixTipo | "",
     modelo_parceria: "" as ModeloParceria | "",
     quantidade_vendedores: "",
-    modelo_vendedores: "PROPRIO" as ModeloVendedor,
+    modelo_vendedores: "PROPRIO" as ModeloVendedoresImob,
   });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
   const soLibera = f.modelo_parceria === "SOMENTE_LIBERAR_CARTEIRA";
@@ -42,7 +43,9 @@ export function SplCadastroImobiliaria() {
 
   function escolherModelo(m: ModeloParceria) {
     setF((p) => {
-      const permitido = opcoesRemuneracaoVendedor(m).find((o) => o.value === p.modelo_vendedores)?.permitido;
+      const permitido =
+        p.modelo_vendedores === "POR_VENDEDOR" ||
+        opcoesRemuneracaoVendedor(m).find((o) => o.value === p.modelo_vendedores)?.permitido;
       return { ...p, modelo_parceria: m, modelo_vendedores: permitido ? p.modelo_vendedores : "PROPRIO" };
     });
   }
@@ -238,6 +241,16 @@ export function SplCadastroImobiliaria() {
               </button>
             ))}
           </div>
+          {!soLibera ? (
+            <button
+              type="button"
+              onClick={() => set("modelo_vendedores", "POR_VENDEDOR")}
+              className={`w-full rounded-2xl border-2 p-4 text-left transition ${f.modelo_vendedores === "POR_VENDEDOR" ? "border-[#153E90] bg-[#153E90]/5 ring-4 ring-[#153E90]/10" : "border-dashed border-slate-300 bg-white"}`}
+            >
+              <span className="block text-lg font-black text-[#0A1931]">{POR_VENDEDOR_OPCAO.label}</span>
+              <span className="block text-base text-slate-600">{POR_VENDEDOR_OPCAO.descricao}</span>
+            </button>
+          ) : null}
           {escolhida?.repassaTudo ? (
             <Aviso tom="info">
               Atenção: no mesmo modelo da imobiliária, você repassa toda a sua comissão ({pct(escolhida.doVendedor)}) ao vendedor. A

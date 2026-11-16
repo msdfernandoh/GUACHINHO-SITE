@@ -50,6 +50,11 @@ describe("cadastro da imobiliária", () => {
     expect(validarChavePix("ALEATORIA", "abc").ok).toBe(false);
   });
 
+  it("aceita escolher o modelo de cada vendedor", () => {
+    const r = validarCadastroImobiliaria({ ...base, modelo_vendedores: "POR_VENDEDOR" });
+    expect(r.ok).toBe(true);
+  });
+
   it("não deixa o vendedor ganhar mais que a imobiliária", () => {
     expect(validarCadastroImobiliaria({ ...base, modelo_parceria: "GERADOR_OPORTUNIDADES", modelo_vendedores: "GERADOR_NEGOCIOS" }).ok).toBe(false);
     expect(validarCadastroImobiliaria({ ...base, modelo_parceria: "GERADOR_OPORTUNIDADES", modelo_vendedores: "GERADOR_OPORTUNIDADES" }).ok).toBe(true);

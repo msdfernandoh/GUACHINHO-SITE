@@ -39,6 +39,23 @@ export const MODELOS_VENDEDOR = [
 
 export type ModeloVendedor = (typeof MODELOS_VENDEDOR)[number]["value"];
 
+/** Na imobiliária, "POR_VENDEDOR" deixa escolher o modelo de cada colaborador. */
+export type ModeloVendedoresImob = ModeloVendedor | "POR_VENDEDOR";
+
+export const POR_VENDEDOR_OPCAO = {
+  value: "POR_VENDEDOR" as const,
+  label: "Escolher para cada vendedor",
+  descricao: "Você define o modelo de cada colaborador. O painel gera um link de convite para cada modelo.",
+};
+
+export function modeloPadraoVendedor(m: ModeloVendedoresImob | null | undefined): ModeloVendedor {
+  return !m || m === "POR_VENDEDOR" ? "PROPRIO" : m;
+}
+
+export function labelModeloVendedores(m: ModeloVendedoresImob | null | undefined): string {
+  return m === "POR_VENDEDOR" ? "Cada vendedor no seu modelo" : labelDe(MODELOS_VENDEDOR, m);
+}
+
 export const SOLUCOES = [
   { value: "CONSORCIO_SPL", label: "Consórcio · Plano SPL", curta: "Consórcio SPL" },
   { value: "CONSORCIO_ECONOMICO", label: "Consórcio · Plano Econômico", curta: "Consórcio Econômico" },
@@ -93,7 +110,7 @@ export type ImobiliariaSpl = {
   chave_pix_tipo: string | null;
   modelo_parceria: ModeloParceria;
   quantidade_vendedores: number;
-  modelo_vendedores: ModeloVendedor;
+  modelo_vendedores: ModeloVendedoresImob;
   status: "PENDENTE" | "APROVADA" | "RECUSADA" | "INATIVA";
   exibir_logo: boolean;
   codigo_convite: string;

@@ -7,6 +7,7 @@ import {
   SOLUCOES,
   type ModeloParceria,
   type ModeloVendedor,
+  type ModeloVendedoresImob,
   type SolucaoSpl,
 } from "./types";
 
@@ -81,7 +82,7 @@ export type CadastroImobiliariaInput = {
   chave_pix_tipo: PixTipo | null;
   modelo_parceria: ModeloParceria;
   quantidade_vendedores: number;
-  modelo_vendedores: ModeloVendedor;
+  modelo_vendedores: ModeloVendedoresImob;
 };
 
 export function validarCadastroImobiliaria(raw: Record<string, unknown>): Ok<CadastroImobiliariaInput> | Erro {
@@ -92,7 +93,7 @@ export function validarCadastroImobiliaria(raw: Record<string, unknown>): Ok<Cad
   const cnpj = digitos(raw.cnpj);
   const chave_pix = txt(raw.chave_pix, 140);
   const modelo_parceria = txt(raw.modelo_parceria, 40) as ModeloParceria;
-  const modelo_vendedores = (txt(raw.modelo_vendedores, 40) || "PROPRIO") as ModeloVendedor;
+  const modelo_vendedores = (txt(raw.modelo_vendedores, 40) || "PROPRIO") as ModeloVendedoresImob;
   const quantidade_vendedores = Math.floor(Number(raw.quantidade_vendedores ?? 0));
 
   if (nome.length < 2) return { ok: false, error: "Informe o nome da imobiliária." };
@@ -100,14 +101,14 @@ export function validarCadastroImobiliaria(raw: Record<string, unknown>): Ok<Cad
   if (!isValidBrazilianPhone(telefone)) return { ok: false, error: "Telefone inválido. Inclua o DDD." };
   if (!emailValido(email)) return { ok: false, error: "E-mail inválido." };
   if (!MODELOS_PARCERIA.some((m) => m.value === modelo_parceria)) return { ok: false, error: "Escolha o modelo de parceria." };
-  if (!MODELOS_VENDEDOR.some((m) => m.value === modelo_vendedores)) return { ok: false, error: "Escolha o modelo de trabalho dos vendedores." };
+  if (modelo_vendedores !== "POR_VENDEDOR" && !MODELOS_VENDEDOR.some((m) => m.value === modelo_vendedores)) return { ok: false, error: "Escolha o modelo de trabalho dos vendedores." };
   if (!Number.isFinite(quantidade_vendedores) || quantidade_vendedores < 0 || quantidade_vendedores > 1000) {
     return { ok: false, error: "Quantidade de vendedores inválida." };
   }
   const participa = modelo_parceria !== "SOMENTE_LIBERAR_CARTEIRA";
   // CNPJ é opcional: sem ele o cadastro entra, mas fica marcado como incompleto.
   if (cnpj && !cnpjValido(cnpj)) return { ok: false, error: "CNPJ inválido." };
-  if (!remuneracaoVendedorPermitida(modelo_parceria, modelo_vendedores)) {
+  if (modelo_vendedores !== "POR_VENDEDOR" && !remuneracaoVendedorPermitida(modelo_parceria, modelo_vendedores)) {
     return { ok: false, error: "A remuneração dos vendedores não pode passar do percentual do seu modelo." };
   }
   let pix: { tipo: PixTipo; chave: string } | null = null;

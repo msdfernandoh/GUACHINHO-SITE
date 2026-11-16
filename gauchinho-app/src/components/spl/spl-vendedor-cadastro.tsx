@@ -6,7 +6,17 @@ import { mascaraCpf, mascaraTelefone, type PixTipo } from "@/lib/spl/mascaras";
 import { caminhoPortfolio } from "@/lib/spl/links";
 import { Aviso, BotaoGrande, Campo, CampoPix, Cartao, inputGrande, LinkCopiavel } from "./spl-ui";
 
-export function SplVendedorCadastro({ convite, imobiliaria, modelo }: { convite: string; imobiliaria: string; modelo: ModeloVendedor }) {
+export function SplVendedorCadastro({
+  convite,
+  imobiliaria,
+  modelo,
+  assinatura,
+}: {
+  convite: string;
+  imobiliaria: string;
+  modelo: ModeloVendedor;
+  assinatura: { m: string; s: string } | null;
+}) {
   const [f, setF] = useState({ nome: "", telefone: "", email: "", cpf: "", chave_pix: "", chave_pix_tipo: "" as PixTipo | "" });
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -21,7 +31,7 @@ export function SplVendedorCadastro({ convite, imobiliaria, modelo }: { convite:
       const res = await fetch("/api/public/spl/vendedor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ convite, ...f }),
+        body: JSON.stringify({ convite, ...f, ...(assinatura ?? {}) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Não foi possível cadastrar.");
