@@ -6,6 +6,7 @@ import { SplPainel, type ConviteModelo } from "@/components/spl/spl-painel";
 import { parametrosConviteModelo } from "@/lib/spl/convite";
 import { caminhoConvite, caminhoPainel } from "@/lib/spl/links";
 import { metadataAppSpl } from "@/lib/spl/app-metadata";
+import { getTermosSpl } from "@/lib/spl/termos";
 import { opcoesRemuneracaoVendedor } from "@/lib/spl/types";
 import { SplShell } from "@/components/spl/spl-ui";
 
@@ -29,10 +30,11 @@ export default async function SplPainelPage({ params }: { params: Promise<{ toke
   if (!tenant) notFound();
   const imob = await imobiliariaPorToken(tenant.empresaId, token);
   if (!imob) notFound();
-  const [vendedores, clientes, empreendimentos] = await Promise.all([
+  const [vendedores, clientes, empreendimentos, termos] = await Promise.all([
     listarVendedores(imob.id),
     listarClientes(imob.id),
     listarEmpreendimentos(tenant.empresaId),
+    getTermosSpl(),
   ]);
   // Imobiliária que escolhe o modelo de cada vendedor recebe um link assinado por modelo.
   const base = caminhoConvite(imob.nome, imob.codigo_convite);
@@ -50,7 +52,11 @@ export default async function SplPainelPage({ params }: { params: Promise<{ toke
   delete publica.token_painel;
   return (
     <SplShell>
-      <SplPainel imob={publica} token={token} convites={convites} vendedores={vendedores} clientes={clientes} empreendimentos={empreendimentos} />
+      <SplPainel
+        imob={publica}
+        token={token}
+        convites={convites}
+        termos={termos ? { versao: termos.versao, texto: termos.texto } : null} vendedores={vendedores} clientes={clientes} empreendimentos={empreendimentos} />
     </SplShell>
   );
 }

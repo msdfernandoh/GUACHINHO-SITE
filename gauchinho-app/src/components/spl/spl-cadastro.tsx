@@ -13,10 +13,12 @@ import {
 import { mascaraCnpj, mascaraTelefone, type PixTipo } from "@/lib/spl/mascaras";
 import { caminhoConvite, caminhoPainel } from "@/lib/spl/links";
 import { Aviso, BotaoGrande, Campo, CampoPix, Cartao, inputGrande, LinkCopiavel } from "./spl-ui";
+import { SplTermoCaixa } from "./spl-termo";
 
 type Resultado = { token: string; convite: string; nome: string };
 
-export function SplCadastroImobiliaria() {
+export function SplCadastroImobiliaria({ termos }: { termos: { versao: string; texto: string } | null }) {
+  const [aceitouTermos, setAceitouTermos] = useState(false);
   const [passo, setPasso] = useState(0);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -70,11 +72,16 @@ export function SplCadastroImobiliaria() {
 
   async function enviar() {
     setErro(null);
+    if (termos && !aceitouTermos) return setErro("Leia e marque que aceita o termo de parceria.");
     setEnviando(true);
     try {
       const body = new FormData();
       Object.entries(f).forEach(([k, v]) => body.set(k, String(v)));
       if (logo) body.set("logo", logo);
+      if (termos) {
+        body.set("termos_versao", termos.versao);
+        body.set("termos_aceito", aceitouTermos ? "true" : "false");
+      }
       const res = await fetch("/api/public/spl/imobiliaria", { method: "POST", body });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Não foi possível cadastrar.");
@@ -267,6 +274,10 @@ export function SplCadastroImobiliaria() {
             </Aviso>
           ) : null}
         </div>
+      ) : null}
+
+      {passo === 2 && termos ? (
+        <SplTermoCaixa texto={termos.texto} versao={termos.versao} aceito={aceitouTermos} onAceito={setAceitouTermos} />
       ) : null}
 
       {erro ? <Aviso>{erro}</Aviso> : null}

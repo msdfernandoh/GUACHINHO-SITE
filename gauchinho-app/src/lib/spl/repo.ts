@@ -20,7 +20,7 @@ import {
 const db = () => createAdminClient({ noStore: true });
 
 const IMOB_COLS =
-  "id,empresa_id,nome,logo_url,responsavel,telefone,email,cnpj,chave_pix,chave_pix_tipo,modelo_parceria,quantidade_vendedores,modelo_vendedores,status,exibir_logo,codigo_convite,token_painel,created_at";
+  "id,empresa_id,nome,logo_url,responsavel,telefone,email,cnpj,chave_pix,chave_pix_tipo,modelo_parceria,quantidade_vendedores,modelo_vendedores,status,exibir_logo,codigo_convite,token_painel,termos_versao,termos_aceito_em,termos_aceite_ip,created_at";
 const VEND_COLS = "id,imobiliaria_id,nome,telefone,email,cpf,chave_pix,chave_pix_tipo,modelo,codigo,ativo,created_at";
 const CLI_COLS =
   "id,imobiliaria_id,vendedor_id,nome,telefone,email,empreendimento_slug,unidade,situacao,valor_chaves,solucao,status,origem,proposta_expira_em,created_at";

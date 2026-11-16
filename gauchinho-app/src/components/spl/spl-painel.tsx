@@ -26,6 +26,7 @@ import { caminhoPainel, caminhoPortfolio } from "@/lib/spl/links";
 import { baixarModeloCarteira, lerPlanilhaCarteira, type LinhaCarteira } from "@/lib/spl/planilha";
 import { Aviso, BotaoGrande, Campo, CampoPix, Cartao, fone, inputGrande, LinkCopiavel, brl, linkWhatsapp } from "./spl-ui";
 import { SplInstalarApp } from "./spl-instalar-app";
+import { SplTermoCaixa } from "./spl-termo";
 
 export type ConviteModelo = { modelo: string; titulo: string; caminho: string };
 
@@ -33,6 +34,7 @@ type Props = {
   imob: Omit<ImobiliariaSpl, "token_painel">;
   token: string;
   convites: ConviteModelo[];
+  termos: { versao: string; texto: string } | null;
   vendedores: VendedorSpl[];
   clientes: ClienteSpl[];
   empreendimentos: EmpreendimentoSpl[];
@@ -40,7 +42,7 @@ type Props = {
 
 type Aba = "inicio" | "cliente" | "planilha" | "vendedor" | "editar";
 
-export function SplPainel({ imob, token, convites, vendedores, clientes, empreendimentos }: Props) {
+export function SplPainel({ imob, token, convites, termos, vendedores, clientes, empreendimentos }: Props) {
   const router = useRouter();
   const [aba, setAba] = useState<Aba>("inicio");
   const origem = typeof window !== "undefined" ? window.location.origin : "";
@@ -137,6 +139,8 @@ export function SplPainel({ imob, token, convites, vendedores, clientes, empreen
             rotuloWhatsapp="Mandar para o meu WhatsApp"
           />
 
+          {termos ? <TermoPainel imob={imob} token={token} termos={termos} onAceito={() => router.refresh()} /> : null}
+
           <BotaoGrande tipo="secundario" onClick={() => setAba("editar")} className="w-full">
             Editar dados da imobiliária
           </BotaoGrande>
@@ -228,6 +232,72 @@ export function SplPainel({ imob, token, convites, vendedores, clientes, empreen
         />
       ) : null}
     </div>
+  );
+}
+
+function TermoPainel({
+  imob,
+  token,
+  termos,
+  onAceito,
+}: {
+  imob: Omit<ImobiliariaSpl, "token_painel">;
+  token: string;
+  termos: { versao: string; texto: string };
+  onAceito: () => void;
+}) {
+  const [aceito, setAceito] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const emDia = imob.termos_versao === termos.versao && !!imob.termos_aceito_em;
+  const pdf = `/api/public/spl/termos/pdf?painel=${encodeURIComponent(token)}`;
+
+  async function registrar() {
+    setErro(null);
+    if (!aceito) return setErro("Marque que leu e aceita o termo.");
+    setSalvando(true);
+    try {
+      const res = await fetch("/api/public/spl/termos/aceite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, versao: termos.versao, aceito: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Não foi possível registrar.");
+      onAceito();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível registrar.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (emDia) {
+    return (
+      <Cartao className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-lg font-black text-[#0A1931]">Termo de parceria aceito</p>
+          <p className="text-base text-slate-600">
+            Versão {termos.versao} · {new Date(imob.termos_aceito_em!).toLocaleString("pt-BR", { timeZone: "America/Cuiaba" })}
+          </p>
+        </div>
+        <a href={pdf} className="rounded-2xl bg-[#153E90] px-5 py-3 text-base font-extrabold text-white">
+          Baixar PDF do termo
+        </a>
+      </Cartao>
+    );
+  }
+  return (
+    <Cartao className="space-y-3 border-2 border-amber-300">
+      <Aviso tom="info">
+        {imob.termos_aceito_em ? "O termo de parceria foi atualizado. Leia e aceite a nova versão." : "Falta aceitar o termo de parceria."}
+      </Aviso>
+      <SplTermoCaixa texto={termos.texto} versao={termos.versao} aceito={aceito} onAceito={setAceito} />
+      {erro ? <Aviso>{erro}</Aviso> : null}
+      <BotaoGrande tipo="ouro" onClick={registrar} disabled={salvando} className="w-full">
+        {salvando ? "Registrando…" : "Registrar meu aceite"}
+      </BotaoGrande>
+    </Cartao>
   );
 }
 

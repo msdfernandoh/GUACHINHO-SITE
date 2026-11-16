@@ -115,6 +115,9 @@ export type ImobiliariaSpl = {
   exibir_logo: boolean;
   codigo_convite: string;
   token_painel: string;
+  termos_versao: string | null;
+  termos_aceito_em: string | null;
+  termos_aceite_ip: string | null;
   created_at: string;
 };
 

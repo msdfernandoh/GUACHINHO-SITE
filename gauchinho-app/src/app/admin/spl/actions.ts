@@ -98,3 +98,36 @@ export async function salvarConfigSplAction(formData: FormData) {
   await saveConfigJson(SPL_CONFIG_CHAVE, normalizarSplConfig(raw) as unknown as Record<string, unknown>);
   atualizar();
 }
+
+export async function salvarTermosSplAction(formData: FormData) {
+  const ctx = await requireTenantPermission("gerenciar_imoveis");
+  if (ctx.usuario.perfil !== "master") throw new Error("Somente o master publica o termo.");
+  const texto = String(formData.get("texto") ?? "").replace(/\r\n/g, "\n").trim().slice(0, 100_000);
+  const { novaVersaoTermos, SPL_TERMOS_CHAVE } = await import("@/lib/spl/termos");
+  await saveConfigJson(SPL_TERMOS_CHAVE, { versao: novaVersaoTermos(), texto, atualizado_em: new Date().toISOString() });
+  atualizar();
+  revalidatePath("/spl/cadastro");
+}
+
+/** Exclui a imobiliária com vendedores e clientes da carteira SPL (os leads do CRM ficam). */
+export async function excluirImobiliariaAction(formData: FormData) {
+  const ctx = await requireTenantPermission("gerenciar_imoveis");
+  if (ctx.usuario.perfil !== "master") throw new Error("Somente o master exclui imobiliárias.");
+  const empresaId = ctx.empresaAtiva!.id;
+  const id = String(formData.get("id") ?? "");
+  const db = createAdminClient();
+  const { data: imob } = await db
+    .from("spl_imobiliarias")
+    .select("id,organizacao_parceira_id")
+    .eq("empresa_id", empresaId)
+    .eq("id", id)
+    .maybeSingle();
+  if (!imob) throw new Error("Imobiliária não encontrada.");
+  const { error } = await db.from("spl_imobiliarias").delete().eq("empresa_id", empresaId).eq("id", id);
+  if (error) throw new Error(error.message);
+  if (imob.organizacao_parceira_id) {
+    // Rascunho criado pelo cadastro; se já estiver em uso em outro lugar, o banco recusa e ele fica.
+    await db.from("organizacoes_parceiras").delete().eq("empresa_id", empresaId).eq("id", imob.organizacao_parceira_id);
+  }
+  atualizar();
+}

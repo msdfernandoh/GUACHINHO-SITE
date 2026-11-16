@@ -108,3 +108,15 @@ como disponíveis e só depois inativa as ativas da mesma administradora.
   `public/spl-img/app-icon-*.png` e botão "Instalar" (`components/spl/spl-instalar-app.tsx`).
 - Botões "Mandar para o meu WhatsApp" (painel e portfólio), "Enviar no WhatsApp" do portfólio de
   cada vendedor no painel e "Enviar o sistema no WhatsApp" para cada imobiliária no admin.
+
+## 16/11/2026 — cartas pelo celular, termo de parceria e ações do admin (migration 343)
+- Importação de cartas: tela para celular, "Cadastrar e substituir" (só o mesmo tipo e
+  administradora) ou "Apenas cadastrar", margem por tipo (imóvel R$ 10 mil, veículo R$ 5 mil,
+  `margemEntradaCartaVeiculo`), tipo forçado opcional e aviso de cartas repetidas.
+- Admin no celular: barra lateral recolhida com botão "Menu".
+- Termo de parceria das imobiliárias: texto publicado em Admin › Portfólio SPL
+  (`configuracoes_sistema.spl_termos`, nova versão a cada publicação). Aceite obrigatório no
+  cadastro e no painel quando há versão nova; aceite registrado com versão, data, IP e navegador.
+  PDF em `/api/public/spl/termos/pdf` (com `?painel=` sai com os dados e o aceite da imobiliária).
+- Admin: copiar link do painel e do convite, baixar o termo aceito e excluir imobiliária
+  (apaga vendedores e clientes da carteira SPL; os leads do CRM ficam).
