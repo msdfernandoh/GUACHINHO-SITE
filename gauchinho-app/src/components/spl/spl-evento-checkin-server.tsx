@@ -13,7 +13,7 @@ export async function SplEventoCheckinServer({
 }) {
   const dados = await dadosPaginaCheckinSpl();
   return (
-    <div className="-mx-4 min-h-[80vh] bg-[#06101F] px-4 py-6 sm:py-10">
+    <div className="-mx-4 min-h-[80vh] bg-[#0A1931] px-4 py-6 sm:py-10">
       <SplEventoCheckin
         evento={{ id: eventoId, nome: eventoNome }}
         imobiliarias={dados.imobiliarias}

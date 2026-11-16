@@ -47,7 +47,7 @@ const ORDEM: Etapa[] = ["corretor", "imobiliaria", "clientes", "desafio", "veicu
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: v % 1 ? 2 : 0 });
 
 const input =
-  "w-full rounded-2xl border-2 border-white/15 bg-white/5 px-4 py-4 text-lg text-white placeholder:text-white/40 outline-none transition focus:border-[#F59E0B] focus:ring-4 focus:ring-[#F59E0B]/20";
+  "w-full rounded-2xl border-2 border-slate-400 bg-white px-4 py-4 text-[19px] font-semibold text-[#0F172A] placeholder:font-normal placeholder:text-slate-500 outline-none transition focus:border-[#F59E0B] focus:ring-4 focus:ring-[#F59E0B]/30";
 
 function Botao({
   children,
@@ -62,14 +62,14 @@ function Botao({
 }) {
   const cor =
     tipo === "ouro"
-      ? "bg-[#F59E0B] text-[#3B2302] hover:bg-[#FBB43A]"
-      : "border-2 border-white/25 text-white hover:border-white/50";
+      ? "bg-[#F59E0B] text-[#1F1300] shadow-md shadow-[#F59E0B]/30 hover:bg-[#FBB43A]"
+      : "border-2 border-[#0A1931] bg-white text-[#0A1931] hover:bg-slate-50";
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`min-h-[58px] w-full rounded-2xl px-6 py-4 text-lg font-extrabold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${cor}`}
+      className={`min-h-[60px] w-full rounded-2xl px-6 py-4 text-[19px] font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:border-transparent disabled:bg-slate-200 disabled:text-slate-600 disabled:shadow-none ${cor}`}
     >
       {children}
     </button>
@@ -81,8 +81,8 @@ function Opcao({ selecionada, onClick, children }: { selecionada?: boolean; onCl
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-2xl border-2 px-4 py-4 text-left text-base font-semibold transition active:scale-[0.99] ${
-        selecionada ? "border-[#F59E0B] bg-[#F59E0B]/15 text-white" : "border-white/10 bg-white/5 text-white/90 hover:border-white/30"
+      className={`w-full rounded-2xl border-2 px-4 py-4 text-left text-[17px] font-bold leading-snug text-[#0F172A] transition active:scale-[0.99] ${
+        selecionada ? "border-[#F59E0B] bg-[#FEF3C7] ring-2 ring-[#F59E0B]" : "border-slate-300 bg-white hover:border-[#0A1931]"
       }`}
     >
       {children}
@@ -93,14 +93,14 @@ function Opcao({ selecionada, onClick, children }: { selecionada?: boolean; onCl
 function Titulo({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
   return (
     <div className="space-y-2">
-      <h1 className="text-2xl font-black leading-tight text-white sm:text-3xl">{children}</h1>
-      {sub ? <p className="text-base text-white/70">{sub}</p> : null}
+      <div className="text-[27px] font-black leading-tight text-[#0A1931]">{children}</div>
+      {sub ? <div className="text-[17px] font-medium leading-snug text-[#334155]">{sub}</div> : null}
     </div>
   );
 }
 
 function Rotulo({ children }: { children: ReactNode }) {
-  return <span className="mb-1.5 block text-sm font-bold uppercase tracking-wide text-white/70">{children}</span>;
+  return <span className="mb-2 block text-[16px] font-extrabold text-[#0A1931]">{children}</span>;
 }
 
 async function chamar<T>(corpo: Record<string, unknown>): Promise<T> {
@@ -257,7 +257,7 @@ export function SplEventoCheckin({ evento, imobiliarias, empreendimentos, inicio
   }, [etapa]);
 
   const voltar = (para: Etapa) => (
-    <button type="button" onClick={() => setEtapa(para)} className="text-sm font-bold text-white/60 hover:text-white">
+    <button type="button" onClick={() => setEtapa(para)} className="text-[16px] font-bold text-[#0A1931] underline">
       ← Voltar
     </button>
   );
@@ -265,8 +265,8 @@ export function SplEventoCheckin({ evento, imobiliarias, empreendimentos, inicio
   const faltam = Math.max(0, META_CLIENTES_EVENTO - clientes.length);
 
   return (
-    <div className="mx-auto w-full max-w-lg overflow-hidden rounded-[28px] bg-[#0A1931] text-white shadow-2xl ring-1 ring-white/10">
-      <div className="border-b border-white/10 px-5 pb-4 pt-5">
+    <div className="mx-auto w-full max-w-lg overflow-hidden rounded-[28px] bg-white text-[#0F172A] shadow-2xl ring-1 ring-black/10">
+      <div className="bg-[#0A1931] px-5 pb-4 pt-5">
         <div className="flex items-center justify-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/spl-img/spl.png" alt="SPL Engenharia" className="h-7 w-auto rounded bg-white px-2 py-1" />
@@ -274,8 +274,8 @@ export function SplEventoCheckin({ evento, imobiliarias, empreendimentos, inicio
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/spl-img/logo-racon-gauchinho.jpeg" alt="Racon Consórcios · Gauchinho" className="h-7 w-auto rounded bg-white px-1" />
         </div>
-        <p className="mt-3 text-center text-xs font-bold uppercase tracking-[0.2em] text-[#00AEEF]">{evento.nome}</p>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="mt-3 text-center text-[15px] font-extrabold uppercase tracking-wide text-[#FBBF24]">{evento.nome}</div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/20">
           <div className="h-full rounded-full bg-[#F59E0B] transition-all" style={{ width: `${Math.round(progresso * 100)}%` }} />
         </div>
       </div>
@@ -290,11 +290,11 @@ export function SplEventoCheckin({ evento, imobiliarias, empreendimentos, inicio
                 ["🔑", "Desafio", "Topa fazer o seu primeiro consórcio? Escolha um dos planos do evento."],
                 ["📝", "Pesquisa", "Algumas perguntas rápidas e a avaliação do encontro."],
               ].map(([emoji, t, d]) => (
-                <li key={t} className="flex gap-3 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                <li key={t} className="flex gap-3 rounded-2xl bg-[#F1F5F9] p-4 ring-1 ring-slate-200">
                   <span className="text-2xl">{emoji}</span>
                   <span>
-                    <span className="block font-black">{t}</span>
-                    <span className="text-sm text-white/70">{d}</span>
+                    <span className="block text-[18px] font-black text-[#0A1931]">{t}</span>
+                    <span className="text-[16px] font-medium text-[#334155]">{d}</span>
                   </span>
                 </li>
               ))}
@@ -342,11 +342,11 @@ export function SplEventoCheckin({ evento, imobiliarias, empreendimentos, inicio
             ) : null}
             <div>
               <Rotulo>Você é</Rotulo>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {FUNCOES_CORRETOR.map((f) => (
                   <Opcao key={f.value} selecionada={funcao === f.value} onClick={() => setFuncao(f.value)}>
-                    <span className="block text-lg font-black">{f.label}</span>
-                    <span className="text-sm font-normal text-white/60">{f.descricao}</span>
+                    <span className="block text-[19px] font-black text-[#0A1931]">{f.label}</span>
+                    <span className="text-[15px] font-medium text-[#475569]">{f.descricao}</span>
                   </Opcao>
                 ))}
               </div>
@@ -384,10 +384,10 @@ export function SplEventoCheckin({ evento, imobiliarias, empreendimentos, inicio
                 {MODELOS_PARCERIA.map((m) => (
                   <Opcao key={m.value} selecionada={imob.modelo_parceria === m.value} onClick={() => setImob({ ...imob, modelo_parceria: m.value })}>
                     <span className="flex items-baseline justify-between gap-2">
-                      <span className="font-black">{m.label}</span>
-                      <span className="text-[#F59E0B]">{m.percentual}</span>
+                      <span className="font-black text-[#0A1931]">{m.label}</span>
+                      <span className="font-black text-[#B45309]">{m.percentual}</span>
                     </span>
-                    <span className="block text-sm font-normal text-white/60">{m.descricao}</span>
+                    <span className="block text-[15px] font-medium text-[#475569]">{m.descricao}</span>
                   </Opcao>
                 ))}
               </div>
@@ -401,7 +401,7 @@ export function SplEventoCheckin({ evento, imobiliarias, empreendimentos, inicio
             <Botao onClick={salvarImob} disabled={enviando}>
               {enviando ? "Salvando…" : "Salvar e continuar →"}
             </Botao>
-            <button type="button" onClick={() => setEtapa("clientes")} className="w-full text-center text-sm font-bold text-white/60 hover:text-white">
+            <button type="button" onClick={() => setEtapa("clientes")} className="w-full text-center text-[16px] font-bold text-[#0A1931] underline">
               Completar depois
             </button>
           </>
@@ -412,32 +412,32 @@ export function SplEventoCheckin({ evento, imobiliarias, empreendimentos, inicio
             <Titulo sub="Cada cliente indicado gera 1 cupom para o sorteio. A meta é 5!">
               {primeiroNome ? `${primeiroNome}, ` : ""}indique seus clientes
             </Titulo>
-            <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+            <div className="rounded-2xl bg-[#F1F5F9] p-4 ring-1 ring-slate-200">
               <div className="flex items-baseline justify-between">
-                <p className="text-sm font-bold uppercase tracking-wide text-white/70">Seus cupons</p>
-                <p className="text-sm text-white/60">
+                <div className="text-[16px] font-black text-[#0A1931]">Seus cupons</div>
+                <div className="text-[16px] font-bold text-[#334155]">
                   {clientes.length} de {META_CLIENTES_EVENTO} clientes
-                </p>
+                </div>
               </div>
               <div className="mt-2 flex gap-1.5">
                 {Array.from({ length: Math.max(META_CLIENTES_EVENTO, clientes.length) }).map((_, i) => (
-                  <span key={i} className={`h-2 flex-1 rounded-full ${i < clientes.length ? "bg-[#F59E0B]" : "bg-white/15"}`} />
+                  <span key={i} className={`h-2 flex-1 rounded-full ${i < clientes.length ? "bg-[#F59E0B]" : "bg-slate-300"}`} />
                 ))}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {sessao ? (
-                  <span className="rounded-full bg-[#00AEEF]/15 px-3 py-1 text-sm font-bold text-[#7DD3FC]">🎟️ {sessao.cupomPresenca} · presença</span>
+                  <span className="rounded-full bg-[#0A1931] px-3 py-1.5 text-[15px] font-bold text-white">🎟️ {sessao.cupomPresenca} · presença</span>
                 ) : null}
                 {clientes.map((c) => (
-                  <span key={c.id} className="rounded-full bg-[#F59E0B]/15 px-3 py-1 text-sm font-bold text-[#FCD34D]">
+                  <span key={c.id} className="rounded-full bg-[#FEF3C7] px-3 py-1.5 text-[15px] font-bold text-[#78350F] ring-1 ring-[#F59E0B]">
                     🎟️ {c.cupom} · {c.nome.split(/\s+/)[0]}
                   </span>
                 ))}
               </div>
             </div>
 
-            <div className="space-y-3 rounded-2xl border-2 border-dashed border-white/15 p-4">
-              <p className="font-black">Cliente {clientes.length + 1}</p>
+            <div className="space-y-3 rounded-2xl border-2 border-dashed border-slate-400 p-4">
+              <div className="text-[18px] font-black text-[#0A1931]">Cliente {clientes.length + 1}</div>
               <input className={input} value={cli.nome} onChange={(e) => setCli({ ...cli, nome: e.target.value })} placeholder="Nome do cliente" />
               <input
                 className={input}
@@ -462,10 +462,10 @@ export function SplEventoCheckin({ evento, imobiliarias, empreendimentos, inicio
             </div>
 
             {confirmarMenos ? (
-              <div className="space-y-3 rounded-2xl bg-[#F59E0B]/10 p-4 ring-1 ring-[#F59E0B]/40">
-                <p className="font-bold">
+              <div className="space-y-3 rounded-2xl bg-[#FEF3C7] p-4 ring-2 ring-[#F59E0B]">
+                <div className="text-[17px] font-bold text-[#78350F]">
                   Faltam {faltam} {faltam === 1 ? "cliente" : "clientes"} para completar seus {META_CLIENTES_EVENTO} cupons. Quer adicionar agora?
-                </p>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Botao onClick={() => setConfirmarMenos(false)}>Adicionar</Botao>
                   <Botao tipo="contorno" onClick={avancarClientes}>
@@ -488,10 +488,10 @@ export function SplEventoCheckin({ evento, imobiliarias, empreendimentos, inicio
             <div className="space-y-2">
               {OPCOES_DESAFIO.map((d) => (
                 <Opcao key={d.id} selecionada={desafio === d.id} onClick={() => setDesafio(d.id)}>
-                  <span className="block text-sm font-bold uppercase tracking-wide text-[#00AEEF]">{d.titulo}</span>
-                  <span className="block text-2xl font-black">{brl(d.credito)}</span>
-                  <span className="text-white/80">
-                    Parcela <b className="text-[#F59E0B]">{brl(d.parcela)}</b> · {d.prazo} parcelas
+                  <span className="block text-[15px] font-extrabold uppercase tracking-wide text-[#0369A1]">{d.titulo}</span>
+                  <span className="block text-[28px] font-black text-[#0A1931]">{brl(d.credito)}</span>
+                  <span className="text-[17px] font-semibold text-[#334155]">
+                    Parcela <b className="text-[#B45309]">{brl(d.parcela)}</b> · {d.prazo} parcelas
                   </span>
                 </Opcao>
               ))}
@@ -613,13 +613,13 @@ export function SplEventoCheckin({ evento, imobiliarias, empreendimentos, inicio
           <>
             <div className="text-center text-5xl">🎉</div>
             <Titulo sub="Boa sorte no sorteio! Fique de olho no telão.">Tudo certo, {primeiroNome}!</Titulo>
-            <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-              <p className="text-sm font-bold uppercase tracking-wide text-white/70">
+            <div className="rounded-2xl bg-[#F1F5F9] p-4 ring-1 ring-slate-200">
+              <div className="text-[17px] font-black text-[#0A1931]">
                 Você está concorrendo com {cupons.length} {cupons.length === 1 ? "cupom" : "cupons"}
-              </p>
+              </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {cupons.map((c) => (
-                  <span key={c} className="rounded-xl bg-[#F59E0B] px-3 py-2 text-lg font-black text-[#3B2302]">
+                  <span key={c} className="rounded-xl bg-[#F59E0B] px-3 py-2 text-[20px] font-black text-[#1F1300]">
                     {c}
                   </span>
                 ))}
@@ -632,14 +632,14 @@ export function SplEventoCheckin({ evento, imobiliarias, empreendimentos, inicio
         ) : null}
 
         {erro ? (
-          <p role="alert" className="rounded-2xl border border-red-400/40 bg-red-500/15 px-4 py-3 font-semibold text-red-100">
+          <div role="alert" className="rounded-2xl border-2 border-red-300 bg-red-50 px-4 py-3 text-[17px] font-bold text-red-800">
             {erro}
-          </p>
+          </div>
         ) : null}
       </div>
-      <p className="border-t border-white/10 px-5 py-3 text-center text-xs text-white/40">
+      <div className="border-t border-slate-200 px-5 py-3 text-center text-[14px] font-medium text-[#475569]">
         Dados usados apenas para contato comercial · Sorteio de brindes
-      </p>
+      </div>
     </div>
   );
 }
