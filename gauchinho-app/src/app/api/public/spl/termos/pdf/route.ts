@@ -1,36 +1,40 @@
 import { NextResponse } from "next/server";
 import { authorizePublicIngress } from "@/lib/security/public-ingress";
-import { getTermosSpl } from "@/lib/spl/termos";
+import { contratanteDoTermo, getTermosSpl, termoDoModelo } from "@/lib/spl/termos";
+import { preencherTermo } from "@/lib/spl/termos-preencher";
 import { renderTermosPdf } from "@/lib/spl/termos-pdf";
 import { imobiliariaPorToken } from "@/lib/spl/repo";
-import { labelDe, MODELOS_PARCERIA } from "@/lib/spl/types";
 
-/** PDF do termo. Com ?painel=<link do painel>, inclui os dados e o aceite da imobiliária. */
+/**
+ * PDF do termo do modelo de parceria. Com ?painel=<link do painel>, sai preenchido
+ * com os dados e o aceite da imobiliária; com ?modelo=, sai em branco para leitura.
+ */
 export async function GET(request: Request) {
   const ingress = await authorizePublicIngress(request, "spl_termos_pdf", { limit: 20, windowSeconds: 60 });
   if (!ingress.ok) return ingress.response;
   const termos = await getTermosSpl();
-  if (!termos) return NextResponse.json({ error: "O termo de parceria ainda não foi publicado." }, { status: 404 });
-  const painel = new URL(request.url).searchParams.get("painel");
+  const params = new URL(request.url).searchParams;
+  const painel = params.get("painel");
   const imob = painel ? await imobiliariaPorToken(ingress.empresaId, painel) : null;
-  // A cópia assinada traz a versão aceita; se o termo mudou depois, o PDF mostra a versão atual sem aceite.
-  const aceitou = imob?.termos_aceito_em && imob.termos_versao === termos.versao;
+  const modelo = imob?.modelo_parceria ?? params.get("modelo") ?? "GERADOR_OPORTUNIDADES";
+  const modeloTexto = termoDoModelo(termos, modelo);
+  if (!termos || !modeloTexto) return NextResponse.json({ error: "Não há termo publicado para este modelo." }, { status: 404 });
+  const aceitou = !!imob?.termos_aceito_em && imob.termos_versao === termos.versao;
+  const texto = preencherTermo(modeloTexto, {
+    contratante: await contratanteDoTermo(ingress.empresaId),
+    participante: imob
+      ? { nome: imob.nome, cnpj: imob.cnpj, endereco: imob.endereco, email: imob.email, telefone: imob.telefone, responsavel: imob.responsavel }
+      : null,
+    campos: termos.campos,
+    dataAceite: aceitou ? imob!.termos_aceito_em : null,
+  });
   const pdf = await renderTermosPdf({
     versao: termos.versao,
-    texto: termos.texto,
-    imobiliaria: imob
-      ? {
-          nome: imob.nome,
-          cnpj: imob.cnpj,
-          responsavel: imob.responsavel,
-          telefone: imob.telefone,
-          email: imob.email,
-          modelo: labelDe(MODELOS_PARCERIA, imob.modelo_parceria),
-        }
-      : null,
+    texto,
+    responsavel: imob?.responsavel ?? null,
     aceite: aceitou ? { em: imob!.termos_aceito_em!, versao: imob!.termos_versao!, ip: imob!.termos_aceite_ip } : null,
   });
-  const nome = imob ? `termo-parceria-spl-${imob.nome}` : "termo-parceria-spl";
+  const nome = imob ? `termo-parceria-${imob.nome}` : `termo-parceria-${modelo}`;
   return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "content-type": "application/pdf",

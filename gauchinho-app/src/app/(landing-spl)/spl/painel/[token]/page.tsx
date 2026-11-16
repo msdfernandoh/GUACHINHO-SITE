@@ -6,7 +6,8 @@ import { SplPainel, type ConviteModelo } from "@/components/spl/spl-painel";
 import { parametrosConviteModelo } from "@/lib/spl/convite";
 import { caminhoConvite, caminhoPainel } from "@/lib/spl/links";
 import { metadataAppSpl } from "@/lib/spl/app-metadata";
-import { getTermosSpl } from "@/lib/spl/termos";
+import { contratanteDoTermo, getTermosSpl, termoDoModelo } from "@/lib/spl/termos";
+import { preencherTermo } from "@/lib/spl/termos-preencher";
 import { opcoesRemuneracaoVendedor } from "@/lib/spl/types";
 import { SplShell } from "@/components/spl/spl-ui";
 
@@ -36,6 +37,20 @@ export default async function SplPainelPage({ params }: { params: Promise<{ toke
     listarEmpreendimentos(tenant.empresaId),
     getTermosSpl(),
   ]);
+  // Termo do modelo da imobiliária, já com os dados do cadastro.
+  const modeloTermo = termoDoModelo(termos, imob.modelo_parceria);
+  const termoPreenchido =
+    termos && modeloTermo
+      ? {
+          versao: termos.versao,
+          texto: preencherTermo(modeloTermo, {
+            contratante: await contratanteDoTermo(tenant.empresaId),
+            participante: imob,
+            campos: termos.campos,
+            dataAceite: imob.termos_versao === termos.versao ? imob.termos_aceito_em : null,
+          }),
+        }
+      : null;
   // Imobiliária que escolhe o modelo de cada vendedor recebe um link assinado por modelo.
   const base = caminhoConvite(imob.nome, imob.codigo_convite);
   const convites: ConviteModelo[] =
@@ -56,7 +71,7 @@ export default async function SplPainelPage({ params }: { params: Promise<{ toke
         imob={publica}
         token={token}
         convites={convites}
-        termos={termos ? { versao: termos.versao, texto: termos.texto } : null} vendedores={vendedores} clientes={clientes} empreendimentos={empreendimentos} />
+        termos={termoPreenchido} vendedores={vendedores} clientes={clientes} empreendimentos={empreendimentos} />
     </SplShell>
   );
 }

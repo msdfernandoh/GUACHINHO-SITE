@@ -120,3 +120,12 @@ como disponíveis e só depois inativa as ativas da mesma administradora.
   PDF em `/api/public/spl/termos/pdf` (com `?painel=` sai com os dados e o aceite da imobiliária).
 - Admin: copiar link do painel e do convite, baixar o termo aceito e excluir imobiliária
   (apaga vendedores e clientes da carteira SPL; os leads do CRM ficam).
+
+## Fase — Termos de parceria por modelo, preenchidos com o cadastro (2026-11-16)
+
+- Três termos a partir das minutas da rede: Parceiro Indicador (GO 12,5%), Parceiro de Negócio (GN 25%) e Microfranquia (50%). "Só liberar carteira" não tem termo.
+- Os textos padrão ficam em `lib/spl/termos-padrao.json`; o master pode editar e publicar uma versão própria em Admin › Portfólio SPL (`configuracoes_sistema.spl_termos` = `{versao, modelos, campos}`).
+- `lib/spl/termos-preencher.ts` troca os `{{campos}}`: contratante (razão social, CNPJ e sede vindos de `empresas`), participante (nome, CNPJ, endereço, e-mail, telefone, responsável), condições do contrato (vigência, aviso prévio, foro, estorno, multa, prestação de contas, canal) e data do aceite. O que não foi preenchido aparece como "[a definir]" ou "não informado".
+- Cadastro: novo campo de endereço; o termo do modelo escolhido aparece no passo 3 já com os dados digitados. Painel: termo do modelo da imobiliária com os dados atuais; o PDF (`/api/public/spl/termos/pdf?painel=` ou `?modelo=`) sai com o layout do contrato e o registro do aceite.
+- Migration 344: `spl_imobiliarias.endereco` (aplicada).
+- Observação: as minutas vieram marcadas como "para revisão jurídica"; a Microfranquia depende de autorização da franqueadora e da COF (Lei 13.966/2019).

@@ -292,7 +292,7 @@ function TermoPainel({
       <Aviso tom="info">
         {imob.termos_aceito_em ? "O termo de parceria foi atualizado. Leia e aceite a nova versão." : "Falta aceitar o termo de parceria."}
       </Aviso>
-      <SplTermoCaixa texto={termos.texto} versao={termos.versao} aceito={aceito} onAceito={setAceito} />
+      <SplTermoCaixa texto={termos.texto} versao={termos.versao} aceito={aceito} onAceito={setAceito} pdf={pdf} />
       {erro ? <Aviso>{erro}</Aviso> : null}
       <BotaoGrande tipo="ouro" onClick={registrar} disabled={salvando} className="w-full">
         {salvando ? "Registrando…" : "Registrar meu aceite"}
@@ -316,6 +316,7 @@ function FormEditar({
     responsavel: imob.responsavel,
     telefone: mascaraTelefone(imob.telefone),
     email: imob.email,
+    endereco: imob.endereco ?? "",
     cnpj: imob.cnpj ? mascaraCnpj(imob.cnpj) : "",
     chave_pix_tipo: pixTipo,
     chave_pix: imob.chave_pix ? (pixTipo ? mascaraPix(pixTipo, imob.chave_pix) : imob.chave_pix) : "",
@@ -376,6 +377,9 @@ function FormEditar({
           <input className={inputGrande} inputMode="email" value={f.email} onChange={(e) => set("email", e.target.value)} />
         </Campo>
       </div>
+      <Campo rotulo="Endereço da imobiliária" dica="Vai para o termo de parceria.">
+        <input className={inputGrande} value={f.endereco} onChange={(e) => set("endereco", e.target.value.slice(0, 240))} />
+      </Campo>
       <Campo rotulo="CNPJ">
         <input className={inputGrande} inputMode="numeric" value={f.cnpj} onChange={(e) => set("cnpj", mascaraCnpj(e.target.value))} placeholder="00.000.000/0000-00" />
       </Campo>

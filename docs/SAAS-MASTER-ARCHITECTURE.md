@@ -1,6 +1,7 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
 ### Portfólio SPL para imobiliárias e subdomínio spl.* (15/11/2026)
+- 2026-11-16: termos de parceria SPL por modelo (Indicador/Negócio/Microfranquia), preenchidos com o cadastro e a empresa contratante; migration 344 (endereço).
 `spl.<domínio>` herda o tenant do domínio pai (`lib/landings/subdominios.ts`) e
 serve `/spl`: cadastro de imobiliárias (modelos 12,5%/25%/50% ou só liberar a
 carteira), painel por token, convite de vendedores e portfólio do vendedor.

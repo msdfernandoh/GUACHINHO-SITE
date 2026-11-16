@@ -14,10 +14,18 @@ import { mascaraCnpj, mascaraTelefone, type PixTipo } from "@/lib/spl/mascaras";
 import { caminhoConvite, caminhoPainel } from "@/lib/spl/links";
 import { Aviso, BotaoGrande, Campo, CampoPix, Cartao, inputGrande, LinkCopiavel } from "./spl-ui";
 import { SplTermoCaixa } from "./spl-termo";
+import { preencherTermo, type CamposTermo, type ContratanteTermo, type ModeloComTermo } from "@/lib/spl/termos-preencher";
+
+export type TermosCadastro = {
+  versao: string;
+  modelos: Partial<Record<ModeloComTermo, string>>;
+  campos: CamposTermo;
+  contratante: ContratanteTermo;
+};
 
 type Resultado = { token: string; convite: string; nome: string };
 
-export function SplCadastroImobiliaria({ termos }: { termos: { versao: string; texto: string } | null }) {
+export function SplCadastroImobiliaria({ termos: todosTermos }: { termos: TermosCadastro | null }) {
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [passo, setPasso] = useState(0);
   const [erro, setErro] = useState<string | null>(null);
@@ -27,6 +35,7 @@ export function SplCadastroImobiliaria({ termos }: { termos: { versao: string; t
   const [f, setF] = useState({
     nome: "",
     responsavel: "",
+    endereco: "",
     telefone: "",
     email: "",
     cnpj: "",
@@ -42,6 +51,19 @@ export function SplCadastroImobiliaria({ termos }: { termos: { versao: string; t
   const opcoes = opcoesRemuneracaoVendedor(f.modelo_parceria);
   const daImob = f.modelo_parceria ? PERCENTUAL_PARCERIA[f.modelo_parceria] : 0;
   const escolhida = opcoes.find((o) => o.value === f.modelo_vendedores);
+  // Termo do modelo escolhido, preenchido com o que foi digitado no cadastro.
+  const modeloTermo = f.modelo_parceria ? todosTermos?.modelos[f.modelo_parceria as ModeloComTermo] : undefined;
+  const termos =
+    todosTermos && modeloTermo
+      ? {
+          versao: todosTermos.versao,
+          texto: preencherTermo(modeloTermo, {
+            contratante: todosTermos.contratante,
+            participante: { nome: f.nome, cnpj: f.cnpj, endereco: f.endereco, email: f.email, telefone: f.telefone, responsavel: f.responsavel },
+            campos: todosTermos.campos,
+          }),
+        }
+      : null;
 
   function escolherModelo(m: ModeloParceria) {
     setF((p) => {
@@ -168,6 +190,9 @@ export function SplCadastroImobiliaria({ termos }: { termos: { versao: string; t
               <input className={inputGrande} inputMode="email" value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="contato@imobiliaria.com.br" />
             </Campo>
           </div>
+          <Campo rotulo="Endereço da imobiliária" dica="Rua, número, bairro e cidade. Vai para o termo de parceria.">
+            <input className={inputGrande} value={f.endereco} onChange={(e) => set("endereco", e.target.value.slice(0, 240))} placeholder="Rua das Avencas, 100, Centro, Sinop/MT" />
+          </Campo>
         </div>
       ) : null}
 
@@ -277,7 +302,13 @@ export function SplCadastroImobiliaria({ termos }: { termos: { versao: string; t
       ) : null}
 
       {passo === 2 && termos ? (
-        <SplTermoCaixa texto={termos.texto} versao={termos.versao} aceito={aceitouTermos} onAceito={setAceitouTermos} />
+        <SplTermoCaixa
+          texto={termos.texto}
+          versao={termos.versao}
+          aceito={aceitouTermos}
+          onAceito={setAceitouTermos}
+          pdf={`/api/public/spl/termos/pdf?modelo=${f.modelo_parceria}`}
+        />
       ) : null}
 
       {erro ? <Aviso>{erro}</Aviso> : null}

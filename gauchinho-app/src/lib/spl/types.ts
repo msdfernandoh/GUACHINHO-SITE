@@ -105,6 +105,7 @@ export type ImobiliariaSpl = {
   responsavel: string;
   telefone: string;
   email: string;
+  endereco: string | null;
   cnpj: string | null;
   chave_pix: string | null;
   chave_pix_tipo: string | null;

@@ -74,6 +74,7 @@ export function validarChavePix(tipoRaw: unknown, valorRaw: unknown): Ok<{ tipo:
 
 export type CadastroImobiliariaInput = {
   nome: string;
+  endereco: string | null;
   responsavel: string;
   telefone: string;
   email: string;
@@ -88,6 +89,7 @@ export type CadastroImobiliariaInput = {
 export function validarCadastroImobiliaria(raw: Record<string, unknown>): Ok<CadastroImobiliariaInput> | Erro {
   const nome = txt(raw.nome);
   const responsavel = txt(raw.responsavel);
+  const endereco = txt(raw.endereco, 240) || null;
   const telefone = normalizePhoneForLead(txt(raw.telefone, 40));
   const email = txt(raw.email, 200).toLowerCase();
   const cnpj = digitos(raw.cnpj);
@@ -122,6 +124,7 @@ export function validarCadastroImobiliaria(raw: Record<string, unknown>): Ok<Cad
     ok: true,
     data: {
       nome,
+      endereco,
       responsavel,
       telefone,
       email,

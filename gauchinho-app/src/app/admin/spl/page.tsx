@@ -1,3 +1,4 @@
+import { CAMPOS_TERMO, MODELOS_COM_TERMO } from "@/lib/spl/termos-preencher";
 import Link from "next/link";
 import { requireTenantPermission } from "@/lib/tenant/context";
 import { listarClientesAdmin, listarEmpreendimentos, listarImobiliariasAdmin, tokenDashboardSpl } from "@/lib/spl/repo";
@@ -298,28 +299,49 @@ export default async function AdminSplPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-bold">Termo de parceria das imobiliárias</h2>
+        <h2 className="text-lg font-bold">Termos de parceria por modelo</h2>
         <form action={salvarTermosSplAction} className={`${card} space-y-3`}>
           <p className="text-sm text-zinc-500">
             {termos
               ? `Publicado: versão ${termos.versao}. Ao publicar de novo, as imobiliárias precisam aceitar a nova versão no painel.`
               : "Ainda não publicado. Depois de publicado, o aceite passa a ser obrigatório no cadastro."}{" "}
-            Separe os parágrafos com uma linha em branco. O PDF sai com os dados e o aceite de cada imobiliária.
+            Cada modelo de parceria tem o seu termo. Os campos entre chaves ({"{{participante_nome}}"}, {"{{participante_documento}}"},{" "}
+            {"{{participante_endereco}}"}, {"{{contratante_razao_social}}"}…) são preenchidos sozinhos com o cadastro da imobiliária e os dados
+            da empresa. Quem escolhe &quot;só liberar a carteira&quot; não tem termo.
           </p>
-          <textarea
-            name="texto"
-            rows={16}
-            defaultValue={termos?.texto ?? ""}
-            className="w-full rounded-lg border p-3 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-            placeholder="TERMO DE PARCERIA COMERCIAL…"
-          />
+          <div className="grid gap-3 md:grid-cols-2">
+            {CAMPOS_TERMO.map((c) => (
+              <label key={c.chave} className="text-sm">
+                <span className="font-semibold">{c.rotulo}</span>
+                <input
+                  name={`campo_${c.chave}`}
+                  defaultValue={termos?.campos[c.chave] ?? ""}
+                  className="mt-1 w-full rounded-lg border px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                />
+              </label>
+            ))}
+          </div>
+          {MODELOS_COM_TERMO.map((m) => (
+            <details key={m} className="rounded-lg border p-3 dark:border-zinc-700">
+              <summary className="cursor-pointer font-semibold">
+                {MODELOS_PARCERIA.find((x) => x.value === m)?.label ?? m}
+                {termos?.modelos[m] ? "" : " · sem termo"}
+              </summary>
+              <textarea
+                name={`modelo_${m}`}
+                rows={18}
+                defaultValue={termos?.modelos[m] ?? ""}
+                className="mt-2 w-full rounded-lg border p-3 font-mono text-xs dark:border-zinc-700 dark:bg-zinc-950"
+              />
+              {termos?.modelos[m] ? (
+                <a href={`/api/public/spl/termos/pdf?modelo=${m}`} className="mt-2 inline-block rounded-lg border px-3 py-2 text-sm font-semibold">
+                  Ver PDF deste modelo
+                </a>
+              ) : null}
+            </details>
+          ))}
           <div className="flex flex-wrap gap-2">
-            <Button variant="gold">Publicar termo</Button>
-            {termos ? (
-              <a href="/api/public/spl/termos/pdf" className="rounded-lg border px-3 py-2 text-sm font-semibold">
-                Ver PDF
-              </a>
-            ) : null}
+            <Button variant="gold">Publicar termos</Button>
           </div>
         </form>
       </section>

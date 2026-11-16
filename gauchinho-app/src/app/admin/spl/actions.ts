@@ -102,9 +102,16 @@ export async function salvarConfigSplAction(formData: FormData) {
 export async function salvarTermosSplAction(formData: FormData) {
   const ctx = await requireTenantPermission("gerenciar_imoveis");
   if (ctx.usuario.perfil !== "master") throw new Error("Somente o master publica o termo.");
-  const texto = String(formData.get("texto") ?? "").replace(/\r\n/g, "\n").trim().slice(0, 100_000);
   const { novaVersaoTermos, SPL_TERMOS_CHAVE } = await import("@/lib/spl/termos");
-  await saveConfigJson(SPL_TERMOS_CHAVE, { versao: novaVersaoTermos(), texto, atualizado_em: new Date().toISOString() });
+  const { CAMPOS_TERMO, MODELOS_COM_TERMO } = await import("@/lib/spl/termos-preencher");
+  const modelos: Record<string, string> = {};
+  for (const m of MODELOS_COM_TERMO) {
+    const t = String(formData.get(`modelo_${m}`) ?? "").replace(/\r\n/g, "\n").trim().slice(0, 100_000);
+    if (t) modelos[m] = t;
+  }
+  const campos: Record<string, string> = {};
+  for (const c of CAMPOS_TERMO) campos[c.chave] = String(formData.get(`campo_${c.chave}`) ?? "").trim().slice(0, 300);
+  await saveConfigJson(SPL_TERMOS_CHAVE, { versao: novaVersaoTermos(), modelos, campos, atualizado_em: new Date().toISOString() });
   atualizar();
   revalidatePath("/spl/cadastro");
 }
