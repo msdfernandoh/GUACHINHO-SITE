@@ -62,6 +62,7 @@ const NAV: Array<{
   { key: "grupos", href: "/admin/grupos", label: "Catálogo de grupos", icon: Layers },
   { key: "cartas", href: "/admin/cartas-contempladas", label: "Cartas Contempladas", icon: FileText },
   { key: "imobiliarias", href: "/admin/imobiliarias", label: "Imobiliárias", icon: Building2, masterOnly: true },
+  { key: "imobiliarias", href: "/admin/spl", label: "Portfólio SPL", icon: Building2, masterOnly: true },
   { key: "seguradoras", href: "/admin/seguradoras", label: "Seguradoras", icon: Shield, masterOnly: true },
   { key: "imoveis", href: "/admin/imoveis", label: "Imóveis", icon: Home },
   { key: "conteudo", href: "/admin/conteudo", label: "Conteúdo", icon: BookOpen, conteudoOnly: true },

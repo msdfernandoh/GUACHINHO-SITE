@@ -41,3 +41,14 @@ describe("tenant e domínio principal", () => {
     expect(LANDING_BASES).toEqual(expect.arrayContaining(["/eua", "/filhos"]));
   });
 });
+
+describe("subdomínio spl", () => {
+  it("abre o portfólio SPL na raiz e mantém as demais rotas", () => {
+    const spl = landingDoHost("spl.raconsinop.com.br");
+    expect(spl).toEqual({ subdominio: "spl", parent: "raconsinop.com.br" });
+    expect(landingRewritePath(spl!, "/")).toBe("/spl");
+    expect(landingRewritePath(spl!, "/cadastro")).toBe("/spl/cadastro");
+    expect(landingRewritePath(spl!, "/spl/v/ABCDEFGH")).toBeNull();
+    expect(landingRewritePath(spl!, "/proposta/rascunho")).toBeNull();
+  });
+});

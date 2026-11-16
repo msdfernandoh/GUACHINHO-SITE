@@ -1,5 +1,16 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Portfólio SPL para imobiliárias e subdomínio spl.* (15/11/2026)
+`spl.<domínio>` herda o tenant do domínio pai (`lib/landings/subdominios.ts`) e
+serve `/spl`: cadastro de imobiliárias (modelos 12,5%/25%/50% ou só liberar a
+carteira), painel por token, convite de vendedores e portfólio do vendedor.
+Tabelas aditivas `spl_*` (migration 340). Clientes também viram leads com
+origem `spl_portfolio`. O consórcio usa `lib/spl/combinacao-cartas.ts` sobre o
+cálculo canônico da linha de grupo e segue para `/proposta/rascunho`.
+Atalho master `/admin/cartas-contempladas/importar` substitui as cartas a partir
+da conversa do WhatsApp, somando a margem configurável na entrada.
+Relatório: `docs/relatorios-fases/PORTFOLIO-SPL-IMOBILIARIAS-2026-11-15.md`.
+
 ### Página Herança Inteligente e subdomínios de landing (14/11/2026)
 `src/lib/landings/subdominios.ts` generaliza os subdomínios de landing
 (`eua.`, `filhos.`): cada um herda o tenant do domínio pai e mapeia caminhos

@@ -3,6 +3,8 @@ import { fetchCartasList } from "./actions";
 import { Button, Input, Label, Select } from "@/components/ui/form-primitives";
 import { CARTA_STATUS, CARTA_STATUS_LABELS, CARTA_TIPOS } from "@/lib/cartas/types";
 import { formatCurrency } from "@/lib/utils/format";
+import { requireUsuario } from "@/lib/auth/get-usuario";
+import { isMaster } from "@/lib/auth/permissions";
 import {
   quickCartaStatusFormAction,
   toggleCartaAtivoFormAction,
@@ -20,7 +22,7 @@ export default async function CartasContempladasAdminPage({
   }>;
 }) {
   const sp = await searchParams;
-  const cartas = await fetchCartasList(sp);
+  const [cartas, usuario] = await Promise.all([fetchCartasList(sp), requireUsuario()]);
 
   return (
     <div className="space-y-6">
@@ -29,9 +31,16 @@ export default async function CartasContempladasAdminPage({
           <h1 className="text-2xl font-bold">Cartas contempladas</h1>
           <p className="text-sm text-zinc-500">Cadastro, destaque e status comercial</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          {isMaster(usuario.perfil) ? (
+            <Link href="/admin/cartas-contempladas/importar">
+              <Button variant="gold">Atualizar pelo WhatsApp</Button>
+            </Link>
+          ) : null}
         <Link href="/admin/cartas-contempladas/novo">
           <Button>Nova carta</Button>
         </Link>
+        </div>
       </div>
 
       <form method="get" className="flex flex-wrap gap-3 rounded-xl border bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
