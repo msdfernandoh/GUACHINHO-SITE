@@ -2,6 +2,8 @@
 export type SplPortfolioConfig = {
   /** Valor somado à entrada de cada carta contemplada importada (margem de comissão). */
   margemEntradaCarta: number;
+  /** Margem somada à entrada das cartas de veículo. */
+  margemEntradaCartaVeiculo: number;
   /** Taxa mensal de referência do home equity (% a.m.). */
   taxaHomeEquityMensal: number;
   prazoHomeEquityMeses: number;
@@ -24,6 +26,7 @@ export type SplPortfolioConfig = {
 
 export const DEFAULT_SPL_PORTFOLIO: SplPortfolioConfig = {
   margemEntradaCarta: 10_000,
+  margemEntradaCartaVeiculo: 5_000,
   taxaHomeEquityMensal: 1.85,
   prazoHomeEquityMeses: 180,
   taxaFinanciamentoMensal: 1.27,
@@ -50,6 +53,7 @@ export function normalizarSplConfig(raw: Partial<SplPortfolioConfig> | null | un
   const r = raw ?? {};
   return {
     margemEntradaCarta: num(r.margemEntradaCarta, d.margemEntradaCarta),
+    margemEntradaCartaVeiculo: num(r.margemEntradaCartaVeiculo, d.margemEntradaCartaVeiculo),
     taxaHomeEquityMensal: num(r.taxaHomeEquityMensal, d.taxaHomeEquityMensal),
     prazoHomeEquityMeses: Math.max(1, Math.round(num(r.prazoHomeEquityMeses, d.prazoHomeEquityMeses))),
     taxaFinanciamentoMensal: num(r.taxaFinanciamentoMensal, d.taxaFinanciamentoMensal),

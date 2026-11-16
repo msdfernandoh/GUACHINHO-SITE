@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -108,9 +109,32 @@ export function AdminSidebar({
   const canConteudo = perfil === "master" || perfil === "srd";
   const allowed = resolveAdminMenus(perfil, adminMenus);
   const customMenus = Boolean(adminMenus?.length);
+  // No celular a barra lateral fica recolhida e abre por cima do conteúdo.
+  const [abertoMobile, setAbertoMobile] = useState(false);
+  useEffect(() => {
+    const raf = window.requestAnimationFrame(() => setAbertoMobile(false));
+    return () => window.cancelAnimationFrame(raf);
+  }, [pathname]);
+  const baseAside = lightTheme
+    ? "w-64 shrink-0 flex-col border-r border-slate-200 bg-white"
+    : "w-60 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950";
 
   return (
-    <aside className={lightTheme ? "flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white" : "flex w-60 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950"}>
+    <>
+    <button
+      type="button"
+      onClick={() => setAbertoMobile(true)}
+      className={`fixed left-3 top-3 z-40 rounded-xl px-3 py-2 text-sm font-bold shadow-md md:hidden ${lightTheme ? "bg-white text-slate-900" : "bg-zinc-900 text-white"} ${abertoMobile ? "hidden" : ""}`}
+      aria-label="Abrir menu"
+    >
+      ☰ Menu
+    </button>
+    {abertoMobile ? (
+      <button type="button" aria-label="Fechar menu" onClick={() => setAbertoMobile(false)} className="fixed inset-0 z-40 bg-black/40 md:hidden" />
+    ) : null}
+    <aside
+      className={`${baseAside} ${abertoMobile ? "fixed inset-y-0 left-0 z-50 flex overflow-y-auto shadow-2xl" : "hidden"} md:static md:z-auto md:flex md:shadow-none`}
+    >
       <div className={lightTheme ? "border-b border-slate-200 px-4 py-5" : "border-b border-zinc-200 px-4 py-5 dark:border-zinc-800"}>
         <Link href="/admin" className="block transition-opacity hover:opacity-90">
           {lightTheme && brandLogoUrl ? (
@@ -214,5 +238,6 @@ export function AdminSidebar({
           : null}
       </nav>
     </aside>
+    </>
   );
 }

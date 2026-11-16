@@ -82,4 +82,14 @@ describe("importação de cartas do WhatsApp", () => {
     const [item] = parseCartasWhatsAppLote("IMÓVEL RACON\nCrédito: R$ 100.000,00", 10_000, HOJE);
     expect(item.erro).toBe("Entrada não encontrada.");
   });
+
+  it("margem por tipo, tipo forçado e repetidas", () => {
+    const itens = parseCartasWhatsAppLote(CONVERSA + "\n" + CONVERSA.split("[12:58")[0], { imovel: 10_000, automovel: 5_000 }, HOJE);
+    expect(itens[0].entrada).toBe(60_000); // veículo: 55 mil + 5 mil
+    expect(itens[1].entrada).toBe(155_000); // imóvel: 145 mil + 10 mil
+    expect(itens.at(-1)?.repetida).toBe(true);
+    const forcado = parseCartasWhatsAppLote("Crédito: R$ 100.000,00\nEntrada: R$ 30.000,00", { imovel: 10_000, automovel: 5_000 }, HOJE, "automovel");
+    expect(forcado[0].tipo_carta).toBe("automovel");
+    expect(forcado[0].erro).toBeNull();
+  });
 });

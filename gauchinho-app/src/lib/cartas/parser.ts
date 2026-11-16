@@ -170,28 +170,47 @@ export function separarMensagensWhatsApp(texto: string): string[] {
 
 export type CartaImportacaoItem = ParsedCartaWhatsApp & {
   entrada_original: number | null;
+  /** Margem somada na entrada, conforme o tipo (imóvel ou veículo). */
+  margem: number;
+  /** Mesma carta já apareceu antes no texto (mensagem reenviada). */
+  repetida: boolean;
   erro: string | null;
 };
 
-/** Lê várias cartas e soma a margem comercial na entrada de cada uma. */
+export type MargensEntrada = { imovel: number; automovel: number };
+
+/**
+ * Lê várias cartas e soma a margem comercial na entrada de cada uma, conforme o
+ * tipo. `tipoForcado` vale para todas as cartas quando o texto não deixa claro.
+ */
 export function parseCartasWhatsAppLote(
   texto: string,
-  margemEntrada: number,
+  margens: MargensEntrada | number,
   hoje: Date = new Date(),
+  tipoForcado: CartaTipo | null = null,
 ): CartaImportacaoItem[] {
+  const m: MargensEntrada = typeof margens === "number" ? { imovel: margens, automovel: margens } : margens;
+  const vistas = new Set<string>();
   return separarMensagensWhatsApp(texto).map((bloco) => {
-    const p = parseCartaWhatsAppText(bloco, hoje);
+    const lido = parseCartaWhatsAppText(bloco, hoje);
+    const p = tipoForcado ? { ...lido, tipo_carta: tipoForcado } : lido;
     const erro = !p.credito
       ? "Crédito não encontrado."
       : !p.entrada
         ? "Entrada não encontrada."
         : !p.tipo_carta
-          ? "Não identifiquei se é imóvel ou veículo."
+          ? "Não identifiquei se é imóvel ou veículo. Marque o tipo acima."
           : null;
+    const margem = Math.max(0, p.tipo_carta === "automovel" ? m.automovel : m.imovel);
+    const chave = [p.tipo_carta, p.credito, p.entrada, p.prazo_quantidade, p.valor_parcela, p.saldo_devedor].join("|");
+    const repetida = !erro && vistas.has(chave);
+    if (!erro) vistas.add(chave);
     return {
       ...p,
       entrada_original: p.entrada,
-      entrada: p.entrada != null ? Math.round((p.entrada + Math.max(0, margemEntrada)) * 100) / 100 : null,
+      entrada: p.entrada != null ? Math.round((p.entrada + margem) * 100) / 100 : null,
+      margem,
+      repetida,
       erro,
     };
   });

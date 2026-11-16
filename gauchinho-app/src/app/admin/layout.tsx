@@ -72,7 +72,7 @@ export default async function AdminLayout({
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminHeader nome={usuario.nome} perfil={usuario.perfil} />
         <AgendaCompromissosAlert />
-        <main className={isRacon ? "flex-1 overflow-auto bg-slate-50 p-6 text-slate-900" : "flex-1 overflow-auto bg-zinc-950 p-6 text-zinc-100"}>{children}</main>
+        <main className={isRacon ? "flex-1 overflow-auto bg-slate-50 p-3 text-slate-900 md:p-6" : "flex-1 overflow-auto bg-zinc-950 p-3 text-zinc-100 md:p-6"}>{children}</main>
       </div>
     </div>
     </TenantBrandProvider>

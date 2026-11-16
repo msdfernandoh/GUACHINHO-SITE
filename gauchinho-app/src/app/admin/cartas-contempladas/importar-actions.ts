@@ -7,6 +7,16 @@ import { isMaster } from "@/lib/auth/permissions";
 import { parseCartasWhatsAppLote } from "@/lib/cartas/parser";
 import { getSplConfig } from "@/lib/spl/config-server";
 import { formatCurrency } from "@/lib/utils/format";
+import type { CartaTipo } from "@/lib/cartas/types";
+
+export type OpcoesImportacaoCartas = {
+  /** true: inativa as cartas ativas do mesmo tipo e administradora. false: só inclui. */
+  substituir: boolean;
+  /** Força imóvel ou veículo para todas as cartas do texto. null: lê do texto. */
+  tipo: CartaTipo | null;
+  /** Inclui também as cartas repetidas no texto (mensagem reenviada). */
+  incluirRepetidas: boolean;
+};
 
 export type ResultadoImportacaoCartas = {
   ok: boolean;
@@ -26,16 +36,31 @@ const normalizar = (v: string | null | undefined) =>
   (v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
 
 /**
- * Substitui o catálogo: inativa as cartas ativas das administradoras presentes
- * no texto e inclui as novas como disponíveis. Só roda com pelo menos uma carta válida.
+ * Inclui as cartas do texto como disponíveis. Com `substituir`, inativa antes as
+ * cartas ativas da mesma administradora e do mesmo tipo (veículo não mexe em imóvel).
  */
-export async function importarCartasWhatsAppAction(texto: string): Promise<ResultadoImportacaoCartas> {
+export async function importarCartasWhatsAppAction(
+  texto: string,
+  opcoes: OpcoesImportacaoCartas = { substituir: true, tipo: null, incluirRepetidas: false },
+): Promise<ResultadoImportacaoCartas> {
   try {
     await exigirMaster();
-    const { margemEntradaCarta } = await getSplConfig();
-    const itens = parseCartasWhatsAppLote(String(texto ?? ""), margemEntradaCarta);
-    const ignoradas = itens.flatMap((item, i) => (item.erro ? [{ linha: i + 1, motivo: item.erro }] : []));
-    const validas = itens.filter((item) => !item.erro);
+    const config = await getSplConfig();
+    const tipo = opcoes.tipo === "imovel" || opcoes.tipo === "automovel" ? opcoes.tipo : null;
+    const itens = parseCartasWhatsAppLote(
+      String(texto ?? ""),
+      { imovel: config.margemEntradaCarta, automovel: config.margemEntradaCartaVeiculo },
+      new Date(),
+      tipo,
+    );
+    const ignoradas = itens.flatMap((item, i) =>
+      item.erro
+        ? [{ linha: i + 1, motivo: item.erro }]
+        : item.repetida && !opcoes.incluirRepetidas
+          ? [{ linha: i + 1, motivo: "Carta repetida no texto." }]
+          : [],
+    );
+    const validas = itens.filter((item) => !item.erro && (opcoes.incluirRepetidas || !item.repetida));
     if (!validas.length) {
       return { ok: false, inativadas: 0, incluidas: 0, ignoradas, erro: "Nenhuma carta válida no texto colado." };
     }
@@ -75,18 +100,24 @@ export async function importarCartasWhatsAppAction(texto: string): Promise<Resul
         status: "disponivel",
         ativo: true,
         destaque: false,
-        observacoes: `Importada do WhatsApp. Entrada original ${formatCurrency(item.entrada_original ?? 0)} + margem ${formatCurrency(margemEntradaCarta)}.`,
+        observacoes: `Importada do WhatsApp. Entrada original ${formatCurrency(item.entrada_original ?? 0)} + margem ${formatCurrency(item.margem)}.`,
       };
     });
 
-    const admIds = [...new Set(linhas.map((l) => l.administradora_id))];
-    const { data: atuais, error: atuaisErr } = await db
-      .from("cartas_contempladas")
-      .select("id")
-      .eq("ativo", true)
-      .in("administradora_id", admIds);
-    if (atuaisErr) throw new Error("Não foi possível ler as cartas atuais.");
-    const idsAtuais = (atuais ?? []).map((c: { id: string }) => c.id);
+    // Só substitui o mesmo tipo: subir veículos não mexe nos imóveis, e vice-versa.
+    let idsAtuais: string[] = [];
+    if (opcoes.substituir) {
+      const admIds = [...new Set(linhas.map((l) => l.administradora_id))];
+      const tipos = [...new Set(linhas.map((l) => l.tipo_carta))];
+      const { data: atuais, error: atuaisErr } = await db
+        .from("cartas_contempladas")
+        .select("id")
+        .eq("ativo", true)
+        .in("administradora_id", admIds)
+        .in("tipo_carta", tipos);
+      if (atuaisErr) throw new Error("Não foi possível ler as cartas atuais.");
+      idsAtuais = (atuais ?? []).map((c: { id: string }) => c.id);
+    }
 
     const { data: inseridas, error: insErr } = await db.from("cartas_contempladas").insert(linhas).select("id");
     if (insErr) throw new Error(`Não foi possível incluir as cartas: ${insErr.message}`);

@@ -278,7 +278,8 @@ export default async function AdminSplPage() {
         <form action={salvarConfigSplAction} className={`${card} grid gap-3 md:grid-cols-3`}>
           {(
             [
-              ["margemEntradaCarta", "Margem somada à entrada das cartas (R$)", config.margemEntradaCarta],
+              ["margemEntradaCarta", "Margem na entrada · carta de imóvel (R$)", config.margemEntradaCarta],
+              ["margemEntradaCartaVeiculo", "Margem na entrada · carta de veículo (R$)", config.margemEntradaCartaVeiculo],
               ["taxaHomeEquityMensal", "Home equity (% ao mês)", config.taxaHomeEquityMensal],
               ["prazoHomeEquityMeses", "Home equity (prazo padrão, meses)", config.prazoHomeEquityMeses],
               ["taxaFinanciamentoMensal", "Financiamento (% ao mês)", config.taxaFinanciamentoMensal],
