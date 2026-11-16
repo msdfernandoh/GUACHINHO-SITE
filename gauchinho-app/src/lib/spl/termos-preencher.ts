@@ -4,6 +4,9 @@ export const MODELOS_COM_TERMO = ["GERADOR_OPORTUNIDADES", "GERADOR_NEGOCIOS", "
 export type ModeloComTermo = (typeof MODELOS_COM_TERMO)[number];
 
 export const CAMPOS_TERMO = [
+  { chave: "contratante_razao_social", rotulo: "Razão social da contratante (vazio = cadastro da empresa)" },
+  { chave: "contratante_cnpj", rotulo: "CNPJ da contratante (vazio = cadastro da empresa)" },
+  { chave: "contratante_sede", rotulo: "Sede da contratante (vazio = cadastro da empresa)" },
   { chave: "contratante_representante", rotulo: "Representante da contratante (nome e CPF)" },
   { chave: "vigencia_meses", rotulo: "Vigência inicial (meses)" },
   { chave: "aviso_previo_dias", rotulo: "Aviso prévio para rescisão (dias)" },
@@ -50,9 +53,9 @@ export function preencherTermo(
   const { contratante, participante: p, campos } = args;
   const v = (x: string | null | undefined, padrao: string) => (x && String(x).trim() ? String(x).trim() : padrao);
   const valores: Record<string, string> = {
-    contratante_razao_social: v(contratante.razao_social, A_DEFINIR),
-    contratante_cnpj: v(formatarCnpj(contratante.cnpj), A_DEFINIR),
-    contratante_sede: v(contratante.sede, A_DEFINIR),
+    contratante_razao_social: v(campos.contratante_razao_social, v(contratante.razao_social, A_DEFINIR)),
+    contratante_cnpj: v(campos.contratante_cnpj, v(formatarCnpj(contratante.cnpj), A_DEFINIR)),
+    contratante_sede: v(campos.contratante_sede, v(contratante.sede, A_DEFINIR)),
     cidade_contratante: v(contratante.cidade, A_DEFINIR),
     participante_nome: v(p?.nome, "[nome da imobiliária]"),
     participante_documento: v(formatarCnpj(p?.cnpj), NAO_INFORMADO),
@@ -65,6 +68,6 @@ export function preencherTermo(
       : "data do aceite eletrônico",
     foro: v(campos.foro, v(contratante.cidade, A_DEFINIR)),
   };
-  for (const c of CAMPOS_TERMO) if (c.chave !== "foro") valores[c.chave] = v(campos[c.chave], A_DEFINIR);
+  for (const c of CAMPOS_TERMO) if (!(c.chave in valores)) valores[c.chave] = v(campos[c.chave], A_DEFINIR);
   return modelo.replace(/\{\{(\w+)\}\}/g, (m, k: string) => valores[k] ?? m);
 }

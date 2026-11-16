@@ -21,7 +21,7 @@ export async function getTermosSpl(): Promise<TermosSpl | null> {
     .eq("chave", SPL_TERMOS_CHAVE)
     .maybeSingle();
   // Sem publicação no admin, valem os termos padrão das minutas da rede.
-  const v = ((data?.valor as Partial<TermosSpl> | null)?.versao ? data!.valor : { ...padrao, campos: {}, atualizado_em: null }) as
+  const v = ((data?.valor as Partial<TermosSpl> | null)?.versao ? data!.valor : { ...padrao, atualizado_em: null }) as
     Partial<TermosSpl> & { texto?: string };
   const modelos: TermosSpl["modelos"] = {};
   for (const m of MODELOS_COM_TERMO) {
