@@ -601,3 +601,10 @@ body.tenant-root-independent {
 .tenant-operational .evento-inscricao-card :is(input, textarea)::placeholder {
   color: #64748b !important;
 }
+.tenant-operational .evento-vagas-box {
+  background-color: #eff6ff !important;
+  border: 2px solid #93c5fd !important;
+  color: #0f172a !important;
+  font-size: 16px;
+  font-weight: 700;
+}

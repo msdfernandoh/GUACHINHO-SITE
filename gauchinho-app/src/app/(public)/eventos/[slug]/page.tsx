@@ -100,7 +100,7 @@ export default async function EventoSlugPage({ params }: Props) {
 
         <aside className="space-y-4">
           {evento.mostrar_vagas && evento.limite_participantes ? (
-            <p className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3 text-sm text-zinc-300">
+            <p className="evento-vagas-box rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3 text-sm text-zinc-300">
               {restantes != null && restantes <= 0
                 ? "Vagas limitadas — inscrição sujeita à disponibilidade no envio."
                 : restantes != null
