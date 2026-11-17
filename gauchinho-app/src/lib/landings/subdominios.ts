@@ -10,7 +10,10 @@ import { normalizeHost } from "@/lib/tenant/dominio";
  */
 export const LANDING_SUBDOMINIOS = {
   eua: { base: "/eua", rotas: { "/": "/eua" } },
-  filhos: { base: "/filhos", rotas: { "/": "/filhos", "/evento": "/filhos/evento", "/qr": "/filhos/qr" } },
+  filhos: {
+    base: "/filhos",
+    rotas: { "/": "/filhos", "/evento": "/filhos/evento", "/qr": "/filhos/qr", "/checkin": "/filhos/checkin", "/qr-checkin": "/filhos/qr-checkin" },
+  },
   spl: { base: "/spl", rotas: { "/": "/spl", "/cadastro": "/spl/cadastro", "/evento": "/spl/evento" } },
 } as const satisfies Record<string, { base: string; rotas: Record<string, string> }>;
 
