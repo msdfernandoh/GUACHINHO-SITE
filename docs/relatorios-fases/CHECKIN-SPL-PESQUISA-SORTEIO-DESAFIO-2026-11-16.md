@@ -54,3 +54,13 @@ o `sorteios-e-oportunidades` para os panfletos voltarem ao fluxo normal.
 ## Pendências
 - Deploy de produção feito em 16/11/2026 (Vercel CLI), já sem o NPS.
 - Painel admin ainda não mostra a função do vendedor nem os cupons por cliente.
+
+## Atualização 17/11/2026 · QR impresso para o Herança Inteligente (migration 347)
+- O QR fixo (`/qr/externo` e `/qr/network`) respeita um vínculo manual ativo em
+  `qr_codes_unicos_vinculos` (dentro do período): abre aquele evento com o check-in do próprio evento.
+- `/qr/externo` está vinculado ao Encontro Método Herança Inteligente até 18/11/2026 08:00 (Sinop),
+  com o check-in conversacional padrão (veículo, moradia, valor mensal, avaliação do encontro, momento).
+- O cadastro do Herança segue em `filhos.raconsinop.com.br/evento`.
+- O check-in SPL fica só em `spl.raconsinop.com.br/evento` (evento `chaves-para-o-futuro` voltou a `tipo_checkin = evento`).
+- Depois do vínculo vencer, o `/qr/externo` volta a abrir o evento externo ativo mais recente
+  (hoje nenhum: o `sorteios-e-oportunidades` está inativo).
