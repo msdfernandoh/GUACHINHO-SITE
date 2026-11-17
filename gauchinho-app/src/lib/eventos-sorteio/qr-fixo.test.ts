@@ -7,6 +7,7 @@ import { EventoQrCheckinModal } from "@/components/admin/eventos/evento-qr-check
 const state = vi.hoisted(() => ({
   slug: "externo", ativo: true,
   eventos: [] as Array<Record<string, string | boolean>>,
+  vinculos: [] as Array<Record<string, string | boolean>>,
   falhaSorteio: false,
 }));
 
@@ -15,12 +16,16 @@ vi.mock("@/lib/supabase/admin", () => ({
     from: (table: string) => {
       let rows = table === "qr_codes_unicos"
         ? [{ id: "qr-fixo", slug: state.slug, ativo: state.ativo, tipo_destino: state.slug === "externo" ? "externo" : "evento" }]
-        : [...state.eventos];
+        : table === "qr_codes_unicos_vinculos"
+          ? [...state.vinculos]
+          : [...state.eventos];
       const filters: Array<[string, unknown]> = [];
       const orders: Array<[string, boolean]> = [];
       const query = {
         select: () => query,
         eq: (key: string, value: unknown) => { filters.push([key, value]); return query; },
+        lte: (key: string, value: string) => { rows = rows.filter(row => String(row[key as keyof typeof row]) <= value); return query; },
+        gte: (key: string, value: string) => { rows = rows.filter(row => String(row[key as keyof typeof row]) >= value); return query; },
         order: (key: string, opts: { ascending: boolean }) => { orders.push([key, opts.ascending]); return query; },
         limit: () => query,
         maybeSingle: async () => ({ data: resolver()[0] ?? null, error: null }),
@@ -54,6 +59,7 @@ beforeEach(() => {
   state.slug = "externo";
   state.ativo = true;
   state.falhaSorteio = false;
+  state.vinculos = [];
   state.eventos = [
     { id: "externo-antigo", tipo_checkin: "externo", ativo: false, updated_at: "2026-10-22" },
     { id: "externo-atual", tipo_checkin: "externo", ativo: true, updated_at: "2026-10-21" },
@@ -100,6 +106,19 @@ describe("QR fixo por modalidade", () => {
     const segundo = await resolveQrPublicBySlug("externo");
     expect(segundo?.qr.slug).toBe("externo");
     expect(segundo?.mode === "evento" && segundo.sorteio.whatsappEquipe).toBe("11988887777");
+  });
+
+  it("QR externo com vínculo manual ativo abre o evento vinculado com o check-in dele", async () => {
+    state.vinculos = [{ id: "v1", qr_code_id: "qr-fixo", evento_id: "palestra-atual", ativo: true, periodo_inicio: "2000-01-01T00:00:00.000Z", periodo_fim: "2999-01-01T00:00:00.000Z" }];
+    const result = await resolveQrPublicBySlug("externo");
+    expect(result?.mode === "evento" && result.sorteio.eventoId).toBe("palestra-atual");
+    expect(result?.mode === "evento" && result.sorteio.tipoCheckin).not.toBe("externo");
+  });
+
+  it("vínculo manual vencido não muda o QR externo", async () => {
+    state.vinculos = [{ id: "v1", qr_code_id: "qr-fixo", evento_id: "palestra-atual", ativo: true, periodo_inicio: "2000-01-01T00:00:00.000Z", periodo_fim: "2001-01-01T00:00:00.000Z" }];
+    const result = await resolveQrPublicBySlug("externo");
+    expect(result?.mode === "evento" && result.sorteio.eventoId).toBe("externo-atual");
   });
 
   it("network prefere a palestra com check-in ativo agora a outra só agendada", async () => {

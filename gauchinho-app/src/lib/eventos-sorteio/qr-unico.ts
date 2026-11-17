@@ -226,6 +226,32 @@ export async function resolveQrPublicBySlug(slug: string): Promise<ResolveQrPubl
 
   if (qrRow.slug === "externo" || tipoDestino === "externo" || qrRow.slug === "network") {
     const externo = qrRow.slug === "externo" || tipoDestino === "externo";
+
+    // Vínculo manual ativo e dentro do período: o QR impresso abre aquele evento
+    // com o check-in do próprio evento (ex.: palestra usando o QR dos panfletos).
+    const agora = new Date().toISOString();
+    const { data: vinculoManual } = await admin
+      .from("qr_codes_unicos_vinculos")
+      .select("id, qr_code_id, evento_id, periodo_inicio, periodo_fim, ativo, created_at, updated_at")
+      .eq("qr_code_id", qrRow.id)
+      .eq("ativo", true)
+      .lte("periodo_inicio", agora)
+      .gte("periodo_fim", agora)
+      .limit(1)
+      .maybeSingle();
+    if (vinculoManual?.evento_id) {
+      const sorteioVinculado = await fetchPublicSorteioByEventoId(vinculoManual.evento_id as string, { requirePublicado: false });
+      if (sorteioVinculado) {
+        return {
+          mode: "evento",
+          qr: qrRow,
+          sorteio: { ...sorteioVinculado, checkinInterativoAtivo: true },
+          npsPerguntas: sorteioVinculado.npsPerguntas,
+          vinculo: vinculoManual as QrCodeVinculoRow,
+        };
+      }
+    }
+
     // Os dois endereços impressos resolvem a modalidade, sem depender do slug
     // ou de um vínculo temporário da edição anterior. As palestras usam a
     // edição ativa de data mais recente; externos usam a última ação ativada.
