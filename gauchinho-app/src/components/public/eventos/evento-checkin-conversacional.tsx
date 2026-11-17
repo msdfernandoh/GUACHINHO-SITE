@@ -25,6 +25,13 @@ import {
 } from "@/lib/eventos-sorteio/checkin-conversacional-types";
 import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
 import { CheckinIndicarAmigos } from "./checkin-indicar-amigos";
+import { landingDoHost } from "@/lib/landings/subdominios";
+
+/** Site principal: no subdomínio de landing (filhos., spl., eua.) vai para o domínio pai. */
+function irParaSitePrincipal() {
+  const landing = landingDoHost(window.location.host);
+  window.location.href = landing ? `${window.location.protocol}//${landing.parent}/` : "/";
+}
 import { formatWhatsappBrInput, digitsOnlyPhone } from "@/lib/utils/format";
 import { resolverWhatsappEquipeEvento } from "@/lib/eventos-sorteio/whatsapp-equipe";
 
@@ -795,7 +802,16 @@ export function EventoCheckinConversacional({
                   </Link>
                 </>
               ) : (
-                <CheckinIndicarAmigos eventoId={evento.id} whatsappIndicador={whatsapp} isPreview={isPreview} />
+                <>
+                  <CheckinIndicarAmigos eventoId={evento.id} whatsappIndicador={whatsapp} isPreview={isPreview} />
+                  <button
+                    type="button"
+                    onClick={irParaSitePrincipal}
+                    className="flex min-h-12 w-full items-center justify-center rounded-2xl border-2 border-zinc-300 bg-white px-4 text-base font-bold text-zinc-800 transition hover:bg-zinc-100 active:scale-[0.98]"
+                  >
+                    Finalizar
+                  </button>
+                </>
               )}
             </div>
           </div>
