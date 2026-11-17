@@ -24,6 +24,7 @@ import {
   type VeiculoQualificacao,
 } from "@/lib/eventos-sorteio/checkin-conversacional-types";
 import { useTenantBrand } from "@/components/tenant/tenant-brand-context";
+import { CheckinIndicarAmigos } from "./checkin-indicar-amigos";
 import { formatWhatsappBrInput, digitsOnlyPhone } from "@/lib/utils/format";
 import { resolverWhatsappEquipeEvento } from "@/lib/eventos-sorteio/whatsapp-equipe";
 
@@ -794,12 +795,7 @@ export function EventoCheckinConversacional({
                   </Link>
                 </>
               ) : (
-                <Link
-                  href={`/eventos/${evento.slug}`}
-                  className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-zinc-300 px-4 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                >
-                  Ver informações do evento
-                </Link>
+                <CheckinIndicarAmigos eventoId={evento.id} whatsappIndicador={whatsapp} isPreview={isPreview} />
               )}
             </div>
           </div>
