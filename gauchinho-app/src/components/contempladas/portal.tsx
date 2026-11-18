@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { gerarPropostaAction, simularAction } from "@/app/(landing-contempladas)/contempladas/actions";
 import { resumirCombinacao, valorAcrescimo, type Acrescimo, type Combinacao, type Preferencia } from "@/lib/contempladas/motor";
 import type { CotaPortal } from "@/lib/contempladas/repo";
-import { brl, btnOuro, btnSec, Card, inputCls } from "./ui";
+import { brl, btnOuro, btnSec, Card, inputCls, mascaraTelefone } from "./ui";
 
 const MODOS = [
   ["COMPLETA", "Completa (mensal, semestral e anual)"],
@@ -30,6 +30,7 @@ export function Portal({ cotas, stats, logado, adicional }: { cotas: CotaPortal[
   const [modo, setModo] = useState("COMPLETA");
   const [desconto, setDesconto] = useState("");
   const [cliente, setCliente] = useState("");
+  const [clienteTel, setClienteTel] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [pend, start] = useTransition();
 
@@ -58,7 +59,7 @@ export function Portal({ cotas, stats, logado, adicional }: { cotas: CotaPortal[
 
   const gerar = () =>
     start(async () => {
-      const r = await gerarPropostaAction({ cotaIds: sel, modo, desconto: desc, clienteNome: cliente });
+      const r = await gerarPropostaAction({ cotaIds: sel, modo, desconto: desc, clienteNome: cliente, clienteTelefone: clienteTel });
       if (r.ok) router.push(`/contempladas/p/${r.numero}`);
       else setErro(r.erro);
     });
@@ -183,7 +184,10 @@ export function Portal({ cotas, stats, logado, adicional }: { cotas: CotaPortal[
               <select className={`${inputCls} !py-2 text-sm`} value={modo} onChange={(e) => setModo(e.target.value)}>
                 {MODOS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
-              <input className={`${inputCls} !py-2 text-sm`} placeholder="Nome do cliente (opcional)" value={cliente} onChange={(e) => setCliente(e.target.value)} />
+              <div className="grid grid-cols-2 gap-1">
+                <input className={`${inputCls} !py-2 text-sm`} placeholder="Nome do cliente" value={cliente} onChange={(e) => setCliente(e.target.value)} />
+                <input className={`${inputCls} !py-2 text-sm`} type="tel" inputMode="tel" placeholder="(66) 99999-9999" value={clienteTel} onChange={(e) => setClienteTel(mascaraTelefone(e.target.value))} />
+              </div>
               {logado && (
                 <input className={`${inputCls} !w-40 !py-2 text-sm`} inputMode="decimal" placeholder="Desconto na entrada R$" value={desconto} onChange={(e) => setDesconto(e.target.value)} />
               )}

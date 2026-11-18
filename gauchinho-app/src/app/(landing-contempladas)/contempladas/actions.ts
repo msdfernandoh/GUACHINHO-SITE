@@ -7,6 +7,7 @@ import { lerCotasTexto, type LinhaLida } from "@/lib/contempladas/parser";
 import { buscarCombinacoes, valorAcrescimo, type Acrescimo, type Preferencia } from "@/lib/contempladas/motor";
 import * as repo from "@/lib/contempladas/repo";
 import * as acesso from "@/lib/contempladas/acesso";
+import { uploadImagemPublica } from "@/lib/storage/imagens";
 
 async function empresa() {
   const t = await getResolvedTenant();
@@ -104,6 +105,8 @@ export async function gerarPropostaAction(p: { cotaIds: string[]; modo: string; 
       usuarioId: null,
       vendedorAuthId: a?.authUserId ?? null,
       vendedorNome: a?.nome ?? null,
+      vendedorTelefone: a?.telefone ?? null,
+      vendedorLogo: a?.logoUrl ?? null,
       adicional,
       desconto,
       comissao,
@@ -207,11 +210,24 @@ export async function atualizarUsuarioAction(id: string, campos: { ativo?: boole
 
 /* ------------------------------- Vendedor ------------------------------- */
 
-export async function salvarAdicionalAction(adicional: Acrescimo) {
-  const { empresaId, a } = await exigirLogado();
-  await acesso.salvarAdicional(empresaId, a, acrescimoValido(adicional));
-  revalidatePath("/contempladas");
-  revalidatePath("/contempladas/painel");
+/** Perfil do gerente/vendedor: adicional fixo, telefone e logomarca da proposta. */
+export async function salvarPerfilAction(fd: FormData) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirLogado();
+    const adicional = acrescimoValido({ tipo: fd.get("adicional_tipo") === "PERCENTUAL" ? "PERCENTUAL" : "FIXO", valor: Number(fd.get("adicional_valor")) || 0 });
+    const telefone = String(fd.get("telefone") ?? "").replace(/\D/g, "") || null;
+    let logoUrl = fd.get("remover_logo") === "1" ? null : a.logoUrl;
+    const logo = fd.get("logo");
+    if (logo instanceof File && logo.size) {
+      if (!["image/png", "image/jpeg", "image/webp"].includes(logo.type)) throw new Error("Envie a logo em PNG, JPG ou WEBP.");
+      if (logo.size > 2 * 1024 * 1024) throw new Error("Logo acima de 2 MB.");
+      logoUrl = await uploadImagemPublica("parceiros", `contempladas/logos/${empresaId}/${a.authUserId}-${Date.now()}`, logo);
+    }
+    await acesso.salvarPerfil(empresaId, a, { adicional, telefone, logoUrl });
+    revalidatePath("/contempladas");
+    revalidatePath("/contempladas/painel");
+    return {};
+  });
 }
 
 function validarCadastro(p: { nome: string; email: string; senha: string }) {

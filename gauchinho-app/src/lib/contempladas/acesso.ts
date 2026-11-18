@@ -21,6 +21,8 @@ export type Acesso = {
   email: string;
   origem: "ERP" | "PORTAL";
   adicional: Acrescimo;
+  telefone: string | null;
+  logoUrl: string | null;
 };
 
 export const podeGerenciar = (a: Acesso | null) => a?.papel === "DONO" || a?.papel === "GERENTE";
@@ -34,7 +36,7 @@ export async function getAcesso(empresaId: string): Promise<Acesso | null> {
 
   const [{ data: portal }, { data: erp }] = await Promise.all([
     db().from("contempladas_usuarios").select("*").eq("empresa_id", empresaId).eq("auth_user_id", user.id).maybeSingle(),
-    db().from("usuarios").select("id,nome,email,perfil,ativo,contempladas_pode_enviar").eq("auth_user_id", user.id).maybeSingle(),
+    db().from("usuarios").select("id,nome,email,perfil,ativo,contempladas_pode_enviar,telefone").eq("auth_user_id", user.id).maybeSingle(),
   ]);
 
   const adicional: Acrescimo = portal
@@ -45,16 +47,16 @@ export async function getAcesso(empresaId: string): Promise<Acesso | null> {
     const { data: vinc } = await db().from("empresa_usuarios").select("usuario_id").eq("empresa_id", empresaId).eq("usuario_id", erp.id).maybeSingle();
     if (vinc || erp.perfil === "master") {
       const papel: Papel = erp.perfil === "master" ? "DONO" : erp.contempladas_pode_enviar || portal?.papel === "GERENTE" ? "GERENTE" : "VENDEDOR";
-      return { papel, authUserId: user.id, nome: erp.nome, email: erp.email, origem: "ERP", adicional };
+      return { papel, authUserId: user.id, nome: erp.nome, email: erp.email, origem: "ERP", adicional, telefone: portal?.telefone ?? (erp as { telefone?: string | null }).telefone ?? null, logoUrl: portal?.logo_url ?? null };
     }
   }
   if (portal?.ativo) {
-    return { papel: portal.papel, authUserId: user.id, nome: portal.nome, email: portal.email, origem: "PORTAL", adicional };
+    return { papel: portal.papel, authUserId: user.id, nome: portal.nome, email: portal.email, origem: "PORTAL", adicional, telefone: portal.telefone, logoUrl: portal.logo_url };
   }
   return null;
 }
 
-export async function salvarAdicional(empresaId: string, a: Acesso, adicional: Acrescimo) {
+export async function salvarPerfil(empresaId: string, a: Acesso, perfil: { adicional: Acrescimo; telefone: string | null; logoUrl: string | null }) {
   const { error } = await db()
     .from("contempladas_usuarios")
     .upsert(
@@ -64,8 +66,10 @@ export async function salvarAdicional(empresaId: string, a: Acesso, adicional: A
         nome: a.nome,
         email: a.email,
         papel: a.papel === "VENDEDOR" ? "VENDEDOR" : "GERENTE",
-        adicional_tipo: adicional.tipo,
-        adicional_valor: adicional.valor,
+        adicional_tipo: perfil.adicional.tipo,
+        adicional_valor: perfil.adicional.valor,
+        telefone: perfil.telefone,
+        logo_url: perfil.logoUrl,
       },
       { onConflict: "empresa_id,auth_user_id" },
     );

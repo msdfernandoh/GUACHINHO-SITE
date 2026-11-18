@@ -188,6 +188,8 @@ export async function salvarProposta(p: {
   usuarioId: string | null;
   vendedorAuthId: string | null;
   vendedorNome: string | null;
+  vendedorTelefone: string | null;
+  vendedorLogo: string | null;
   adicional: number;
   desconto: number;
   comissao: number;
@@ -212,6 +214,8 @@ export async function salvarProposta(p: {
       modo_simulacao: p.modo,
       vendedor_auth_id: p.vendedorAuthId,
       vendedor_nome: p.vendedorNome,
+      vendedor_telefone: p.vendedorTelefone,
+      vendedor_logo_url: p.vendedorLogo,
       adicional_valor: p.adicional,
       desconto_valor: p.desconto,
       comissao_valor: p.comissao,
@@ -246,6 +250,9 @@ export async function obterProposta(empresaId: string, numero: number) {
     adicional: num(data.adicional_valor) || (data.acrescimo_tipo ? num(data.acrescimo_valor) : 0),
     desconto: num(data.desconto_valor),
     vendedorAuthId: data.vendedor_auth_id as string | null,
+    vendedorNome: data.vendedor_nome as string | null,
+    vendedorTelefone: data.vendedor_telefone as string | null,
+    vendedorLogo: data.vendedor_logo_url as string | null,
     cotas: (data.cotas_snapshot as CotaPortal[]).map((c) => ({ ...c, status: (status.get(c.id) ?? "INATIVA") as CotaPortal["status"] })),
   };
 }

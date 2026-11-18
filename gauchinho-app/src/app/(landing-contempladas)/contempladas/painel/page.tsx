@@ -36,6 +36,8 @@ export default async function Page() {
       <Painel
         papel={a.papel}
         adicional={a.adicional}
+        telefone={a.telefone}
+        logoUrl={a.logoUrl}
         reservas={reservas}
         cotas={cotas}
         config={gerencia ? cfg : null}

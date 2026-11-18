@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { getConfig, obterProposta } from "@/lib/contempladas/repo";
 import { agruparPeriodos, cronogramaMensal, faixasMensais, resumirCombinacao, rotuloMes } from "@/lib/contempladas/motor";
-import { Shell } from "@/components/contempladas/ui";
 import { AcoesProposta } from "@/components/contempladas/acoes-proposta";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +10,22 @@ export const metadata: Metadata = { title: { absolute: "Proposta · Cotas Contem
 
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const MODOS = ["COMPLETA", "MENSAL", "SEMESTRAL", "ANUAL", "RESUMO", "DETALHADA"];
+const tel = (d: string | null) => {
+  const x = (d ?? "").replace(/\D/g, "");
+  return x.length === 11 ? `(${x.slice(0, 2)}) ${x.slice(2, 7)}-${x.slice(7)}` : x.length === 10 ? `(${x.slice(0, 2)}) ${x.slice(2, 6)}-${x.slice(6)}` : x;
+};
+
+function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <section className="break-inside-avoid">
+      <h2 className="mb-2 border-b-2 border-[#0b1d3d] pb-1 text-sm font-black uppercase tracking-wide text-[#0b1d3d]">{titulo}</h2>
+      {children}
+    </section>
+  );
+}
+
+const th = "px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500";
+const td = "px-2 py-1.5";
 
 export default async function Page({ params, searchParams }: { params: Promise<{ numero: string }>; searchParams: Promise<{ modo?: string }> }) {
   const tenant = await getResolvedTenant();
@@ -22,117 +37,25 @@ export default async function Page({ params, searchParams }: { params: Promise<{
 
   const modo = modoQuery && MODOS.includes(modoQuery.toUpperCase()) ? modoQuery.toUpperCase() : p.modo;
   const r = resumirCombinacao(p.cotas);
-  // Adicional do vendedor já embutido na entrada; desconto aparece para o cliente.
+  // Adicional do vendedor já embutido na entrada (rateado por cota); desconto aparece para o cliente.
   const entradaFinal = r.entrada + p.adicional - p.desconto;
+  const entradaCota = (credito: number, entrada: number) => entrada + (r.credito ? (p.adicional * credito) / r.credito : 0);
   const meses = cronogramaMensal(p.cotas, new Date(p.criadaEm));
   const faixas = faixasMensais(meses);
   const vendidas = p.cotas.filter((c) => c.status === "VENDIDA").length;
   const indisponivel = p.cotas.some((c) => c.status !== "DISPONIVEL");
   const ver = (m: string) => modo === "COMPLETA" || modo === "DETALHADA" || modo === m;
+  const data = new Date(p.criadaEm);
 
   return (
-    <Shell titulo={`Proposta nº ${p.numero}`} sub={new Date(p.criadaEm).toLocaleString("pt-BR")}>
-      <article className="proposta space-y-4">
-        {indisponivel && (
-          <div className={`rounded-2xl p-4 text-center font-bold ${vendidas ? "bg-red-500/20 text-red-200" : "bg-orange-500/20 text-orange-200"}`}>
-            {vendidas === p.cotas.length ? "VENDIDA" : vendidas ? `${vendidas} de ${p.cotas.length} cotas já VENDIDAS` : "Cota(s) reservada(s) por outro cliente"}
-          </div>
-        )}
+    <div className="min-h-dvh bg-[#07142b] py-4 text-white print:bg-white print:py-0 [color-scheme:dark]">
+      <style>{`@page{size:A4;margin:12mm}@media print{html,body{background:#fff!important}}.contempladas-doc select option{background:#0b1d3d;color:#fff}`}</style>
 
-        <div className="rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 p-5 text-[#07142b]">
-          <p className="text-xs font-bold uppercase">{p.clienteNome ? `Proposta para ${p.clienteNome}` : "Proposta de cotas contempladas"}</p>
-          <p className="text-4xl font-black">{brl(r.credito)}</p>
-          <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-            <span>Entrada<br /><b className="text-lg">{brl(entradaFinal)}</b>{p.desconto > 0 && <><br /><span className="text-xs">com desconto de {brl(p.desconto)}</span></>}</span>
-            <span>Média mensal<br /><b className="text-lg">{brl(r.parcelaMedia)}</b></span>
-            <span>Saldo devedor<br /><b className="text-lg">{brl(r.saldo)}</b></span>
-            <span>Prazo<br /><b className="text-lg">{r.prazoMaximo} meses</b></span>
-          </div>
+      <div className="contempladas-doc mx-auto mb-4 max-w-[860px] px-4 print:hidden">
+        <div className="mb-3 flex items-center justify-between text-sm">
+          <a href="/contempladas" className="text-white/70 hover:text-white">← Voltar ao simulador</a>
+          <span className="text-white/50">Proposta nº {p.numero}</span>
         </div>
-
-        <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <h2 className="mb-2 font-bold">Cotas desta proposta ({p.cotas.length})</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-sm">
-              <thead className="text-xs text-white/50"><tr><th className="p-1 text-left">Cota</th><th className="p-1 text-right">Crédito</th><th className="p-1 text-right">Entrada</th><th className="p-1 text-right">Parcela</th><th className="p-1 text-right">Prazo</th><th className="p-1 text-right">Saldo</th><th className="p-1">Status</th></tr></thead>
-              <tbody>
-                {p.cotas.map((c) => (
-                  <tr key={c.id} className="border-t border-white/5">
-                    <td className="p-1">{c.codigo}</td>
-                    <td className="p-1 text-right">{brl(c.credito)}</td>
-                    <td className="p-1 text-right">{brl(c.entrada + (r.credito ? (p.adicional * c.credito) / r.credito : 0))}</td>
-                    <td className="p-1 text-right">{brl(c.parcela)}</td>
-                    <td className="p-1 text-right">{c.prazo}x</td>
-                    <td className="p-1 text-right">{brl(c.saldo_devedor)}</td>
-                    <td className="p-1 text-center text-xs">{c.status === "DISPONIVEL" ? "Disponível" : c.status === "VENDIDA" ? "VENDIDA" : c.status === "RESERVADA" ? "Reservada" : "Indisponível"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {p.desconto > 0 && <p className="mt-2 text-sm text-emerald-300">Desconto na entrada: {brl(p.desconto)}</p>}
-        </section>
-
-        {ver("MENSAL") && (
-          <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <h2 className="mb-2 font-bold">Mensal · muda quando uma cota começa ou termina</h2>
-            <table className="w-full text-sm">
-              <thead className="text-xs text-white/50"><tr><th className="p-1 text-left">Período</th><th className="p-1 text-right">Meses</th><th className="p-1 text-right">Valor por mês</th></tr></thead>
-              <tbody>
-                {faixas.map((f) => (
-                  <tr key={f.de} className="border-t border-white/5">
-                    <td className="p-1">{f.de === f.ate ? rotuloMes(f.de) : `${rotuloMes(f.de)} a ${rotuloMes(f.ate)}`}</td>
-                    <td className="p-1 text-right">{f.meses}</td>
-                    <td className="p-1 text-right font-semibold">{brl(f.valor)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-        )}
-
-        {(["SEMESTRAL", "ANUAL"] as const).filter(ver).map((t) => (
-          <section key={t} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <h2 className="mb-2 font-bold">{t === "ANUAL" ? "Anual" : "Semestral"}</h2>
-            <table className="w-full text-sm">
-              <thead className="text-xs text-white/50"><tr><th className="p-1 text-left">Período</th><th className="p-1 text-right">Total</th><th className="p-1 text-right">Média/mês</th></tr></thead>
-              <tbody>
-                {agruparPeriodos(meses, t).map((x) => (
-                  <tr key={x.rotulo} className="border-t border-white/5">
-                    <td className="p-1">{x.rotulo}</td><td className="p-1 text-right">{brl(x.total)}</td><td className="p-1 text-right">{brl(x.mediaMensal)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-        ))}
-
-        {modo === "RESUMO" && (
-          <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm">
-            <h2 className="mb-1 font-bold">Média resumida</h2>
-            <p>Valor mensal diluído de <b>{brl(r.parcelaMedia)}</b> em {r.prazoMaximo} meses. Alguns meses saem mais caros e outros mais em conta; para ver mês a mês, abra a versão detalhada.</p>
-          </section>
-        )}
-
-        {modo === "DETALHADA" && (
-          <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <h2 className="mb-2 font-bold">Detalhado mês a mês, por cota</h2>
-            <div className="max-h-[70vh] overflow-auto text-xs print:max-h-none">
-              {meses.map((m) => (
-                <div key={m.mes} className="flex justify-between gap-2 border-t border-white/5 py-1">
-                  <span className="w-14 font-semibold">{rotuloMes(m.mes)}</span>
-                  <span className="flex-1 text-white/60">{m.itens.map((i) => `${i.codigo} ${i.numero}/${i.de} ${brl(i.parcela)}`).join(" · ")}</span>
-                  <b>{brl(m.total)}</b>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <p className="text-[11px] text-white/50">
-          Valores informados pela administradora na data da proposta, sem reajuste anual das parcelas. A cota só fica garantida após o PIX da entrada e a confirmação da transferência.
-        </p>
-
         <AcoesProposta
           numero={p.numero}
           propostaId={p.id}
@@ -146,7 +69,162 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           entrada={entradaFinal}
           resumoTexto={`Proposta nº ${p.numero}: ${p.cotas.length} cota(s), crédito ${brl(r.credito)}, entrada ${brl(entradaFinal)}, média ${brl(r.parcelaMedia)}/mês. Cotas: ${p.cotas.map((c) => c.codigo).join(", ")}`}
         />
+      </div>
+
+      <article className="mx-auto max-w-[860px] space-y-6 bg-white p-6 text-[13px] text-slate-800 shadow-2xl sm:p-10 print:max-w-none print:p-0 print:shadow-none">
+        <header className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
+          <div className="flex items-center gap-3">
+            {p.vendedorLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.vendedorLogo} alt="Logomarca" className="h-14 max-w-[180px] object-contain" />
+            ) : (
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-[#0b1d3d] text-xl font-black text-amber-400">R</div>
+            )}
+            <div>
+              <p className="text-lg font-black leading-tight text-[#0b1d3d]">Proposta de Cotas Contempladas</p>
+              <p className="text-xs text-slate-500">Consórcio de imóveis · Racon</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Proposta</p>
+            <p className="text-2xl font-black text-[#0b1d3d]">nº {p.numero}</p>
+            <p className="text-xs text-slate-500">{data.toLocaleDateString("pt-BR")} · {data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
+          </div>
+        </header>
+
+        {indisponivel && (
+          <div className={`rounded-lg border-2 p-3 text-center text-base font-black ${vendidas ? "border-red-600 text-red-600" : "border-orange-500 text-orange-600"}`}>
+            {vendidas === p.cotas.length ? "VENDIDA" : vendidas ? `${vendidas} de ${p.cotas.length} cotas já VENDIDAS` : "Cota(s) reservada(s) por outro cliente"}
+          </div>
+        )}
+
+        <div className="grid gap-1 text-sm sm:grid-cols-2">
+          <p><span className="text-slate-500">Cliente: </span><b>{p.clienteNome ?? "________________________________"}</b></p>
+          {p.clienteTelefone && <p><span className="text-slate-500">Telefone: </span><b>{tel(p.clienteTelefone)}</b></p>}
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <div className="bg-[#0b1d3d] px-5 py-4 text-white">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-amber-400">Crédito total</p>
+            <p className="text-4xl font-black">{brl(r.credito)}</p>
+            <p className="text-xs text-white/60">{p.cotas.length} {p.cotas.length > 1 ? "cotas contempladas somadas" : "cota contemplada"}</p>
+          </div>
+          <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 sm:grid-cols-4 sm:divide-y-0">
+            {[
+              ["Entrada", brl(entradaFinal), p.desconto > 0 ? `com desconto de ${brl(p.desconto)}` : null],
+              ["Média mensal", brl(r.parcelaMedia), "valor diluído"],
+              ["Saldo devedor", brl(r.saldo), null],
+              ["Prazo", `${r.prazoMaximo} meses`, "última parcela"],
+            ].map(([l, v, s]) => (
+              <div key={l as string} className="px-4 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{l}</p>
+                <p className="text-lg font-black text-[#0b1d3d]">{v}</p>
+                {s && <p className={`text-[11px] ${l === "Entrada" ? "font-semibold text-emerald-700" : "text-slate-500"}`}>{s}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Secao titulo="Cotas da proposta">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px]">
+              <thead className="bg-slate-50"><tr><th className={`${th} text-left`}>Cota</th><th className={`${th} text-right`}>Crédito</th><th className={`${th} text-right`}>Entrada</th><th className={`${th} text-right`}>Parcela</th><th className={`${th} text-right`}>Prazo</th><th className={`${th} text-right`}>Saldo</th><th className={th}>Situação</th></tr></thead>
+              <tbody>
+                {p.cotas.map((c) => (
+                  <tr key={c.id} className="border-t border-slate-100">
+                    <td className={`${td} font-semibold`}>{c.codigo}</td>
+                    <td className={`${td} text-right`}>{brl(c.credito)}</td>
+                    <td className={`${td} text-right`}>{brl(entradaCota(c.credito, c.entrada))}</td>
+                    <td className={`${td} text-right`}>{brl(c.parcela)}</td>
+                    <td className={`${td} text-right`}>{c.prazo}x</td>
+                    <td className={`${td} text-right`}>{brl(c.saldo_devedor)}</td>
+                    <td className={`${td} text-center text-xs`}>{c.status === "DISPONIVEL" ? "Disponível" : c.status === "VENDIDA" ? "VENDIDA" : c.status === "RESERVADA" ? "Reservada" : "Indisponível"}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-t-2 border-slate-300 font-bold">
+                <tr><td className={td}>Total</td><td className={`${td} text-right`}>{brl(r.credito)}</td><td className={`${td} text-right`}>{brl(r.entrada + p.adicional)}</td><td className={`${td} text-right`}>{brl(r.parcelaInicial)}</td><td className={`${td} text-right`}>{r.prazoMaximo}x</td><td className={`${td} text-right`}>{brl(r.saldo)}</td><td /></tr>
+              </tfoot>
+            </table>
+          </div>
+          {p.desconto > 0 && <p className="mt-2 text-right text-sm font-semibold text-emerald-700">Desconto na entrada: −{brl(p.desconto)} · Entrada final {brl(entradaFinal)}</p>}
+        </Secao>
+
+        {ver("MENSAL") && (
+          <Secao titulo="Parcelas mensais">
+            <p className="mb-2 text-xs text-slate-500">O valor muda quando uma cota começa ou termina de pagar.</p>
+            <table className="w-full">
+              <thead className="bg-slate-50"><tr><th className={`${th} text-left`}>Período</th><th className={`${th} text-right`}>Meses</th><th className={`${th} text-right`}>Valor por mês</th></tr></thead>
+              <tbody>
+                {faixas.map((f) => (
+                  <tr key={f.de} className="border-t border-slate-100">
+                    <td className={td}>{f.de === f.ate ? rotuloMes(f.de) : `${rotuloMes(f.de)} a ${rotuloMes(f.ate)}`}</td>
+                    <td className={`${td} text-right`}>{f.meses}</td>
+                    <td className={`${td} text-right font-bold`}>{brl(f.valor)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Secao>
+        )}
+
+        {(["SEMESTRAL", "ANUAL"] as const).filter(ver).map((t) => (
+          <Secao key={t} titulo={t === "ANUAL" ? "Resumo anual" : "Resumo semestral"}>
+            <table className="w-full">
+              <thead className="bg-slate-50"><tr><th className={`${th} text-left`}>Período</th><th className={`${th} text-right`}>Total no período</th><th className={`${th} text-right`}>Média por mês</th></tr></thead>
+              <tbody>
+                {agruparPeriodos(meses, t).map((x) => (
+                  <tr key={x.rotulo} className="border-t border-slate-100">
+                    <td className={td}>{x.rotulo}</td><td className={`${td} text-right`}>{brl(x.total)}</td><td className={`${td} text-right font-semibold`}>{brl(x.mediaMensal)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Secao>
+        ))}
+
+        {modo === "RESUMO" && (
+          <Secao titulo="Média resumida">
+            <p>Valor mensal diluído de <b>{brl(r.parcelaMedia)}</b> em {r.prazoMaximo} meses. Alguns meses saem mais caros e outros mais em conta; para ver mês a mês, peça a versão detalhada.</p>
+          </Secao>
+        )}
+
+        {modo === "DETALHADA" && (
+          <Secao titulo="Detalhado mês a mês, por cota">
+            <table className="w-full text-xs">
+              <tbody>
+                {meses.map((m) => (
+                  <tr key={m.mes} className="border-t border-slate-100 align-top">
+                    <td className={`${td} w-16 font-semibold`}>{rotuloMes(m.mes)}</td>
+                    <td className={`${td} text-slate-500`}>{m.itens.map((i) => `${i.codigo} ${i.numero}/${i.de} ${brl(i.parcela)}`).join(" · ")}</td>
+                    <td className={`${td} text-right font-bold`}>{brl(m.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Secao>
+        )}
+
+        <p className="rounded-lg bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-500">
+          Valores informados pela administradora na data desta proposta, sem o reajuste anual das parcelas. A reserva da cota só é garantida após o PIX da entrada e a confirmação da transferência pela administradora. Disponibilidade sujeita a confirmação no momento do fechamento.
+        </p>
+
+        <section className="break-inside-avoid pt-10">
+          <div className="grid gap-12 sm:grid-cols-2 print:grid-cols-2">
+            <div className="text-center">
+              <div className="mb-1 border-t border-slate-800" />
+              <p className="font-bold">{p.clienteNome ?? "Cliente"}</p>
+              <p className="text-xs text-slate-500">Cliente{p.clienteTelefone ? ` · ${tel(p.clienteTelefone)}` : ""}</p>
+            </div>
+            <div className="text-center">
+              <div className="mb-1 border-t border-slate-800" />
+              <p className="font-bold">{p.vendedorNome ?? "Consultor"}</p>
+              <p className="text-xs text-slate-500">Consultor{p.vendedorTelefone ? ` · ${tel(p.vendedorTelefone)}` : ""}</p>
+            </div>
+          </div>
+          <p className="mt-8 text-center text-xs text-slate-400">Local e data: ____________________________, ____/____/________</p>
+        </section>
       </article>
-    </Shell>
+    </div>
   );
 }

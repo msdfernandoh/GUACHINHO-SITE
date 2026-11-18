@@ -8,7 +8,7 @@ import {
   decidirReservaAction,
   gerarConviteAction,
   permissaoEnvioAction,
-  salvarAdicionalAction,
+  salvarPerfilAction,
   salvarConfigAction,
   statusCotaAction,
 } from "@/app/(landing-contempladas)/contempladas/actions";
@@ -37,6 +37,8 @@ function SeletorValor({ valor, onChange, rotuloPct = "% do crédito" }: { valor:
 export function Painel(props: {
   papel: "DONO" | "GERENTE" | "VENDEDOR";
   adicional: Acrescimo;
+  telefone: string | null;
+  logoUrl: string | null;
   reservas: Reserva[];
   cotas: CotaPortal[];
   config: ConfigContempladas | null;
@@ -52,6 +54,7 @@ export function Painel(props: {
   const [pend, start] = useTransition();
   const [cfg, setCfg] = useState(props.config);
   const [adicional, setAdicional] = useState(props.adicional);
+  const [tel, setTel] = useState(mascaraTelefone(props.telefone ?? ""));
   const [aviso, setAviso] = useState<string | null>(null);
   const [novo, setNovo] = useState({ nome: "", email: "", telefone: "", senha: "", papel: "VENDEDOR" as "GERENTE" | "VENDEDOR" });
   const [convite, setConvite] = useState<string | null>(null);
@@ -72,8 +75,8 @@ export function Painel(props: {
   const somaAberta = props.propostas.filter((p) => !p.vendida).reduce((s, p) => s + p.rentabilidade, 0);
 
   const abas: [Aba, string][] = gerencia
-    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["equipe", "Equipe"], ["config", "Configurar"], ["meu", "Meu adicional"]]
-    : [["propostas", "Minhas propostas"], ["meu", "Meu adicional"]];
+    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["equipe", "Equipe"], ["config", "Configurar"], ["meu", "Meu perfil"]]
+    : [["propostas", "Minhas propostas"], ["meu", "Meu perfil"]];
 
   return (
     <div className="space-y-4">
@@ -174,11 +177,36 @@ export function Painel(props: {
       )}
 
       {aba === "meu" && (
-        <Card className="space-y-3">
-          <p className="font-semibold">Adicional fixo na entrada</p>
-          <p className="text-sm text-white/60">Entra sozinho em toda proposta que você gerar logado e soma na sua rentabilidade. O cliente vê apenas a entrada total.</p>
-          <SeletorValor valor={adicional} onChange={setAdicional} />
-          <button className={`${btnOuro} w-full`} disabled={pend} onClick={() => agir(() => salvarAdicionalAction(adicional), "✅ Adicional salvo.")}>Salvar</button>
+        <Card>
+          <form className="space-y-3" onSubmit={(e) => {
+            e.preventDefault();
+            const fd = new FormData(e.currentTarget);
+            fd.set("adicional_tipo", adicional.tipo);
+            fd.set("adicional_valor", String(adicional.valor));
+            agir(async () => { const r = await salvarPerfilAction(fd); if (!r.ok) throw new Error(r.erro); }, "✅ Perfil salvo.");
+          }}>
+            <div>
+              <p className="font-semibold">Logomarca na proposta</p>
+              <p className="mb-2 text-xs text-white/50">Aparece no topo das propostas que você gerar. PNG, JPG ou WEBP até 2 MB.</p>
+              {props.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={props.logoUrl} alt="Logo atual" className="mb-2 h-16 rounded-lg bg-white p-2 object-contain" />
+              )}
+              <input name="logo" type="file" accept="image/png,image/jpeg,image/webp" className={inputCls} />
+              {props.logoUrl && <label className="mt-1 flex items-center gap-2 text-xs"><input type="checkbox" name="remover_logo" value="1" /> remover logo atual</label>}
+            </div>
+            <div>
+              <p className="font-semibold">Seu WhatsApp</p>
+              <p className="mb-1 text-xs text-white/50">Sai na proposta, embaixo da sua assinatura.</p>
+              <TelInput name="telefone" value={tel} onChange={setTel} />
+            </div>
+            <div>
+              <p className="font-semibold">Adicional fixo na entrada</p>
+              <p className="mb-1 text-xs text-white/50">Entra sozinho em toda proposta que você gerar logado e soma na sua rentabilidade. O cliente vê só a entrada total.</p>
+              <SeletorValor valor={adicional} onChange={setAdicional} />
+            </div>
+            <button className={`${btnOuro} w-full`} disabled={pend}>Salvar</button>
+          </form>
         </Card>
       )}
 
