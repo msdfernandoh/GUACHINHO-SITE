@@ -53,6 +53,15 @@ API: `POST /api/public/spl/evento`. Relatório:
 
 ### Portfólio SPL para imobiliárias e subdomínio spl.* (15/11/2026)
 
+O botão **Painel de vendas** abre o portfólio comercial do responsável
+da imobiliária. O vínculo de vendedor do responsável é preparado sob demanda.
+Relatório em `docs/relatorios-fases/SPL-PORTFOLIO-RESPONSAVEL-2026-11-18.md`.
+
+A calculadora compartilhada com o Seja Parceiro exibe o crédito em reais e
+usa fundo claro. A apresentação mantém o cálculo de comissão e cronograma
+existentes. Relatório em
+`docs/relatorios-fases/SIMULACAO-PARCEIROS-LAYOUT-MOEDA-2026-11-18.md`.
+
 A edição abre o termo da imobiliária por versão e modelo. No cadastro
 remunerado do vendedor, o aceite usa o termo do Seja Parceiro publicado
 para a empresa. Relatório e sequência da migration 352 em

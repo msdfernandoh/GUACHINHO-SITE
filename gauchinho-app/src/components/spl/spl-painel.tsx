@@ -51,7 +51,8 @@ export function SplPainel({ imob, token, abrirTermo, convites, termos, vendedore
   const router = useRouter();
   const [aba, setAba] = useState<Aba>(abrirTermo ? "termo" : "inicio");
   const origem = typeof window !== "undefined" ? window.location.origin : "";
-  const responsavel = vendedores.find((v) => v.telefone === imob.telefone) ?? vendedores[0];
+  const [abrindoVendas, setAbrindoVendas] = useState(false);
+  const [erroVendas, setErroVendas] = useState("");
   const modelo = MODELOS_PARCERIA.find((m) => m.value === imob.modelo_parceria);
   const trabalhados = clientes.filter((c) => c.status !== "NOVO" && c.status !== "PERDIDO").length;
   const nomeEmp = (slug: string | null) => empreendimentos.find((e) => e.slug === slug)?.nome ?? "—";
@@ -60,6 +61,25 @@ export function SplPainel({ imob, token, abrirTermo, convites, termos, vendedore
     setAba("inicio");
     router.refresh();
   };
+
+  async function abrirPainelVendas() {
+    setAbrindoVendas(true);
+    setErroVendas("");
+    try {
+      const resposta = await fetch("/api/public/spl/imobiliaria/portfolio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const dados = await resposta.json();
+      if (!resposta.ok) throw new Error(dados.error ?? "Não foi possível abrir o painel de vendas.");
+      router.push(dados.caminho);
+    } catch (erro) {
+      setErroVendas(erro instanceof Error ? erro.message : "Não foi possível abrir o painel de vendas.");
+    } finally {
+      setAbrindoVendas(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
@@ -113,20 +133,16 @@ export function SplPainel({ imob, token, abrirTermo, convites, termos, vendedore
       {aba === "inicio" ? (
         <>
           <BotaoGrande onClick={() => { setAba("dashboard"); window.scrollTo(0, 0); }} className="w-full">Dashboard</BotaoGrande>
+          <BotaoGrande tipo="verde" onClick={abrirPainelVendas} disabled={abrindoVendas} className="w-full">
+            {abrindoVendas ? "Abrindo painel de vendas…" : "Painel de vendas"}
+          </BotaoGrande>
+          {erroVendas && <Aviso>{erroVendas}</Aviso>}
           <SplInstalarApp texto="Coloque este painel na tela inicial do celular" />
           <div className="grid gap-3 sm:grid-cols-2">
             <BotaoGrande tipo="ouro" onClick={() => setAba("cliente")}>
               + Cadastrar cliente
             </BotaoGrande>
             <BotaoGrande onClick={() => setAba("planilha")}>Subir planilha de clientes</BotaoGrande>
-            {responsavel ? (
-              <a
-                href={caminhoPortfolio(imob.nome, responsavel.codigo)}
-                className="flex min-h-[60px] items-center justify-center rounded-2xl bg-[#16A34A] px-6 py-4 text-center text-lg font-extrabold text-white"
-              >
-                Abrir portfólio para apresentar
-              </a>
-            ) : null}
             <BotaoGrande tipo="secundario" onClick={() => setAba("vendedor")}>
               + Cadastrar vendedor
             </BotaoGrande>
