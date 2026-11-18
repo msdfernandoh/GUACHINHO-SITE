@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  aceiteImobiliariaAtual,
   labelDe,
   MODELOS_PARCERIA,
   labelModeloVendedores,
@@ -35,6 +36,7 @@ export type ConviteModelo = { modelo: string; titulo: string; caminho: string };
 type Props = {
   imob: Omit<ImobiliariaSpl, "token_painel">;
   token: string;
+  abrirTermo: boolean;
   convites: ConviteModelo[];
   termos: { versao: string; texto: string } | null;
   vendedores: VendedorSpl[];
@@ -43,11 +45,11 @@ type Props = {
   empreendimentos: EmpreendimentoSpl[];
 };
 
-type Aba = "inicio" | "cliente" | "planilha" | "vendedor" | "editar" | "dashboard";
+type Aba = "inicio" | "cliente" | "planilha" | "vendedor" | "editar" | "dashboard" | "termo";
 
-export function SplPainel({ imob, token, convites, termos, vendedores, dashboardsVendedores, clientes, empreendimentos }: Props) {
+export function SplPainel({ imob, token, abrirTermo, convites, termos, vendedores, dashboardsVendedores, clientes, empreendimentos }: Props) {
   const router = useRouter();
-  const [aba, setAba] = useState<Aba>("inicio");
+  const [aba, setAba] = useState<Aba>(abrirTermo ? "termo" : "inicio");
   const origem = typeof window !== "undefined" ? window.location.origin : "";
   const responsavel = vendedores.find((v) => v.telefone === imob.telefone) ?? vendedores[0];
   const modelo = MODELOS_PARCERIA.find((m) => m.value === imob.modelo_parceria);
@@ -227,6 +229,12 @@ export function SplPainel({ imob, token, convites, termos, vendedores, dashboard
       {aba === "dashboard" ? (
         <SplDashboardImobiliaria clientes={clientes} vendedores={vendedores} modelo={imob.modelo_parceria} links={dashboardsVendedores} origem={origem} />
       ) : null}
+      {aba === "termo" && termos && (
+        <>
+          <a href={caminhoPainel(imob.nome, token)} className="inline-block rounded-xl bg-[#153E90] px-4 py-3 font-bold text-white">← Voltar ao painel</a>
+          <TermoPainel imob={imob} token={token} termos={termos} onAceito={() => window.location.assign(caminhoPainel(imob.nome, token))} />
+        </>
+      )}
       {aba === "cliente" ? <FormCliente token={token} empreendimentos={empreendimentos} onFim={voltar} /> : null}
       {aba === "planilha" ? <FormPlanilha token={token} empreendimentos={empreendimentos} onFim={voltar} /> : null}
       {aba === "vendedor" ? (
@@ -237,8 +245,8 @@ export function SplPainel({ imob, token, convites, termos, vendedores, dashboard
           imob={imob}
           token={token}
           onFim={(novoNome) => {
-            if (novoNome && novoNome !== imob.nome) {
-              window.location.href = caminhoPainel(novoNome, token);
+            if (novoNome) {
+              window.location.assign(`${caminhoPainel(novoNome, token)}?termo=1`);
               return;
             }
             voltar();
@@ -263,7 +271,7 @@ function TermoPainel({
   const [aceito, setAceito] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
-  const emDia = imob.termos_versao === termos.versao && !!imob.termos_aceito_em;
+  const emDia = aceiteImobiliariaAtual(imob, termos.versao);
   const pdf = `/api/public/spl/termos/pdf?painel=${encodeURIComponent(token)}`;
 
   async function registrar() {
@@ -274,7 +282,7 @@ function TermoPainel({
       const res = await fetch("/api/public/spl/termos/aceite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, versao: termos.versao, aceito: true }),
+        body: JSON.stringify({ token, modelo: imob.modelo_parceria, versao: termos.versao, aceito: true }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Não foi possível registrar.");
@@ -660,6 +668,7 @@ function FormVendedor({
   const [f, setF] = useState({ nome: "", telefone: "", email: "", cpf: "", chave_pix: "", chave_pix_tipo: "" as PixTipo | "", modelo: padrao as string });
   const [erro, setErro] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [linkAceite, setLinkAceite] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
   const recebe = f.modelo !== "PROPRIO";
@@ -669,6 +678,7 @@ function FormVendedor({
   async function salvar() {
     setErro(null);
     setOk(null);
+    setLinkAceite(null);
     setEnviando(true);
     try {
       const res = await fetch("/api/public/spl/vendedor", {
@@ -679,6 +689,7 @@ function FormVendedor({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Não foi possível cadastrar.");
       setOk(`${data.nome} entrou na sua rede. Portfólio: ${window.location.origin}${caminhoPortfolio(nomeImob, data.codigo)}`);
+      if (typeof data.dashboardAceite === "string") setLinkAceite(`${window.location.origin}${data.dashboardAceite}`);
       setF({ nome: "", telefone: "", email: "", cpf: "", chave_pix: "", chave_pix_tipo: "", modelo: f.modelo });
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro ao cadastrar.");
@@ -732,6 +743,7 @@ function FormVendedor({
       )}
       {erro ? <Aviso>{erro}</Aviso> : null}
       {ok ? <Aviso tom="ok">{ok}</Aviso> : null}
+      {linkAceite && <LinkCopiavel titulo="Link individual para o vendedor ler e aceitar o termo" url={linkAceite} />}
       <BotaoGrande tipo="ouro" onClick={salvar} disabled={enviando} className="w-full">
         {enviando ? "Salvando…" : "Cadastrar vendedor"}
       </BotaoGrande>

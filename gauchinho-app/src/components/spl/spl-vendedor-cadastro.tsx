@@ -5,22 +5,26 @@ import { labelDe, MODELOS_VENDEDOR, PERCENTUAL_VENDEDOR, pct, type ModeloVendedo
 import { mascaraCpf, mascaraTelefone, type PixTipo } from "@/lib/spl/mascaras";
 import { caminhoPortfolio } from "@/lib/spl/links";
 import { Aviso, BotaoGrande, Campo, CampoPix, Cartao, inputGrande, LinkCopiavel } from "./spl-ui";
+import { SplTermoCaixa } from "./spl-termo";
 
 export function SplVendedorCadastro({
   convite,
   imobiliaria,
   modelo,
   assinatura,
+  termo,
 }: {
   convite: string;
   imobiliaria: string;
   modelo: ModeloVendedor;
   assinatura: { m: string; s: string } | null;
+  termo: { texto: string; versao: string } | null;
 }) {
   const [f, setF] = useState({ nome: "", telefone: "", email: "", cpf: "", chave_pix: "", chave_pix_tipo: "" as PixTipo | "" });
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [codigo, setCodigo] = useState<string | null>(null);
+  const [aceito, setAceito] = useState(false);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
   const recebe = modelo !== "PROPRIO";
 
@@ -31,7 +35,7 @@ export function SplVendedorCadastro({
       const res = await fetch("/api/public/spl/vendedor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ convite, ...f, ...(assinatura ?? {}) }),
+        body: JSON.stringify({ convite, ...f, ...(assinatura ?? {}), aceito, versao: termo?.versao }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Não foi possível cadastrar.");
@@ -91,8 +95,11 @@ export function SplVendedorCadastro({
           <CampoPix rotulo="Chave PIX para comissões" tipo={f.chave_pix_tipo} valor={f.chave_pix} onTipo={(t) => set("chave_pix_tipo", t)} onValor={(v) => set("chave_pix", v)} />
         </>
       ) : null}
+      {recebe && (termo
+        ? <SplTermoCaixa texto={termo.texto} versao={termo.versao} aceito={aceito} onAceito={setAceito} preenchido={false} />
+        : <Aviso tom="info">O termo do vendedor ainda não foi publicado pela equipe.</Aviso>)}
       {erro ? <Aviso>{erro}</Aviso> : null}
-      <BotaoGrande tipo="ouro" onClick={enviar} disabled={enviando} className="w-full">
+      <BotaoGrande tipo="ouro" onClick={enviar} disabled={enviando || (recebe && (!termo || !aceito))} className="w-full">
         {enviando ? "Enviando…" : "Entrar na rede"}
       </BotaoGrande>
     </Cartao>

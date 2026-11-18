@@ -44,6 +44,11 @@ API: `POST /api/public/spl/evento`. Relatório:
 
 ### Portfólio SPL para imobiliárias e subdomínio spl.* (15/11/2026)
 
+A edição abre o termo da imobiliária por versão e modelo. No cadastro
+remunerado do vendedor, o aceite usa o termo do Seja Parceiro publicado
+para a empresa. Relatório e sequência da migration 352 em
+`docs/relatorios-fases/SPL-ACEITE-TERMOS-IMOBILIARIA-VENDEDOR-2026-11-18.md`.
+
 A edição permite selecionar o modelo antes da aprovação e preencher
 cadastros aprovados que ainda não têm modelo. Após a primeira definição,
 o modelo aprovado é protegido na API. Relatório em

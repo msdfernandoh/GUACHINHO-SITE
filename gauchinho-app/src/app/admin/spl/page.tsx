@@ -6,7 +6,7 @@ import { caminhoConvite, caminhoPainel } from "@/lib/spl/links";
 import { getTermosSpl } from "@/lib/spl/termos";
 import { CopiarTexto, ExcluirImobiliaria } from "@/components/admin/spl-admin-acoes";
 import { getSplConfig } from "@/lib/spl/config-server";
-import { labelDe, labelModeloVendedores, MODELOS_PARCERIA, SOLUCOES, STATUS_CLIENTE } from "@/lib/spl/types";
+import { aceiteImobiliariaAtual, labelDe, labelModeloVendedores, MODELOS_PARCERIA, SOLUCOES, STATUS_CLIENTE } from "@/lib/spl/types";
 import { formatCurrency } from "@/lib/utils/format";
 import { Button, Input, Label } from "@/components/ui/form-primitives";
 import {
@@ -136,11 +136,11 @@ export default async function AdminSplPage() {
                   <td className="p-3">
                     <span className={`rounded-full px-2 py-1 text-xs font-bold ${STATUS_COR[i.status] ?? ""}`}>{i.status}</span>
                     <p className="mt-1 text-xs text-zinc-500">Logo na página: {i.exibir_logo ? "sim" : "não"}</p>
-                    <p className={`text-xs ${termos && i.termos_versao === termos.versao ? "text-emerald-700" : "text-amber-600"}`}>
+                    <p className={`text-xs ${termos && aceiteImobiliariaAtual(i, termos.versao) ? "text-emerald-700" : "text-amber-600"}`}>
                       Termo:{" "}
                       {!termos
                         ? "não publicado"
-                        : i.termos_versao === termos.versao && i.termos_aceito_em
+                        : aceiteImobiliariaAtual(i, termos.versao) && i.termos_aceito_em
                           ? `aceito em ${new Date(i.termos_aceito_em).toLocaleDateString("pt-BR")}`
                           : i.termos_aceito_em
                             ? "aceitou versão antiga"
@@ -188,7 +188,7 @@ export default async function AdminSplPage() {
                     </a>
                     <CopiarTexto texto={`${site}${caminhoPainel(i.nome, i.token_painel)}`} rotulo="Copiar link do painel" />
                     <CopiarTexto texto={`${site}${caminhoConvite(i.nome, i.codigo_convite)}`} rotulo="Copiar link de convite dos vendedores" />
-                    {termos && i.termos_versao === termos.versao ? (
+                    {termos && aceiteImobiliariaAtual(i, termos.versao) ? (
                       <a href={`/api/public/spl/termos/pdf?painel=${i.token_painel}`} className="block text-xs font-semibold text-blue-700 underline">
                         Baixar termo aceito (PDF)
                       </a>

@@ -6,6 +6,7 @@ import { modeloDoConvite } from "@/lib/spl/convite";
 import { modeloPadraoVendedor } from "@/lib/spl/types";
 import { SplVendedorCadastro } from "@/components/spl/spl-vendedor-cadastro";
 import { SplShell } from "@/components/spl/spl-ui";
+import { getTermoVendedorSpl } from "@/lib/spl/termos";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: { absolute: "Cadastro de vendedor · Portfólio SPL" }, robots: { index: false } };
@@ -23,13 +24,16 @@ export default async function SplConvitePage({
   const imob = await imobiliariaPorConvite(tenant.empresaId, codigo);
   if (!imob) notFound();
   const doLink = modeloDoConvite(imob.token_painel, imob.codigo_convite, m, s);
+  const modelo = doLink ?? modeloPadraoVendedor(imob.modelo_vendedores);
+  const termo = modelo === "PROPRIO" ? null : await getTermoVendedorSpl(tenant.empresaId);
   return (
     <SplShell>
       <main className="mx-auto max-w-2xl px-4 py-10">
         <SplVendedorCadastro
           convite={imob.codigo_convite}
           imobiliaria={imob.nome}
-          modelo={doLink ?? modeloPadraoVendedor(imob.modelo_vendedores)}
+          modelo={modelo}
+          termo={termo}
           assinatura={doLink ? { m: String(m), s: String(s) } : null}
         />
       </main>

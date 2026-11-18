@@ -117,6 +117,7 @@ export type ImobiliariaSpl = {
   codigo_convite: string;
   token_painel: string;
   termos_versao: string | null;
+  termos_modelo: string | null;
   termos_aceito_em: string | null;
   termos_aceite_ip: string | null;
   created_at: string;
@@ -140,6 +141,10 @@ export type VendedorSpl = {
   ativo: boolean;
   created_at: string;
 };
+
+export function aceiteImobiliariaAtual(imob: Pick<ImobiliariaSpl, "modelo_parceria" | "termos_modelo" | "termos_versao" | "termos_aceito_em">, versao: string) {
+  return Boolean(imob.termos_aceito_em && imob.termos_versao === versao && imob.termos_modelo === imob.modelo_parceria);
+}
 
 export type ClienteSpl = {
   id: string;

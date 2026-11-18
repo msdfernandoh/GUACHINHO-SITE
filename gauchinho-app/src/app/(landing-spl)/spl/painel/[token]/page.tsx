@@ -8,7 +8,7 @@ import { caminhoConvite, caminhoPainel } from "@/lib/spl/links";
 import { metadataAppSpl } from "@/lib/spl/app-metadata";
 import { contratanteDoTermo, getTermosSpl, termoDoModelo } from "@/lib/spl/termos";
 import { preencherTermo } from "@/lib/spl/termos-preencher";
-import { opcoesRemuneracaoVendedor } from "@/lib/spl/types";
+import { aceiteImobiliariaAtual, opcoesRemuneracaoVendedor } from "@/lib/spl/types";
 import { SplShell } from "@/components/spl/spl-ui";
 import { caminhoDashboardVendedor } from "@/lib/spl/acesso-dashboard-vendedor";
 
@@ -26,8 +26,12 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
   });
 }
 
-export default async function SplPainelPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function SplPainelPage({ params, searchParams }: {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ termo?: string }>;
+}) {
   const { token } = await params;
+  const abrirTermo = (await searchParams).termo === "1";
   const tenant = await getResolvedTenant();
   if (!tenant) notFound();
   const imob = await imobiliariaPorToken(tenant.empresaId, token);
@@ -48,7 +52,7 @@ export default async function SplPainelPage({ params }: { params: Promise<{ toke
             contratante: await contratanteDoTermo(tenant.empresaId),
             participante: imob,
             campos: termos.campos,
-            dataAceite: imob.termos_versao === termos.versao ? imob.termos_aceito_em : null,
+            dataAceite: aceiteImobiliariaAtual(imob, termos.versao) ? imob.termos_aceito_em : null,
           }),
         }
       : null;
@@ -71,6 +75,7 @@ export default async function SplPainelPage({ params }: { params: Promise<{ toke
       <SplPainel
         imob={publica}
         token={imob.token_painel}
+        abrirTermo={abrirTermo && Boolean(termoPreenchido)}
         dashboardsVendedores={Object.fromEntries(vendedores.filter((v) => v.ativo).map((v) => [
           v.id, caminhoDashboardVendedor(imob.nome, v.codigo, v.id, imob.token_painel),
         ]))}

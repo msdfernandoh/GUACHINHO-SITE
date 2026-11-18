@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     }
     const logo = form.get("logo");
     const imob = await cadastrarImobiliaria(ingress.empresaId, parsed.data, logo instanceof File ? logo : null);
-    if (termos) await registrarAceiteTermos(imob.id, ingress.empresaId, termos.versao, request);
+    if (termos) await registrarAceiteTermos(imob.id, ingress.empresaId, parsed.data.modelo_parceria, termos.versao, request);
     return NextResponse.json({ ok: true, token: imob.token_painel, convite: imob.codigo_convite, nome: imob.nome });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Não foi possível cadastrar." }, { status: 400 });

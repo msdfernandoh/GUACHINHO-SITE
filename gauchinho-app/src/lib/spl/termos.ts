@@ -77,11 +77,23 @@ export function dadosDoAceite(request: Request) {
   };
 }
 
-export async function registrarAceiteTermos(imobiliariaId: string, empresaId: string, versao: string, request: Request) {
-  const { error } = await createAdminClient()
+export async function registrarAceiteTermos(imobiliariaId: string, empresaId: string, modelo: string, versao: string, request: Request) {
+  const { data, error } = await createAdminClient()
     .from("spl_imobiliarias")
-    .update({ termos_versao: versao, ...dadosDoAceite(request) })
+    .update({ termos_modelo: modelo, termos_versao: versao, ...dadosDoAceite(request) })
     .eq("id", imobiliariaId)
-    .eq("empresa_id", empresaId);
-  if (error) throw new Error("Não foi possível registrar o aceite agora.");
+    .eq("empresa_id", empresaId)
+    .eq("modelo_parceria", modelo)
+    .neq("status", "INATIVA")
+    .select("id").maybeSingle();
+  if (error || !data) throw new Error("Não foi possível registrar o aceite. Atualize o painel e confira o modelo.");
+}
+
+export async function getTermoVendedorSpl(empresaId: string): Promise<{ versao: string; texto: string } | null> {
+  const { data, error } = await createAdminClient({ noStore: true }).from("empresas")
+    .select("configuracoes").eq("id", empresaId).maybeSingle();
+  if (error) throw new Error("Não foi possível carregar o termo de parceria.");
+  const termo = data?.configuracoes?.termo_parceria;
+  if (typeof termo?.versao !== "string" || !termo.versao.trim() || typeof termo?.texto !== "string" || !termo.texto.trim()) return null;
+  return { versao: termo.versao, texto: termo.texto };
 }

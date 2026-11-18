@@ -21,7 +21,7 @@ import {
 const db = () => createAdminClient({ noStore: true });
 
 const IMOB_COLS =
-  "id,empresa_id,nome,logo_url,responsavel,telefone,email,endereco,cnpj,chave_pix,chave_pix_tipo,modelo_parceria,quantidade_vendedores,modelo_vendedores,status,exibir_logo,codigo_convite,token_painel,termos_versao,termos_aceito_em,termos_aceite_ip,created_at";
+  "id,empresa_id,nome,logo_url,responsavel,telefone,email,endereco,cnpj,chave_pix,chave_pix_tipo,modelo_parceria,quantidade_vendedores,modelo_vendedores,status,exibir_logo,codigo_convite,token_painel,termos_versao,termos_modelo,termos_aceito_em,termos_aceite_ip,created_at";
 const VEND_COLS = "id,imobiliaria_id,nome,telefone,email,cpf,chave_pix,chave_pix_tipo,modelo,codigo,ativo,created_at";
 const CLI_COLS =
   "id,imobiliaria_id,vendedor_id,nome,telefone,email,empreendimento_slug,unidade,situacao,valor_chaves,solucao,status,origem,proposta_expira_em,created_at";
@@ -231,6 +231,7 @@ export async function cadastrarVendedor(
   imob: ImobiliariaSpl,
   input: CadastroVendedorInput,
   modelo?: ModeloVendedor,
+  aceite?: { termos_versao: string; termos_aceite_ip: string | null; termos_aceite_agente: string | null; termos_aceito_em: string },
 ): Promise<VendedorSpl> {
   const { data: existente } = await db()
     .from("spl_vendedores")
@@ -242,7 +243,7 @@ export async function cadastrarVendedor(
   const codigo = await codigoLivre("spl_vendedores", "codigo", imob.empresa_id);
   const { data, error } = await db()
     .from("spl_vendedores")
-    .insert({ ...input, empresa_id: imob.empresa_id, imobiliaria_id: imob.id, modelo: modelo ?? modeloPadraoVendedor(imob.modelo_vendedores), codigo })
+    .insert({ ...input, ...aceite, empresa_id: imob.empresa_id, imobiliaria_id: imob.id, modelo: modelo ?? modeloPadraoVendedor(imob.modelo_vendedores), codigo })
     .select(VEND_COLS)
     .single();
   if (error || !data) throw new Error("Não foi possível cadastrar o vendedor agora.");

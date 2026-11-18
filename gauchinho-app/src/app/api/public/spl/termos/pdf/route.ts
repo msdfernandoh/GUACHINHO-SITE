@@ -4,6 +4,7 @@ import { contratanteDoTermo, getTermosSpl, termoDoModelo } from "@/lib/spl/termo
 import { preencherTermo } from "@/lib/spl/termos-preencher";
 import { renderTermosPdf } from "@/lib/spl/termos-pdf";
 import { imobiliariaPorToken } from "@/lib/spl/repo";
+import { aceiteImobiliariaAtual } from "@/lib/spl/types";
 
 /**
  * PDF do termo do modelo de parceria. Com ?painel=<link do painel>, sai preenchido
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
   const modelo = imob?.modelo_parceria ?? params.get("modelo") ?? "GERADOR_OPORTUNIDADES";
   const modeloTexto = termoDoModelo(termos, modelo);
   if (!termos || !modeloTexto) return NextResponse.json({ error: "Não há termo publicado para este modelo." }, { status: 404 });
-  const aceitou = !!imob?.termos_aceito_em && imob.termos_versao === termos.versao;
+  const aceitou = Boolean(imob && aceiteImobiliariaAtual(imob, termos.versao));
   const texto = preencherTermo(modeloTexto, {
     contratante: await contratanteDoTermo(ingress.empresaId),
     participante: imob
