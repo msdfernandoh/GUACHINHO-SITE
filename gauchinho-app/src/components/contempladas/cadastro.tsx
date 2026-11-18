@@ -14,7 +14,7 @@ export function CadastroConvite({ token, papel }: { token: string; papel: "GEREN
   return (
     <Card className="mx-auto max-w-sm">
       <h1 className="text-lg font-bold">Cadastro de {papel === "GERENTE" ? "gerente" : "vendedor"}</h1>
-      <p className="mb-4 text-sm text-white/60">Acesso ao portal de cotas contempladas.</p>
+      <p className="mb-4 text-sm text-slate-500">Acesso ao portal de cotas contempladas.</p>
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -33,7 +33,7 @@ export function CadastroConvite({ token, papel }: { token: string; papel: "GEREN
         <input className={inputCls} type="email" placeholder="E-mail (será seu login)" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required />
         <TelInput value={f.telefone} onChange={(v) => setF({ ...f, telefone: v })} required />
         <input className={inputCls} type="password" placeholder="Senha (mín. 8)" minLength={8} value={f.senha} onChange={(e) => setF({ ...f, senha: e.target.value })} required />
-        {erro && <p className="text-sm text-red-300">{erro}</p>}
+        {erro && <p className="text-sm text-red-600">{erro}</p>}
         <button className={`${btnOuro} w-full`} disabled={pend}>{pend ? "Cadastrando…" : "Criar acesso"}</button>
       </form>
     </Card>

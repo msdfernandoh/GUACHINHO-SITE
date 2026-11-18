@@ -72,12 +72,12 @@ export async function enviarCotasAction(texto: string, substituir: boolean, pers
 
 /* ------------------------------ Simulação ------------------------------ */
 
-export async function simularAction(p: { credito: number; entradaMax: number | null; preferencia: Preferencia; maxCotas?: number }) {
+export async function simularAction(p: { credito: number; entradaMax: number | null; preferencia: Preferencia; maxCotas?: number; tipo?: "imovel" | "automovel" | null }) {
   const empresaId = await empresa();
   const [todas, cfg, a] = await Promise.all([repo.listarCotas(empresaId), repo.getConfig(empresaId), acesso.getAcesso(empresaId)]);
   // Comissão só vai para quem está logado.
   const cotas = todas
-    .filter((c) => c.status === "DISPONIVEL")
+    .filter((c) => c.status === "DISPONIVEL" && (!p.tipo || c.tipo === p.tipo))
     .map((c) => ({ ...c, comissao_parceiro: a ? repo.comissaoVisivel(c, cfg) : 0 }));
   const credito = Math.max(0, Number(p.credito) || 0);
   const entradaMax = p.entradaMax ? Math.max(0, Number(p.entradaMax)) : null;

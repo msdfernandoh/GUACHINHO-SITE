@@ -25,8 +25,17 @@ export default async function Page() {
   // Comissão só vai para o navegador de quem está logado.
   const lista = cotas.map((c) => ({ ...c, comissao_parceiro: a ? comissaoVisivel(c, cfg) : 0 }));
   return (
-    <Shell titulo="Cotas Contempladas" sub="Racon · compra, reserva e junção" papel={a?.papel ?? null}>
-      <Portal cotas={lista} stats={stats} logado={a ? a.nome : null} adicional={a?.adicional ?? null} />
+    <Shell titulo="Cotas Contempladas" sub="Racon · imóveis e automóveis" papel={a?.papel ?? null}>
+      <Portal cotas={lista} stats={stats} logado={a ? a.nome : null}
+        adicional={a?.adicional ?? null}
+        cfg={{
+          whatsapp: cfg.whatsapp,
+          chavePix: cfg.chave_pix,
+          tipoPix: { CELULAR: "celular", EMAIL: "e-mail", CPF: "CPF", CNPJ: "CNPJ", ALEATORIA: "aleatória" }[cfg.chave_pix_tipo],
+          favorecido: cfg.favorecido_pix,
+          minutos: cfg.pre_reserva_minutos,
+        }}
+      />
     </Shell>
   );
 }

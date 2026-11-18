@@ -19,7 +19,7 @@ type Props = {
   resumoTexto: string;
 };
 
-function Relogio({ ate }: { ate: string }) {
+export function Relogio({ ate }: { ate: string }) {
   const [agora, setAgora] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setAgora(Date.now()), 1000);
@@ -29,7 +29,7 @@ function Relogio({ ate }: { ate: string }) {
   const hh = String(Math.floor(s / 3600)).padStart(2, "0");
   const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
   const ss = String(s % 60).padStart(2, "0");
-  return <span className="font-mono text-2xl font-black text-amber-300">{s ? `${hh}:${mm}:${ss}` : "expirada"}</span>;
+  return <span className="font-mono text-2xl font-black text-[#0047bb]">{s ? `${hh}:${mm}:${ss}` : "expirada"}</span>;
 }
 
 export function AcoesProposta(p: Props) {
@@ -69,7 +69,7 @@ export function AcoesProposta(p: Props) {
       )}
 
       {expira && (
-        <div className="rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4 text-center">
+        <div className="rounded-2xl border border-[#0047bb]/30 bg-[#0047bb]/5 p-4 text-center">
           <p className="text-sm">Pré-reserva registrada. Ela não segura a cota: feche o negócio e envie o PIX antes de</p>
           <Relogio ate={expira} />
         </div>
@@ -77,7 +77,7 @@ export function AcoesProposta(p: Props) {
 
       {aberto && (
         <form
-          className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+          className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4"
           onSubmit={(e) => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
@@ -95,11 +95,11 @@ export function AcoesProposta(p: Props) {
           }}
         >
           <p className="font-bold">{aberto === "PRE" ? `Pré-reserva (${p.minutos} min)` : "Reserva com PIX da entrada"}</p>
-          {aberto === "PRE" && <p className="text-xs text-white/60">A pré-reserva mostra aos outros que há interesse, mas não bloqueia a cota.</p>}
+          {aberto === "PRE" && <p className="text-xs text-slate-500">A pré-reserva mostra aos outros que há interesse, mas não bloqueia a cota.</p>}
           {aberto === "PIX" && (
-            <div className="rounded-xl bg-white/5 p-3 text-sm">
+            <div className="rounded-xl bg-slate-50 p-3 text-sm">
               <p>Valor da entrada: <b>{brl(p.entrada)}</b></p>
-              {p.chavePix ? <p>Chave PIX{p.tipoPix ? ` (${p.tipoPix})` : ""}: <b className="select-all">{p.chavePix}</b>{p.favorecido && ` · ${p.favorecido}`}</p> : <p className="text-white/60">Peça a chave PIX ao consultor.</p>}
+              {p.chavePix ? <p>Chave PIX{p.tipoPix ? ` (${p.tipoPix})` : ""}: <b className="select-all">{p.chavePix}</b>{p.favorecido && ` · ${p.favorecido}`}</p> : <p className="text-slate-500">Peça a chave PIX ao consultor.</p>}
             </div>
           )}
           <input name="nome" className={inputCls} placeholder="Nome completo" required />

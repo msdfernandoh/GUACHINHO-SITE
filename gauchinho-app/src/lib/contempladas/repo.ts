@@ -14,6 +14,8 @@ export type CotaPortal = CotaMotor & {
   entrada_original: number;
   entrada_acrescimo: number;
   preReservas: number;
+  /** Fim da pré-reserva mais recente (relógio de escassez). */
+  preReservaAte: string | null;
 };
 
 export type ConfigContempladas = {
@@ -96,10 +98,15 @@ export async function listarCotas(empresaId: string, opts: { incluirVendidas?: b
   q = opts.incluirVendidas ? q.neq("status", "INATIVA") : q.in("status", ["DISPONIVEL", "RESERVADA"]);
   const [{ data: cotas }, { data: pres }] = await Promise.all([
     q,
-    db().from("contempladas_reservas").select("cota_ids").eq("empresa_id", empresaId).eq("tipo", "PRE").eq("status", "ATIVA"),
+    db().from("contempladas_reservas").select("cota_ids,expira_em").eq("empresa_id", empresaId).eq("tipo", "PRE").eq("status", "ATIVA"),
   ]);
   const contagem = new Map<string, number>();
-  for (const r of pres ?? []) for (const id of r.cota_ids as string[]) contagem.set(id, (contagem.get(id) ?? 0) + 1);
+  const ate = new Map<string, string>();
+  for (const r of pres ?? [])
+    for (const id of r.cota_ids as string[]) {
+      contagem.set(id, (contagem.get(id) ?? 0) + 1);
+      if (r.expira_em && (!ate.get(id) || r.expira_em > ate.get(id)!)) ate.set(id, r.expira_em);
+    }
   return (cotas ?? []).map((c) => ({
     id: c.id,
     codigo: c.codigo,
@@ -116,6 +123,7 @@ export async function listarCotas(empresaId: string, opts: { incluirVendidas?: b
     comissao_parceiro: num(c.comissao_parceiro),
     status: c.status,
     preReservas: contagem.get(c.id) ?? 0,
+    preReservaAte: ate.get(c.id) ?? null,
   }));
 }
 

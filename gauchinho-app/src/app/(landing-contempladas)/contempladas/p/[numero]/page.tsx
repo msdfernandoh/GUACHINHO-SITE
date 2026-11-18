@@ -18,7 +18,7 @@ const tel = (d: string | null) => {
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <section className="break-inside-avoid">
-      <h2 className="mb-2 border-b-2 border-[#0b1d3d] pb-1 text-sm font-black uppercase tracking-wide text-[#0b1d3d]">{titulo}</h2>
+      <h2 className="mb-2 border-b-2 border-[#0047bb] pb-1 text-sm font-black uppercase tracking-wide text-[#0a2a66]">{titulo}</h2>
       {children}
     </section>
   );
@@ -48,13 +48,13 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const data = new Date(p.criadaEm);
 
   return (
-    <div className="min-h-dvh bg-[#07142b] py-4 text-white print:bg-white print:py-0 [color-scheme:dark]">
-      <style>{`@page{size:A4;margin:12mm}@media print{html,body{background:#fff!important}}.contempladas-doc select option{background:#0b1d3d;color:#fff}`}</style>
+    <div className="min-h-dvh bg-[#eef1f6] py-4 text-slate-900 print:bg-white print:py-0">
+      <style>{`@page{size:A4;margin:12mm}@media print{html,body{background:#fff!important}}`}</style>
 
       <div className="contempladas-doc mx-auto mb-4 max-w-[860px] px-4 print:hidden">
         <div className="mb-3 flex items-center justify-between text-sm">
-          <a href="/contempladas" className="text-white/70 hover:text-white">← Voltar ao simulador</a>
-          <span className="text-white/50">Proposta nº {p.numero}</span>
+          <a href="/contempladas" className="font-semibold text-[#0047bb] hover:underline">← Voltar ao simulador</a>
+          <span className="text-slate-500">Proposta nº {p.numero}</span>
         </div>
         <AcoesProposta
           numero={p.numero}
@@ -71,30 +71,30 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         />
       </div>
 
-      <article className="mx-auto max-w-[860px] space-y-6 bg-white p-6 text-[13px] text-slate-800 shadow-2xl sm:p-10 print:max-w-none print:p-0 print:shadow-none">
+      <article className="mx-auto max-w-[860px] space-y-6 bg-white p-6 text-[13px] text-slate-800 shadow-lg sm:p-10 print:max-w-none print:p-0 print:shadow-none">
         <header className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
             {p.vendedorLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={p.vendedorLogo} alt="Logomarca" className="h-14 max-w-[180px] object-contain" />
             ) : (
-              <div className="grid h-12 w-12 place-items-center rounded-xl bg-[#0b1d3d] text-xl font-black text-amber-400">R</div>
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-[#0047bb] text-xl font-black text-white">R</div>
             )}
             <div>
-              <p className="text-lg font-black leading-tight text-[#0b1d3d]">Proposta de Cotas Contempladas</p>
+              <p className="text-lg font-black leading-tight text-[#0a2a66]">Proposta de Cotas Contempladas</p>
               <p className="text-xs text-slate-500">Consórcio de imóveis · Racon</p>
             </div>
           </div>
           <div className="text-right">
             <p className="text-xs uppercase tracking-wide text-slate-500">Proposta</p>
-            <p className="text-2xl font-black text-[#0b1d3d]">nº {p.numero}</p>
+            <p className="text-2xl font-black text-[#0a2a66]">nº {p.numero}</p>
             <p className="text-xs text-slate-500">{data.toLocaleDateString("pt-BR")} · {data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
           </div>
         </header>
 
         {indisponivel && (
           <div className={`rounded-lg border-2 p-3 text-center text-base font-black ${vendidas ? "border-red-600 text-red-600" : "border-orange-500 text-orange-600"}`}>
-            {vendidas === p.cotas.length ? "VENDIDA" : vendidas ? `${vendidas} de ${p.cotas.length} cotas já VENDIDAS` : "Cota(s) reservada(s) por outro cliente"}
+            {vendidas === p.cotas.length ? "VENDIDA" : vendidas ? `${vendidas} de ${p.cotas.length} cotas já VENDIDAS` : "Cota(s) em análise para outro cliente"}
           </div>
         )}
 
@@ -104,8 +104,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         </div>
 
         <div className="overflow-hidden rounded-xl border border-slate-200">
-          <div className="bg-[#0b1d3d] px-5 py-4 text-white">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-amber-400">Crédito total</p>
+          <div className="bg-[#0047bb] px-5 py-4 text-white">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-white/80">Crédito total</p>
             <p className="text-4xl font-black">{brl(r.credito)}</p>
             <p className="text-xs text-white/60">{p.cotas.length} {p.cotas.length > 1 ? "cotas contempladas somadas" : "cota contemplada"}</p>
           </div>
@@ -118,7 +118,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
             ].map(([l, v, s]) => (
               <div key={l as string} className="px-4 py-3">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{l}</p>
-                <p className="text-lg font-black text-[#0b1d3d]">{v}</p>
+                <p className="text-lg font-black text-[#0a2a66]">{v}</p>
                 {s && <p className={`text-[11px] ${l === "Entrada" ? "font-semibold text-emerald-700" : "text-slate-500"}`}>{s}</p>}
               </div>
             ))}
@@ -138,7 +138,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                     <td className={`${td} text-right`}>{brl(c.parcela)}</td>
                     <td className={`${td} text-right`}>{c.prazo}x</td>
                     <td className={`${td} text-right`}>{brl(c.saldo_devedor)}</td>
-                    <td className={`${td} text-center text-xs`}>{c.status === "DISPONIVEL" ? "Disponível" : c.status === "VENDIDA" ? "VENDIDA" : c.status === "RESERVADA" ? "Reservada" : "Indisponível"}</td>
+                    <td className={`${td} text-center text-xs`}>{c.status === "DISPONIVEL" ? "Disponível" : c.status === "VENDIDA" ? "VENDIDA" : c.status === "RESERVADA" ? "Em análise" : "Indisponível"}</td>
                   </tr>
                 ))}
               </tbody>

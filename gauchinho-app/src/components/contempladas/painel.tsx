@@ -85,7 +85,7 @@ export function Painel(props: {
           ? [["Simulações", props.stats.simulacoes], ["Pré-reservas", props.stats.preReservas], ["PIX a conferir", props.stats.reservasPix], ["Vendidas", props.stats.vendidas]]
           : [["Propostas", props.propostas.length], ["Vendidas", vendidas.length], ["Comissões recebidas", brl(somaVendida)], ["Em aberto", brl(somaAberta)]]
         ).map(([l, v]) => (
-          <Card key={l as string} className="!p-3"><p className="text-xl font-black text-amber-300">{v}</p><p className="text-[11px] uppercase text-white/60">{l}</p></Card>
+          <Card key={l as string} className="!p-3"><p className="text-xl font-black text-[#0047bb]">{v}</p><p className="text-[11px] uppercase text-slate-500">{l}</p></Card>
         ))}
       </div>
 
@@ -96,7 +96,7 @@ export function Painel(props: {
 
       <div className="flex gap-1 overflow-x-auto">
         {abas.map(([k, l]) => (
-          <button key={k} onClick={() => { setAba(k); setAviso(null); }} className={`whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold ${aba === k ? "bg-amber-400 text-[#07142b]" : "bg-white/5"}`}>{l}</button>
+          <button key={k} onClick={() => { setAba(k); setAviso(null); }} className={`whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold ${aba === k ? "bg-[#0047bb] text-white" : "bg-slate-50"}`}>{l}</button>
         ))}
         <span className="ml-auto self-center pl-2"><Sair /></span>
       </div>
@@ -104,24 +104,24 @@ export function Painel(props: {
 
       {aba === "reservas" && gerencia && (
         <div className="space-y-2">
-          {!props.reservas.length && <Card className="text-center text-white/50">Nenhuma reserva ativa.</Card>}
+          {!props.reservas.length && <Card className="text-center text-slate-500">Nenhuma reserva ativa.</Card>}
           {props.reservas.map((r) => {
             const cs = r.cotaIds.map((id) => porId.get(id)).filter(Boolean) as CotaPortal[];
             return (
-              <Card key={r.id} className={r.tipo === "PIX" ? "border-emerald-400/40" : ""}>
+              <Card key={r.id} className={r.tipo === "PIX" ? "border-emerald-300" : ""}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-xs font-bold uppercase text-amber-300">{r.tipo === "PIX" ? "PIX enviado · cota bloqueada" : "Pré-reserva"}</p>
+                    <p className="text-xs font-bold uppercase text-[#0047bb]">{r.tipo === "PIX" ? "Em análise · PIX enviado, cota bloqueada" : "Pré-reserva"}</p>
                     <p className="font-bold">{r.nome}</p>
-                    <a className="text-sm text-emerald-300 underline" href={`https://wa.me/55${r.telefone}`} target="_blank" rel="noreferrer">{r.telefone}</a>
+                    <a className="text-sm text-emerald-700 underline" href={`https://wa.me/55${r.telefone}`} target="_blank" rel="noreferrer">{r.telefone}</a>
                   </div>
-                  {r.expiraEm && <p className="text-right text-xs text-white/60">expira<br />{new Date(r.expiraEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>}
+                  {r.expiraEm && <p className="text-right text-xs text-slate-500">expira<br />{new Date(r.expiraEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>}
                 </div>
                 <p className="mt-2 text-sm">{cs.map((c) => `${c.codigo} ${brl(c.credito)}`).join(" + ")}</p>
-                {r.comprovanteUrl && <a className="mt-1 inline-block text-sm text-amber-300 underline" href={r.comprovanteUrl} target="_blank" rel="noreferrer">Ver comprovante</a>}
+                {r.comprovanteUrl && <a className="mt-1 inline-block text-sm text-[#0047bb] underline" href={r.comprovanteUrl} target="_blank" rel="noreferrer">Ver comprovante</a>}
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <button disabled={pend} className="rounded-xl bg-emerald-500 py-3 font-bold text-white" onClick={() => agir(() => decidirReservaAction(r.id, "VENDIDA"))}>✔ Vendida</button>
-                  <button disabled={pend} className="rounded-xl border border-white/20 py-3 font-semibold" onClick={() => agir(() => decidirReservaAction(r.id, "CANCELAR"))}>{r.tipo === "PIX" ? "Liberar" : "Remover"}</button>
+                  <button disabled={pend} className="rounded-xl border border-slate-300 py-3 font-semibold" onClick={() => agir(() => decidirReservaAction(r.id, "CANCELAR"))}>{r.tipo === "PIX" ? "Liberar" : "Remover"}</button>
                 </div>
               </Card>
             );
@@ -136,15 +136,15 @@ export function Painel(props: {
             <Card key={c.id} className="!p-3">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="font-bold">{brl(c.credito)} <span className="text-xs font-normal text-white/50">{c.codigo}</span></p>
-                  <p className="text-xs text-white/60">Entrada {brl(c.entrada)} · {c.prazo}x {brl(c.parcela)}</p>
+                  <p className="font-bold">{brl(c.credito)} <span className="text-xs font-normal text-slate-500">{c.codigo}</span></p>
+                  <p className="text-xs text-slate-500">Entrada {brl(c.entrada)} · {c.prazo}x {brl(c.parcela)}</p>
                 </div>
-                <span className={`rounded-lg px-2 py-1 text-xs font-bold ${c.status === "VENDIDA" ? "bg-red-500/20 text-red-200" : c.status === "RESERVADA" ? "bg-orange-500/20 text-orange-200" : "bg-emerald-500/20 text-emerald-200"}`}>{c.status}</span>
+                <span className={`rounded-lg px-2 py-1 text-xs font-bold ${c.status === "VENDIDA" ? "bg-red-100 text-red-700" : c.status === "RESERVADA" ? "bg-orange-100 text-orange-800" : "bg-emerald-100 text-emerald-800"}`}>{c.status === "RESERVADA" ? "EM ANÁLISE" : c.status}</span>
               </div>
               <div className="mt-2 grid grid-cols-3 gap-1 text-xs">
-                <button disabled={pend || c.status === "VENDIDA"} className="rounded-lg bg-emerald-600 py-2 font-bold" onClick={() => agir(() => statusCotaAction(c.id, "VENDIDA"))}>Vendida</button>
-                <button disabled={pend || c.status === "DISPONIVEL"} className="rounded-lg bg-white/10 py-2" onClick={() => agir(() => statusCotaAction(c.id, "DISPONIVEL"))}>Liberar</button>
-                <button disabled={pend} className="rounded-lg bg-red-500/20 py-2 text-red-200" onClick={() => agir(() => statusCotaAction(c.id, "INATIVA"))}>Excluir</button>
+                <button disabled={pend || c.status === "VENDIDA"} className="rounded-lg bg-emerald-600 py-2 font-bold text-white" onClick={() => agir(() => statusCotaAction(c.id, "VENDIDA"))}>Vendida</button>
+                <button disabled={pend || c.status === "DISPONIVEL"} className="rounded-lg bg-slate-100 py-2" onClick={() => agir(() => statusCotaAction(c.id, "DISPONIVEL"))}>Liberar</button>
+                <button disabled={pend} className="rounded-lg bg-red-100 py-2 text-red-700" onClick={() => agir(() => statusCotaAction(c.id, "INATIVA"))}>Excluir</button>
               </div>
             </Card>
           ))}
@@ -153,21 +153,21 @@ export function Painel(props: {
 
       {aba === "propostas" && (
         <div className="space-y-2">
-          <p className="text-xs text-white/50">A rentabilidade aparece só aqui, nunca na proposta do cliente.</p>
-          {!props.propostas.length && <Card className="text-center text-white/50">Nenhuma proposta ainda.</Card>}
+          <p className="text-xs text-slate-500">A rentabilidade aparece só aqui, nunca na proposta do cliente.</p>
+          {!props.propostas.length && <Card className="text-center text-slate-500">Nenhuma proposta ainda.</Card>}
           {props.propostas.map((p) => (
             <a key={p.numero} href={`/contempladas/p/${p.numero}`} className="block">
               <Card className="!p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <p className="font-bold">nº {p.numero} · {brl(p.credito)}</p>
-                    <p className="text-xs text-white/60">
+                    <p className="text-xs text-slate-500">
                       {p.cliente ?? "sem nome"}{gerencia && p.vendedor ? ` · ${p.vendedor}` : ""} · entrada {brl(p.entrada)}{p.desconto > 0 ? ` (desc. ${brl(p.desconto)})` : ""}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-emerald-300">{brl(p.rentabilidade)}</p>
-                    <p className={`text-[11px] font-bold ${p.vendida ? "text-emerald-300" : "text-white/50"}`}>{p.vendida ? "VENDIDA" : "em aberto"}</p>
+                    <p className="font-bold text-emerald-700">{brl(p.rentabilidade)}</p>
+                    <p className={`text-[11px] font-bold ${p.vendida ? "text-emerald-700" : "text-slate-500"}`}>{p.vendida ? "VENDIDA" : "em aberto"}</p>
                   </div>
                 </div>
               </Card>
@@ -187,7 +187,7 @@ export function Painel(props: {
           }}>
             <div>
               <p className="font-semibold">Logomarca na proposta</p>
-              <p className="mb-2 text-xs text-white/50">Aparece no topo das propostas que você gerar. PNG, JPG ou WEBP até 2 MB.</p>
+              <p className="mb-2 text-xs text-slate-500">Aparece no topo das propostas que você gerar. PNG, JPG ou WEBP até 2 MB.</p>
               {props.logoUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={props.logoUrl} alt="Logo atual" className="mb-2 h-16 rounded-lg bg-white p-2 object-contain" />
@@ -197,12 +197,12 @@ export function Painel(props: {
             </div>
             <div>
               <p className="font-semibold">Seu WhatsApp</p>
-              <p className="mb-1 text-xs text-white/50">Sai na proposta, embaixo da sua assinatura.</p>
+              <p className="mb-1 text-xs text-slate-500">Sai na proposta, embaixo da sua assinatura.</p>
               <TelInput name="telefone" value={tel} onChange={setTel} />
             </div>
             <div>
               <p className="font-semibold">Adicional fixo na entrada</p>
-              <p className="mb-1 text-xs text-white/50">Entra sozinho em toda proposta que você gerar logado e soma na sua rentabilidade. O cliente vê só a entrada total.</p>
+              <p className="mb-1 text-xs text-slate-500">Entra sozinho em toda proposta que você gerar logado e soma na sua rentabilidade. O cliente vê só a entrada total.</p>
               <SeletorValor valor={adicional} onChange={setAdicional} />
             </div>
             <button className={`${btnOuro} w-full`} disabled={pend}>Salvar</button>
@@ -214,7 +214,7 @@ export function Painel(props: {
         <Card className="space-y-3">
           <div>
             <p className="text-sm font-semibold">Ágio padrão na subida das cotas</p>
-            <p className="mb-1 text-xs text-white/50">Somado à entrada de toda cota enviada (pode ser trocado no envio).</p>
+            <p className="mb-1 text-xs text-slate-500">Somado à entrada de toda cota enviada (pode ser trocado no envio).</p>
             <SeletorValor valor={{ tipo: cfg.agio_tipo, valor: cfg.agio_valor }} onChange={(v) => setCfg({ ...cfg, agio_tipo: v.tipo, agio_valor: v.valor })} />
           </div>
           <label className="block text-sm">Comissão paga ao vendedor
@@ -247,7 +247,7 @@ export function Painel(props: {
         <div className="space-y-3">
           <Card className="space-y-2">
             <p className="font-semibold">Link de cadastro</p>
-            <p className="text-xs text-white/50">Vale 7 dias. Quem se cadastra pelo link entra só no portal, sem acesso ao ERP.</p>
+            <p className="text-xs text-slate-500">Vale 7 dias. Quem se cadastra pelo link entra só no portal, sem acesso ao ERP.</p>
             <div className="grid grid-cols-2 gap-2">
               <button className={btnSec} disabled={pend} onClick={() => start(async () => { const r = await gerarConviteAction("VENDEDOR"); if (r.ok) setConvite(`${location.origin}/contempladas/cadastro/${r.token}`); })}>Link de vendedor</button>
               {props.papel === "DONO" && (
@@ -255,7 +255,7 @@ export function Painel(props: {
               )}
             </div>
             {convite && (
-              <div className="space-y-2 rounded-xl bg-white/5 p-3 text-xs">
+              <div className="space-y-2 rounded-xl bg-slate-50 p-3 text-xs">
                 <p className="select-all break-all">{convite}</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button className={btnSec} onClick={() => navigator.clipboard.writeText(convite)}>Copiar</button>
@@ -287,17 +287,17 @@ export function Painel(props: {
 
           <Card className="space-y-1">
             <p className="mb-1 font-semibold">Usuários do portal</p>
-            {!props.equipe.length && <p className="text-sm text-white/50">Ninguém cadastrado ainda.</p>}
+            {!props.equipe.length && <p className="text-sm text-slate-500">Ninguém cadastrado ainda.</p>}
             {props.equipe.map((m) => (
-              <div key={m.id} className="flex items-center justify-between gap-2 border-t border-white/5 py-2">
-                <span className="text-sm"><b>{m.nome}</b><span className="block text-xs text-white/50">{m.email} · {m.papel === "GERENTE" ? "gerente" : "vendedor"}</span></span>
+              <div key={m.id} className="flex items-center justify-between gap-2 border-t border-slate-100 py-2">
+                <span className="text-sm"><b>{m.nome}</b><span className="block text-xs text-slate-500">{m.email} · {m.papel === "GERENTE" ? "gerente" : "vendedor"}</span></span>
                 <div className="flex gap-1">
                   {props.papel === "DONO" && (
-                    <button className="rounded-lg bg-white/10 px-2 py-1 text-xs" disabled={pend} onClick={() => agir(() => atualizarUsuarioAction(m.id, { papel: m.papel === "GERENTE" ? "VENDEDOR" : "GERENTE" }))}>
+                    <button className="rounded-lg bg-slate-100 px-2 py-1 text-xs" disabled={pend} onClick={() => agir(() => atualizarUsuarioAction(m.id, { papel: m.papel === "GERENTE" ? "VENDEDOR" : "GERENTE" }))}>
                       {m.papel === "GERENTE" ? "→ vendedor" : "→ gerente"}
                     </button>
                   )}
-                  <button className={`rounded-lg px-2 py-1 text-xs ${m.ativo ? "bg-red-500/20 text-red-200" : "bg-emerald-500/20 text-emerald-200"}`} disabled={pend} onClick={() => agir(() => atualizarUsuarioAction(m.id, { ativo: !m.ativo }))}>
+                  <button className={`rounded-lg px-2 py-1 text-xs ${m.ativo ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-800"}`} disabled={pend} onClick={() => agir(() => atualizarUsuarioAction(m.id, { ativo: !m.ativo }))}>
                     {m.ativo ? "Bloquear" : "Ativar"}
                   </button>
                 </div>
@@ -309,9 +309,9 @@ export function Painel(props: {
             <Card className="space-y-1">
               <p className="mb-1 font-semibold">Usuários do ERP com gerência no portal</p>
               {props.usuariosErp.map((u) => (
-                <label key={u.id} className="flex items-center justify-between gap-2 border-t border-white/5 py-2">
-                  <span className="text-sm"><b>{u.nome}</b><span className="block text-xs text-white/50">{u.email} · {u.perfil}</span></span>
-                  <input type="checkbox" className="h-6 w-6 accent-amber-400" disabled={pend || u.perfil === "master"} checked={u.perfil === "master" || u.contempladas_pode_enviar}
+                <label key={u.id} className="flex items-center justify-between gap-2 border-t border-slate-100 py-2">
+                  <span className="text-sm"><b>{u.nome}</b><span className="block text-xs text-slate-500">{u.email} · {u.perfil}</span></span>
+                  <input type="checkbox" className="h-6 w-6 accent-[#0047bb]" disabled={pend || u.perfil === "master"} checked={u.perfil === "master" || u.contempladas_pode_enviar}
                     onChange={(e) => agir(() => permissaoEnvioAction(u.id, e.target.checked))} />
                 </label>
               ))}

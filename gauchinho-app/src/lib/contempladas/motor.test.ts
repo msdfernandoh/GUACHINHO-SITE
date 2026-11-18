@@ -18,6 +18,14 @@ describe("contempladas motor", () => {
     expect(r.proximas.length).toBe(3);
   });
 
+  it("sem nada na entrada, traz a mais próxima acima e abaixo avisando", () => {
+    const duas = [cota("x", 516000, 216320, 166, 3485), cota("y", 925000, 168500, 35, 34326)];
+    const r = buscarCombinacoes(duas, { credito: 700000, entradaMax: 50000, preferencia: "MENOR_PARCELA" });
+    expect(r.entradaExcedida).toBe(true);
+    expect(r.abaixo?.credito).toBe(516000);
+    expect(r.acima?.credito).toBe(925000);
+  });
+
   it("respeita a entrada máxima", () => {
     const r = buscarCombinacoes(cotas, { credito: 300000, entradaMax: 50000, preferencia: "MENOR_PRAZO" });
     expect(r.acima).toBeNull();

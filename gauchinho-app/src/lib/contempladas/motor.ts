@@ -65,6 +65,8 @@ export type ResultadoBusca = {
   acima: Combinacao | null;
   abaixo: Combinacao | null;
   proximas: Combinacao[];
+  /** true quando nada coube na entrada máxima e as opções vieram sem esse limite. */
+  entradaExcedida?: boolean;
 };
 
 function melhorPorPreferencia(a: Combinacao, b: Combinacao, pref: Preferencia) {
@@ -100,10 +102,19 @@ function combinar(cotas: CotaMotor[], maxCotas: number, entradaMax: number | nul
  * decide pela preferência: menor parcela ou menor prazo.
  */
 export function buscarCombinacoes(cotas: CotaMotor[], p: BuscaParams): ResultadoBusca {
+  const r = buscarDentro(cotas, p);
+  // Nada coube na entrada informada: traz as mais próximas mesmo assim, avisando.
+  if (!r.proximas.length && p.entradaMax != null && cotas.length) {
+    return { ...buscarDentro(cotas, { ...p, entradaMax: null }), entradaExcedida: true };
+  }
+  return r;
+}
+
+function buscarDentro(cotas: CotaMotor[], p: BuscaParams): ResultadoBusca {
   const maxCotas = Math.min(Math.max(p.maxCotas ?? 3, 1), 4);
   const alvo = Math.max(0, p.credito);
   const faixa = Math.max(alvo * 0.02, 5000);
-  const candidatas = combinar(cotas, maxCotas, p.entradaMax, alvo * 1.6 + faixa).map(resumirCombinacao);
+  const candidatas = combinar(cotas, maxCotas, p.entradaMax, alvo * 2.5 + faixa).map(resumirCombinacao);
 
   const escolher = (lista: Combinacao[], dist: (c: Combinacao) => number) => {
     if (!lista.length) return null;
