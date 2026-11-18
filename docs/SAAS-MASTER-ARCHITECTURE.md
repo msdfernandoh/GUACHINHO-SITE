@@ -1,5 +1,14 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Vínculo direto das indicações do sorteio com Leads (18/11/2026)
+
+A migração `20261118170000` adiciona `eventos_sorteio_indicacoes.lead_id`
+com chave estrangeira para `leads.id` e índice. Em produção, 23 das 31
+indicações antigas foram vinculadas pela correspondência única de evento,
+sorteio, participante indicador e telefone. As oito restantes conservam
+o vínculo direto vazio. Relatório em
+`docs/relatorios-fases/LEADS-MIGRACAO-VINCULO-INDICACOES-2026-11-18.md`.
+
 ### Histórico de indicações do check-in e contraste em Leads (18/11/2026)
 
 Quando o vínculo direto com a indicação está ausente, o CRM recupera o
