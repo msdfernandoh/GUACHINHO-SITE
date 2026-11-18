@@ -30,7 +30,7 @@ export function LeadWhatsappButton({ nome, whatsapp, produto, leadId, compact }:
       rel="noreferrer"
       className={
         compact
-          ? "text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+          ? "text-xs font-semibold text-emerald-400 hover:underline [.tenant-admin-racon_&]:text-emerald-800"
           : "inline-flex rounded-lg bg-emerald-600/90 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500"
       }
       onClick={() => {

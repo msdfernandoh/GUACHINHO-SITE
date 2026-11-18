@@ -33,10 +33,11 @@ export async function incluirIndicadoresDosLeads<T extends LeadComIndicacao>(
   const nomesPorLead = new Map<string, string>();
 
   for (let inicio = 0; inicio < idsSemNome.length; inicio += 100) {
+    const lote = idsSemNome.slice(inicio, inicio + 100);
     const { data } = await supabase
       .from("eventos_sorteio_indicacoes")
       .select("lead_id, indicador:eventos_sorteio_participantes!indicador_participante_id(nome)")
-      .in("lead_id", idsSemNome.slice(inicio, inicio + 100))
+      .in("lead_id", lote)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .returns<{ lead_id: string; indicador: { nome: string } | null }[]>();
@@ -44,6 +45,27 @@ export async function incluirIndicadoresDosLeads<T extends LeadComIndicacao>(
     for (const { lead_id, indicador } of data ?? []) {
       const nome = indicador?.nome.trim();
       if (nome && !nomesPorLead.has(lead_id)) nomesPorLead.set(lead_id, nome);
+    }
+
+    const semVinculo = lote.filter((id) => !nomesPorLead.has(id));
+    if (semVinculo.length === 0) continue;
+
+    const { data: historico } = await supabase
+      .from("eventos_site")
+      .select("lead_id, dados_evento")
+      .in("lead_id", semVinculo)
+      .eq("tipo_evento", "lead_criado")
+      .eq("origem", "indicacao")
+      .eq("pagina", "evento_nps_sorteio")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .returns<{ lead_id: string; dados_evento: { indicador?: unknown } | null }[]>();
+
+    for (const { lead_id, dados_evento } of historico ?? []) {
+      const indicador = dados_evento?.indicador;
+      if (typeof indicador === "string" && indicador.trim() && !nomesPorLead.has(lead_id)) {
+        nomesPorLead.set(lead_id, indicador.trim());
+      }
     }
   }
 

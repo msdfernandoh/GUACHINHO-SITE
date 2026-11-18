@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Histórico de indicações do check-in e contraste em Leads (18/11/2026)
+
+Quando o vínculo direto com a indicação está ausente, o CRM recupera o
+nome pelo evento de criação do lead gravado pelo check-in em `eventos_site`.
+A leitura segue as permissões da sessão. O tema claro do Racon usa tons
+escuros nos nomes, indicações, ações e status da lista. Relatório em
+`docs/relatorios-fases/LEADS-HISTORICO-INDICACAO-CONTRASTE-2026-11-18.md`.
+
 ### Quem indicou o lead no check-in (18/11/2026)
 
 O CRM administrativo e o ERP exibem “Indicado por” na lista e no detalhe

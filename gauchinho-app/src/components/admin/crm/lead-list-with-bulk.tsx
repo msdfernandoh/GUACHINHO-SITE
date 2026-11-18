@@ -186,7 +186,7 @@ export function LeadListWithBulk({ leads, consultores, etapas = [], canDelete = 
             Excluir selecionados ({selected.size})
           </Button>
         ) : null}
-        {msg ? <p className="w-full text-sm font-medium text-amber-300">{msg}</p> : null}
+        {msg ? <p className="w-full text-sm font-medium text-amber-300 [.tenant-admin-racon_&]:text-slate-800">{msg}</p> : null}
       </div>
 
       {deleteOpen ? (
@@ -276,7 +276,7 @@ export function LeadListWithBulk({ leads, consultores, etapas = [], canDelete = 
                     <div className="flex items-start gap-2">
                       <LeadQuickIndicacaoButton leadId={l.id} leadNome={l.nome} className="mt-0.5" />
                       <div className="min-w-0">
-                        <Link href={`/admin/leads/${l.id}`} className="font-semibold text-amber-300 hover:underline">
+                        <Link href={`/admin/leads/${l.id}`} className="font-semibold text-amber-300 hover:underline [.tenant-admin-racon_&]:text-blue-800">
                           {l.nome}
                         </Link>
                         <p className="text-xs text-zinc-400">{l.whatsapp ?? "—"}</p>
@@ -286,7 +286,7 @@ export function LeadListWithBulk({ leads, consultores, etapas = [], canDelete = 
                   <td className={cn(adminTableCellClass, "text-zinc-300")}>
                     <div>{labelOrigem(l.origem)}</div>
                     {l.indicador_nome ? (
-                      <p className="mt-0.5 text-[11px] font-medium text-amber-200/90">
+                      <p className="mt-0.5 text-xs font-semibold text-amber-200 [.tenant-admin-racon_&]:text-slate-800">
                         Indicado por {l.indicador_nome}
                       </p>
                     ) : null}
@@ -345,7 +345,7 @@ export function LeadListWithBulk({ leads, consultores, etapas = [], canDelete = 
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-2">
-                      <Link href={`/admin/leads/${l.id}`} className="text-xs text-amber-400 hover:underline">
+                      <Link href={`/admin/leads/${l.id}`} className="text-xs text-amber-400 hover:underline [.tenant-admin-racon_&]:text-blue-800">
                         Detalhe
                       </Link>
                       <Link href={`/admin/agenda?lead=${l.id}`} className="text-xs text-zinc-400 hover:underline">
