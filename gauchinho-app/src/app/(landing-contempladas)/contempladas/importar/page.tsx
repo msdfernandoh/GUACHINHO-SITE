@@ -25,7 +25,7 @@ export default async function Page() {
           <div className="mt-3"><Sair /></div>
         </Card>
       ) : (
-        <ImportarCotas usuario={a.nome} agioPadrao={{ tipo: cfg.agio_tipo, valor: cfg.agio_valor }} agioAuto={{ tipo: cfg.agio_auto_tipo, valor: cfg.agio_auto_valor }} gerentes={gerentes} />
+        <ImportarCotas usuario={a.nome} agioPadrao={{ tipo: cfg.agio_tipo, valor: cfg.agio_valor }} agioAuto={{ tipo: cfg.agio_auto_tipo, valor: cfg.agio_auto_valor }} gerentes={gerentes} ehDono={a.papel === "DONO"} />
       )}
     </Shell>
   );

@@ -8,7 +8,7 @@ import { brl, btnOuro, btnSec, Card, inputCls, Sair } from "./ui";
 
 const descreve = (a: Acrescimo) => (a.valor > 0 ? (a.tipo === "PERCENTUAL" ? `${a.valor}% do crédito` : brl(a.valor)) : "sem ágio");
 
-export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni, gerentes = [] }: { usuario: string; agioPadrao: Acrescimo; agioAuto: Acrescimo; gerentes?: { authUserId: string; nome: string; unidade: string | null }[] }) {
+export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni, gerentes = [], ehDono = false }: { usuario: string; agioPadrao: Acrescimo; agioAuto: Acrescimo; gerentes?: { authUserId: string; nome: string; unidade: string | null }[]; ehDono?: boolean }) {
   const [gerente, setGerente] = useState("");
   const [agioPadrao, setAgioPadrao] = useState(agioIni);
   const [agioAuto, setAgioAuto] = useState(autoIni);
@@ -38,8 +38,8 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
           onChange={(e) => { setTexto(e.target.value); mudou(); }}
         />
 
-        {gerentes.length > 0 && (
-          <label className="mt-4 block text-sm font-semibold">Cotas da unidade
+        {ehDono && (
+          <label className="mt-4 block text-sm font-semibold">Gerente dono destas cotas
             <select className={`${inputCls} mt-1`} value={gerente}
               onChange={(e) => {
                 const g = e.target.value;
@@ -50,7 +50,11 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
               <option value="">Minhas (dono do portal)</option>
               {gerentes.map((g) => <option key={g.authUserId} value={g.authUserId}>{g.unidade ? `${g.unidade} · ${g.nome}` : g.nome}</option>)}
             </select>
-            <span className="mt-1 block text-xs font-normal text-slate-500">As reservas, o PIX e o WhatsApp dessas cotas vão para o gerente escolhido.</span>
+            <span className="mt-1 block text-xs font-normal text-slate-500">
+              {gerentes.length
+                ? "As reservas, o PIX e o WhatsApp dessas cotas vão para o gerente escolhido."
+                : <>Nenhum gerente cadastrado ainda. Cadastre em <a className="text-[#0047bb] underline" href="/contempladas/painel">Painel → Equipe</a> (papel Gerente).</>}
+            </span>
           </label>
         )}
 
