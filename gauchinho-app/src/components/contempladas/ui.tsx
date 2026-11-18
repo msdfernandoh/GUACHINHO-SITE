@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export function Shell({ children, titulo, sub }: { children: React.ReactNode; titulo: string; sub?: string }) {
+export function Shell({ children, titulo, sub, papel = null }: { children: React.ReactNode; titulo: string; sub?: string; papel?: string | null }) {
   return (
     <div className="min-h-dvh bg-[#07142b] text-white">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#07142b]/90 backdrop-blur">
@@ -20,8 +20,11 @@ export function Shell({ children, titulo, sub }: { children: React.ReactNode; ti
           </a>
           <nav className="flex gap-1 text-xs">
             <a className="rounded-lg px-2.5 py-1.5 hover:bg-white/10" href="/contempladas">Simular</a>
-            <a className="rounded-lg px-2.5 py-1.5 hover:bg-white/10" href="/contempladas/painel">Painel</a>
-            <a className="rounded-lg bg-amber-400 px-2.5 py-1.5 font-semibold text-[#07142b]" href="/contempladas/importar">Enviar cotas</a>
+            {papel && <a className="rounded-lg px-2.5 py-1.5 hover:bg-white/10" href="/contempladas/painel">Painel</a>}
+            {(papel === "DONO" || papel === "GERENTE") && (
+              <a className="rounded-lg bg-amber-400 px-2.5 py-1.5 font-semibold text-[#07142b]" href="/contempladas/importar">Enviar cotas</a>
+            )}
+            {!papel && <a className="rounded-lg px-2.5 py-1.5 hover:bg-white/10" href="/contempladas/painel">Entrar</a>}
           </nav>
         </div>
       </header>

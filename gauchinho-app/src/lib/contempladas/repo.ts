@@ -24,6 +24,9 @@ export type ConfigContempladas = {
   comissao_modo: "TABELA" | "PERCENTUAL";
   comissao_percentual: number;
   comissao_repasse_percentual: number;
+  /** Ágio somado à entrada de toda cota que sobe para o portal. */
+  agio_tipo: "PERCENTUAL" | "FIXO";
+  agio_valor: number;
 };
 
 export const CONFIG_PADRAO: ConfigContempladas = {
@@ -34,6 +37,8 @@ export const CONFIG_PADRAO: ConfigContempladas = {
   comissao_modo: "TABELA",
   comissao_percentual: 0,
   comissao_repasse_percentual: 100,
+  agio_tipo: "FIXO",
+  agio_valor: 0,
 };
 
 const num = (v: unknown) => (v == null ? 0 : Number(v));
@@ -49,6 +54,8 @@ export async function getConfig(empresaId: string): Promise<ConfigContempladas> 
     comissao_modo: data.comissao_modo,
     comissao_percentual: num(data.comissao_percentual),
     comissao_repasse_percentual: num(data.comissao_repasse_percentual),
+    agio_tipo: data.agio_tipo === "PERCENTUAL" ? "PERCENTUAL" : "FIXO",
+    agio_valor: num(data.agio_valor),
   };
 }
 
@@ -176,6 +183,11 @@ export async function cotasPorIds(empresaId: string, ids: string[]) {
 export async function salvarProposta(p: {
   empresaId: string;
   usuarioId: string | null;
+  vendedorAuthId: string | null;
+  vendedorNome: string | null;
+  adicional: number;
+  desconto: number;
+  comissao: number;
   cotas: CotaPortal[];
   acrescimo: Acrescimo | null;
   modo: string;
@@ -195,8 +207,13 @@ export async function salvarProposta(p: {
       acrescimo_tipo: p.acrescimo?.valor ? p.acrescimo.tipo : null,
       acrescimo_valor: p.acrescimo?.valor ?? 0,
       modo_simulacao: p.modo,
+      vendedor_auth_id: p.vendedorAuthId,
+      vendedor_nome: p.vendedorNome,
+      adicional_valor: p.adicional,
+      desconto_valor: p.desconto,
+      comissao_valor: p.comissao,
       credito_total: soma("credito"),
-      entrada_total: soma("entrada"),
+      entrada_total: soma("entrada") + p.adicional - p.desconto,
       saldo_total: soma("saldo_devedor"),
     })
     .select("numero")
@@ -223,7 +240,9 @@ export async function obterProposta(empresaId: string, numero: number) {
     clienteTelefone: data.cliente_telefone as string | null,
     modo: data.modo_simulacao as string,
     usuarioId: data.usuario_id as string | null,
-    acrescimo: data.acrescimo_tipo ? ({ tipo: data.acrescimo_tipo, valor: num(data.acrescimo_valor) } as Acrescimo) : null,
+    adicional: num(data.adicional_valor) || (data.acrescimo_tipo ? num(data.acrescimo_valor) : 0),
+    desconto: num(data.desconto_valor),
+    vendedorAuthId: data.vendedor_auth_id as string | null,
     cotas: (data.cotas_snapshot as CotaPortal[]).map((c) => ({ ...c, status: (status.get(c.id) ?? "INATIVA") as CotaPortal["status"] })),
   };
 }
@@ -351,4 +370,35 @@ export async function usuarioPodeEnviar(usuarioId: string, perfil: string) {
   if (perfil === "master") return true;
   const { data } = await db().from("usuarios").select("contempladas_pode_enviar").eq("id", usuarioId).maybeSingle();
   return Boolean(data?.contempladas_pode_enviar);
+}
+
+/** Propostas de um vendedor (ou todas, para gerência) com rentabilidade e status das cotas. */
+export async function listarPropostasVendedor(empresaId: string, vendedorAuthId: string | null) {
+  let q = db()
+    .from("contempladas_propostas")
+    .select("id,numero,cliente_nome,vendedor_nome,cota_ids,credito_total,entrada_total,adicional_valor,desconto_valor,comissao_valor,created_at")
+    .eq("empresa_id", empresaId)
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (vendedorAuthId) q = q.eq("vendedor_auth_id", vendedorAuthId);
+  const { data } = await q;
+  const linhas = data ?? [];
+  const ids = [...new Set(linhas.flatMap((l) => l.cota_ids as string[]))];
+  const { data: st } = ids.length ? await db().from("contempladas_cotas").select("id,status").in("id", ids) : { data: [] };
+  const status = new Map((st ?? []).map((c) => [c.id, c.status as string]));
+  return linhas.map((l) => {
+    const sts = (l.cota_ids as string[]).map((id) => status.get(id) ?? "INATIVA");
+    const rent = num(l.comissao_valor) + num(l.adicional_valor) - num(l.desconto_valor);
+    return {
+      numero: Number(l.numero),
+      cliente: l.cliente_nome as string | null,
+      vendedor: l.vendedor_nome as string | null,
+      credito: num(l.credito_total),
+      entrada: num(l.entrada_total),
+      desconto: num(l.desconto_valor),
+      rentabilidade: Math.round(rent * 100) / 100,
+      vendida: sts.length > 0 && sts.every((s) => s === "VENDIDA"),
+      criadaEm: l.created_at as string,
+    };
+  });
 }

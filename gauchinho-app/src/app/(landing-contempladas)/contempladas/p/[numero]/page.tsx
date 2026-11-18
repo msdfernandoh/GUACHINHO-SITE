@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
-import { getUsuarioNegocio } from "@/lib/auth/get-usuario";
-import { comissaoVisivel, getConfig, obterProposta } from "@/lib/contempladas/repo";
-import { agruparPeriodos, cronogramaMensal, faixasMensais, resumirCombinacao, rotuloMes, valorAcrescimo } from "@/lib/contempladas/motor";
+import { getConfig, obterProposta } from "@/lib/contempladas/repo";
+import { agruparPeriodos, cronogramaMensal, faixasMensais, resumirCombinacao, rotuloMes } from "@/lib/contempladas/motor";
 import { Shell } from "@/components/contempladas/ui";
 import { AcoesProposta } from "@/components/contempladas/acoes-proposta";
 
@@ -18,17 +17,17 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   if (!tenant) notFound();
   const { numero } = await params;
   const { modo: modoQuery } = await searchParams;
-  const [p, cfg, u] = await Promise.all([obterProposta(tenant.empresaId, Number(numero)), getConfig(tenant.empresaId), getUsuarioNegocio()]);
+  const [p, cfg] = await Promise.all([obterProposta(tenant.empresaId, Number(numero)), getConfig(tenant.empresaId)]);
   if (!p) notFound();
 
   const modo = modoQuery && MODOS.includes(modoQuery.toUpperCase()) ? modoQuery.toUpperCase() : p.modo;
   const r = resumirCombinacao(p.cotas);
-  const extra = valorAcrescimo(r.credito, p.acrescimo);
+  // Adicional do vendedor já embutido na entrada; desconto aparece para o cliente.
+  const entradaFinal = r.entrada + p.adicional - p.desconto;
   const meses = cronogramaMensal(p.cotas, new Date(p.criadaEm));
   const faixas = faixasMensais(meses);
   const vendidas = p.cotas.filter((c) => c.status === "VENDIDA").length;
   const indisponivel = p.cotas.some((c) => c.status !== "DISPONIVEL");
-  const comissao = u ? p.cotas.reduce((s, c) => s + comissaoVisivel(c, cfg), 0) + extra : 0;
   const ver = (m: string) => modo === "COMPLETA" || modo === "DETALHADA" || modo === m;
 
   return (
@@ -44,7 +43,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           <p className="text-xs font-bold uppercase">{p.clienteNome ? `Proposta para ${p.clienteNome}` : "Proposta de cotas contempladas"}</p>
           <p className="text-4xl font-black">{brl(r.credito)}</p>
           <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-            <span>Entrada<br /><b className="text-lg">{brl(r.entrada + extra)}</b></span>
+            <span>Entrada<br /><b className="text-lg">{brl(entradaFinal)}</b>{p.desconto > 0 && <><br /><span className="text-xs">com desconto de {brl(p.desconto)}</span></>}</span>
             <span>Média mensal<br /><b className="text-lg">{brl(r.parcelaMedia)}</b></span>
             <span>Saldo devedor<br /><b className="text-lg">{brl(r.saldo)}</b></span>
             <span>Prazo<br /><b className="text-lg">{r.prazoMaximo} meses</b></span>
@@ -61,7 +60,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                   <tr key={c.id} className="border-t border-white/5">
                     <td className="p-1">{c.codigo}</td>
                     <td className="p-1 text-right">{brl(c.credito)}</td>
-                    <td className="p-1 text-right">{brl(c.entrada)}</td>
+                    <td className="p-1 text-right">{brl(c.entrada + (r.credito ? (p.adicional * c.credito) / r.credito : 0))}</td>
                     <td className="p-1 text-right">{brl(c.parcela)}</td>
                     <td className="p-1 text-right">{c.prazo}x</td>
                     <td className="p-1 text-right">{brl(c.saldo_devedor)}</td>
@@ -71,8 +70,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
               </tbody>
             </table>
           </div>
-          {extra > 0 && <p className="mt-2 text-xs text-white/60">Entrada inclui {brl(extra)} de intermediação.</p>}
-          {u && <p className="mt-1 text-sm font-semibold text-emerald-300 print:hidden">Sua comissão: {brl(comissao)}</p>}
+          {p.desconto > 0 && <p className="mt-2 text-sm text-emerald-300">Desconto na entrada: {brl(p.desconto)}</p>}
         </section>
 
         {ver("MENSAL") && (
@@ -144,8 +142,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           chavePix={cfg.chave_pix}
           favorecido={cfg.favorecido_pix}
           minutos={cfg.pre_reserva_minutos}
-          entrada={r.entrada + extra}
-          resumoTexto={`Proposta nº ${p.numero}: ${p.cotas.length} cota(s), crédito ${brl(r.credito)}, entrada ${brl(r.entrada + extra)}, média ${brl(r.parcelaMedia)}/mês. Cotas: ${p.cotas.map((c) => c.codigo).join(", ")}`}
+          entrada={entradaFinal}
+          resumoTexto={`Proposta nº ${p.numero}: ${p.cotas.length} cota(s), crédito ${brl(r.credito)}, entrada ${brl(entradaFinal)}, média ${brl(r.parcelaMedia)}/mês. Cotas: ${p.cotas.map((c) => c.codigo).join(", ")}`}
         />
       </article>
     </Shell>

@@ -3,41 +3,86 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  atualizarUsuarioAction,
+  cadastrarUsuarioAction,
   decidirReservaAction,
+  gerarConviteAction,
   permissaoEnvioAction,
+  salvarAdicionalAction,
   salvarConfigAction,
   statusCotaAction,
 } from "@/app/(landing-contempladas)/contempladas/actions";
 import type { ConfigContempladas, CotaPortal } from "@/lib/contempladas/repo";
-import { brl, btnOuro, Card, inputCls, Sair } from "./ui";
+import type { Acrescimo } from "@/lib/contempladas/motor";
+import { brl, btnOuro, btnSec, Card, inputCls, Sair } from "./ui";
 
 type Reserva = { id: string; tipo: "PRE" | "PIX"; nome: string; telefone: string; cotaIds: string[]; expiraEm: string | null; criadaEm: string; comprovanteUrl: string | null };
-type Usuario = { id: string; nome: string; email: string; perfil: string; contempladas_pode_enviar: boolean };
+type Proposta = { numero: number; cliente: string | null; vendedor: string | null; credito: number; entrada: number; desconto: number; rentabilidade: number; vendida: boolean; criadaEm: string };
+type Membro = { id: string; nome: string; email: string; telefone: string | null; papel: "GERENTE" | "VENDEDOR"; ativo: boolean };
+type UsuarioErp = { id: string; nome: string; email: string; perfil: string; contempladas_pode_enviar: boolean };
+type Aba = "reservas" | "cotas" | "propostas" | "equipe" | "config" | "meu";
+
+function SeletorValor({ valor, onChange, rotuloPct = "% do crédito" }: { valor: Acrescimo; onChange: (v: Acrescimo) => void; rotuloPct?: string }) {
+  return (
+    <div className="grid grid-cols-[auto_1fr] gap-2">
+      <select className={`${inputCls} !w-36`} value={valor.tipo} onChange={(e) => onChange({ ...valor, tipo: e.target.value as Acrescimo["tipo"] })}>
+        <option value="FIXO">Valor fixo R$</option>
+        <option value="PERCENTUAL">{rotuloPct}</option>
+      </select>
+      <input className={inputCls} type="number" step="0.01" min={0} value={valor.valor} onChange={(e) => onChange({ ...valor, valor: Number(e.target.value) })} />
+    </div>
+  );
+}
 
 export function Painel(props: {
+  papel: "DONO" | "GERENTE" | "VENDEDOR";
+  adicional: Acrescimo;
   reservas: Reserva[];
   cotas: CotaPortal[];
-  config: ConfigContempladas;
+  config: ConfigContempladas | null;
   stats: { simulacoes: number; preReservas: number; reservasPix: number; vendidas: number };
-  usuarios: Usuario[];
-  master: boolean;
+  propostas: Proposta[];
+  equipe: Membro[];
+  usuariosErp: UsuarioErp[];
 }) {
   const router = useRouter();
-  const [aba, setAba] = useState<"reservas" | "cotas" | "config" | "acesso">("reservas");
+  const gerencia = props.papel !== "VENDEDOR";
+  const [aba, setAba] = useState<Aba>(gerencia ? "reservas" : "propostas");
   const [busca, setBusca] = useState("");
   const [pend, start] = useTransition();
   const [cfg, setCfg] = useState(props.config);
-  const [ok, setOk] = useState(false);
+  const [adicional, setAdicional] = useState(props.adicional);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [novo, setNovo] = useState({ nome: "", email: "", telefone: "", senha: "", papel: "VENDEDOR" as "GERENTE" | "VENDEDOR" });
+  const [convite, setConvite] = useState<string | null>(null);
   const porId = new Map(props.cotas.map((c) => [c.id, c]));
-  const agir = (fn: () => Promise<unknown>) => start(async () => { await fn(); router.refresh(); });
+  const agir = (fn: () => Promise<unknown>, ok?: string) =>
+    start(async () => {
+      try {
+        await fn();
+        if (ok) setAviso(ok);
+        router.refresh();
+      } catch (e) {
+        setAviso(`⚠️ ${e instanceof Error ? e.message : "Erro"}`);
+      }
+    });
 
-  const abas = [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ...(props.master ? [["config", "Configurar"], ["acesso", "Autorizações"]] : [])] as const;
+  const vendidas = props.propostas.filter((p) => p.vendida);
+  const somaVendida = vendidas.reduce((s, p) => s + p.rentabilidade, 0);
+  const somaAberta = props.propostas.filter((p) => !p.vendida).reduce((s, p) => s + p.rentabilidade, 0);
+
+  const abas: [Aba, string][] = gerencia
+    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["equipe", "Equipe"], ["config", "Configurar"], ["meu", "Meu adicional"]]
+    : [["propostas", "Minhas propostas"], ["meu", "Meu adicional"]];
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {[["Simulações", props.stats.simulacoes], ["Pré-reservas", props.stats.preReservas], ["PIX a conferir", props.stats.reservasPix], ["Vendidas", props.stats.vendidas]].map(([l, v]) => (
-          <Card key={l as string} className="!p-3"><p className="text-2xl font-black text-amber-300">{v}</p><p className="text-[11px] uppercase text-white/60">{l}</p></Card>
+        {(gerencia
+          ? [["Simulações", props.stats.simulacoes], ["Pré-reservas", props.stats.preReservas], ["PIX a conferir", props.stats.reservasPix], ["Vendidas", props.stats.vendidas]]
+          : [["Propostas", props.propostas.length], ["Vendidas", vendidas.length], ["Comissões recebidas", brl(somaVendida)], ["Em aberto", brl(somaAberta)]]
+        ).map(([l, v]) => (
+          <Card key={l as string} className="!p-3"><p className="text-xl font-black text-amber-300">{v}</p><p className="text-[11px] uppercase text-white/60">{l}</p></Card>
         ))}
       </div>
 
@@ -48,12 +93,13 @@ export function Painel(props: {
 
       <div className="flex gap-1 overflow-x-auto">
         {abas.map(([k, l]) => (
-          <button key={k} onClick={() => setAba(k as typeof aba)} className={`whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold ${aba === k ? "bg-amber-400 text-[#07142b]" : "bg-white/5"}`}>{l}</button>
+          <button key={k} onClick={() => { setAba(k); setAviso(null); }} className={`whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold ${aba === k ? "bg-amber-400 text-[#07142b]" : "bg-white/5"}`}>{l}</button>
         ))}
-        <span className="ml-auto self-center"><Sair /></span>
+        <span className="ml-auto self-center pl-2"><Sair /></span>
       </div>
+      {aviso && <p className="text-sm">{aviso}</p>}
 
-      {aba === "reservas" && (
+      {aba === "reservas" && gerencia && (
         <div className="space-y-2">
           {!props.reservas.length && <Card className="text-center text-white/50">Nenhuma reserva ativa.</Card>}
           {props.reservas.map((r) => {
@@ -80,8 +126,9 @@ export function Painel(props: {
         </div>
       )}
 
-      {aba === "cotas" && (
+      {aba === "cotas" && gerencia && (
         <div className="space-y-2">
+          <a href="/contempladas/importar" className={`${btnOuro} block text-center`}>+ Incluir cotas</a>
           {props.cotas.map((c) => (
             <Card key={c.id} className="!p-3">
               <div className="flex items-center justify-between gap-2">
@@ -94,28 +141,57 @@ export function Painel(props: {
               <div className="mt-2 grid grid-cols-3 gap-1 text-xs">
                 <button disabled={pend || c.status === "VENDIDA"} className="rounded-lg bg-emerald-600 py-2 font-bold" onClick={() => agir(() => statusCotaAction(c.id, "VENDIDA"))}>Vendida</button>
                 <button disabled={pend || c.status === "DISPONIVEL"} className="rounded-lg bg-white/10 py-2" onClick={() => agir(() => statusCotaAction(c.id, "DISPONIVEL"))}>Liberar</button>
-                {props.master && <button disabled={pend} className="rounded-lg bg-white/10 py-2" onClick={() => agir(() => statusCotaAction(c.id, "INATIVA"))}>Tirar</button>}
+                <button disabled={pend} className="rounded-lg bg-red-500/20 py-2 text-red-200" onClick={() => agir(() => statusCotaAction(c.id, "INATIVA"))}>Excluir</button>
               </div>
             </Card>
           ))}
         </div>
       )}
 
-      {aba === "config" && props.master && (
+      {aba === "propostas" && (
+        <div className="space-y-2">
+          <p className="text-xs text-white/50">A rentabilidade aparece só aqui, nunca na proposta do cliente.</p>
+          {!props.propostas.length && <Card className="text-center text-white/50">Nenhuma proposta ainda.</Card>}
+          {props.propostas.map((p) => (
+            <a key={p.numero} href={`/contempladas/p/${p.numero}`} className="block">
+              <Card className="!p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="font-bold">nº {p.numero} · {brl(p.credito)}</p>
+                    <p className="text-xs text-white/60">
+                      {p.cliente ?? "sem nome"}{gerencia && p.vendedor ? ` · ${p.vendedor}` : ""} · entrada {brl(p.entrada)}{p.desconto > 0 ? ` (desc. ${brl(p.desconto)})` : ""}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-emerald-300">{brl(p.rentabilidade)}</p>
+                    <p className={`text-[11px] font-bold ${p.vendida ? "text-emerald-300" : "text-white/50"}`}>{p.vendida ? "VENDIDA" : "em aberto"}</p>
+                  </div>
+                </div>
+              </Card>
+            </a>
+          ))}
+        </div>
+      )}
+
+      {aba === "meu" && (
         <Card className="space-y-3">
-          <label className="block text-sm">Tempo da pré-reserva (minutos) — relógio entre fechar o negócio e o PIX
-            <input className={inputCls} type="number" min={5} value={cfg.pre_reserva_minutos} onChange={(e) => setCfg({ ...cfg, pre_reserva_minutos: Number(e.target.value) })} />
-          </label>
-          <label className="block text-sm">WhatsApp para reservas
-            <input className={inputCls} value={cfg.whatsapp ?? ""} onChange={(e) => setCfg({ ...cfg, whatsapp: e.target.value })} placeholder="66999554703" />
-          </label>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label className="block text-sm">Chave PIX<input className={inputCls} value={cfg.chave_pix ?? ""} onChange={(e) => setCfg({ ...cfg, chave_pix: e.target.value })} /></label>
-            <label className="block text-sm">Favorecido<input className={inputCls} value={cfg.favorecido_pix ?? ""} onChange={(e) => setCfg({ ...cfg, favorecido_pix: e.target.value })} /></label>
+          <p className="font-semibold">Adicional fixo na entrada</p>
+          <p className="text-sm text-white/60">Entra sozinho em toda proposta que você gerar logado e soma na sua rentabilidade. O cliente vê apenas a entrada total.</p>
+          <SeletorValor valor={adicional} onChange={setAdicional} />
+          <button className={`${btnOuro} w-full`} disabled={pend} onClick={() => agir(() => salvarAdicionalAction(adicional), "✅ Adicional salvo.")}>Salvar</button>
+        </Card>
+      )}
+
+      {aba === "config" && gerencia && cfg && (
+        <Card className="space-y-3">
+          <div>
+            <p className="text-sm font-semibold">Ágio padrão na subida das cotas</p>
+            <p className="mb-1 text-xs text-white/50">Somado à entrada de toda cota enviada (pode ser trocado no envio).</p>
+            <SeletorValor valor={{ tipo: cfg.agio_tipo, valor: cfg.agio_valor }} onChange={(v) => setCfg({ ...cfg, agio_tipo: v.tipo, agio_valor: v.valor })} />
           </div>
-          <label className="block text-sm">Comissão dos usuários
+          <label className="block text-sm">Comissão paga ao vendedor
             <select className={inputCls} value={cfg.comissao_modo} onChange={(e) => setCfg({ ...cfg, comissao_modo: e.target.value as ConfigContempladas["comissao_modo"] })}>
-              <option value="TABELA">Usar a comissão de cada cota (tabela)</option>
+              <option value="TABELA">A comissão de cada cota (tabela)</option>
               <option value="PERCENTUAL">Percentual sobre o crédito</option>
             </select>
           </label>
@@ -123,25 +199,97 @@ export function Painel(props: {
             {cfg.comissao_modo === "PERCENTUAL" && (
               <label className="block text-sm">% do crédito<input className={inputCls} type="number" step="0.01" value={cfg.comissao_percentual} onChange={(e) => setCfg({ ...cfg, comissao_percentual: Number(e.target.value) })} /></label>
             )}
-            <label className="block text-sm">Repasse ao usuário (%)<input className={inputCls} type="number" value={cfg.comissao_repasse_percentual} onChange={(e) => setCfg({ ...cfg, comissao_repasse_percentual: Number(e.target.value) })} /></label>
+            <label className="block text-sm">Repasse ao vendedor (%)<input className={inputCls} type="number" value={cfg.comissao_repasse_percentual} onChange={(e) => setCfg({ ...cfg, comissao_repasse_percentual: Number(e.target.value) })} /></label>
           </div>
-          <button className={`${btnOuro} w-full`} disabled={pend} onClick={() => agir(async () => { await salvarConfigAction(cfg); setOk(true); })}>Salvar</button>
-          {ok && <p className="text-sm text-emerald-300">Salvo.</p>}
+          <label className="block text-sm">WhatsApp de reservas
+            <input className={inputCls} value={cfg.whatsapp ?? ""} onChange={(e) => setCfg({ ...cfg, whatsapp: e.target.value })} placeholder="66999999999" />
+          </label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="block text-sm">Chave PIX<input className={inputCls} value={cfg.chave_pix ?? ""} onChange={(e) => setCfg({ ...cfg, chave_pix: e.target.value })} /></label>
+            <label className="block text-sm">Favorecido<input className={inputCls} value={cfg.favorecido_pix ?? ""} onChange={(e) => setCfg({ ...cfg, favorecido_pix: e.target.value })} /></label>
+          </div>
+          <label className="block text-sm">Tempo da pré-reserva (minutos)
+            <input className={inputCls} type="number" min={5} value={cfg.pre_reserva_minutos} onChange={(e) => setCfg({ ...cfg, pre_reserva_minutos: Number(e.target.value) })} />
+          </label>
+          <button className={`${btnOuro} w-full`} disabled={pend} onClick={() => agir(() => salvarConfigAction(cfg), "✅ Configuração salva.")}>Salvar</button>
         </Card>
       )}
 
-      {aba === "acesso" && props.master && (
-        <Card className="space-y-1">
-          <p className="mb-2 text-sm text-white/60">Quem pode enviar cotas para o portal.</p>
-          {props.usuarios.map((u) => (
-            <label key={u.id} className="flex items-center justify-between gap-2 border-t border-white/5 py-2">
-              <span className="text-sm"><b>{u.nome}</b><span className="block text-xs text-white/50">{u.email} · {u.perfil}</span></span>
-              <input type="checkbox" className="h-6 w-6 accent-amber-400" disabled={pend || u.perfil === "master"}
-                checked={u.perfil === "master" || u.contempladas_pode_enviar}
-                onChange={(e) => agir(() => permissaoEnvioAction(u.id, e.target.checked))} />
-            </label>
-          ))}
-        </Card>
+      {aba === "equipe" && gerencia && (
+        <div className="space-y-3">
+          <Card className="space-y-2">
+            <p className="font-semibold">Link de cadastro</p>
+            <p className="text-xs text-white/50">Vale 7 dias. Quem se cadastra pelo link entra só no portal, sem acesso ao ERP.</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button className={btnSec} disabled={pend} onClick={() => start(async () => { const r = await gerarConviteAction("VENDEDOR"); if (r.ok) setConvite(`${location.origin}/contempladas/cadastro/${r.token}`); })}>Link de vendedor</button>
+              {props.papel === "DONO" && (
+                <button className={btnSec} disabled={pend} onClick={() => start(async () => { const r = await gerarConviteAction("GERENTE"); if (r.ok) setConvite(`${location.origin}/contempladas/cadastro/${r.token}`); })}>Link de gerente</button>
+              )}
+            </div>
+            {convite && (
+              <div className="space-y-2 rounded-xl bg-white/5 p-3 text-xs">
+                <p className="select-all break-all">{convite}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button className={btnSec} onClick={() => navigator.clipboard.writeText(convite)}>Copiar</button>
+                  <a className={`${btnSec} text-center`} href={`https://wa.me/?text=${encodeURIComponent(`Seu cadastro no portal de cotas contempladas: ${convite}`)}`} target="_blank" rel="noreferrer">WhatsApp</a>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          <Card className="space-y-2">
+            <p className="font-semibold">Cadastrar agora</p>
+            <input className={inputCls} placeholder="Nome" value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} />
+            <input className={inputCls} type="email" placeholder="E-mail (login)" value={novo.email} onChange={(e) => setNovo({ ...novo, email: e.target.value })} />
+            <input className={inputCls} inputMode="tel" placeholder="WhatsApp" value={novo.telefone} onChange={(e) => setNovo({ ...novo, telefone: e.target.value })} />
+            <input className={inputCls} placeholder="Senha inicial (mín. 8)" value={novo.senha} onChange={(e) => setNovo({ ...novo, senha: e.target.value })} />
+            {props.papel === "DONO" && (
+              <select className={inputCls} value={novo.papel} onChange={(e) => setNovo({ ...novo, papel: e.target.value as "GERENTE" | "VENDEDOR" })}>
+                <option value="VENDEDOR">Vendedor</option>
+                <option value="GERENTE">Gerente</option>
+              </select>
+            )}
+            <button className={`${btnOuro} w-full`} disabled={pend}
+              onClick={() => start(async () => {
+                const r = await cadastrarUsuarioAction(novo);
+                setAviso(r.ok ? `✅ ${novo.nome} cadastrado. Login: ${novo.email}` : `⚠️ ${r.erro}`);
+                if (r.ok) { setNovo({ nome: "", email: "", telefone: "", senha: "", papel: "VENDEDOR" }); router.refresh(); }
+              })}>Cadastrar</button>
+          </Card>
+
+          <Card className="space-y-1">
+            <p className="mb-1 font-semibold">Usuários do portal</p>
+            {!props.equipe.length && <p className="text-sm text-white/50">Ninguém cadastrado ainda.</p>}
+            {props.equipe.map((m) => (
+              <div key={m.id} className="flex items-center justify-between gap-2 border-t border-white/5 py-2">
+                <span className="text-sm"><b>{m.nome}</b><span className="block text-xs text-white/50">{m.email} · {m.papel === "GERENTE" ? "gerente" : "vendedor"}</span></span>
+                <div className="flex gap-1">
+                  {props.papel === "DONO" && (
+                    <button className="rounded-lg bg-white/10 px-2 py-1 text-xs" disabled={pend} onClick={() => agir(() => atualizarUsuarioAction(m.id, { papel: m.papel === "GERENTE" ? "VENDEDOR" : "GERENTE" }))}>
+                      {m.papel === "GERENTE" ? "→ vendedor" : "→ gerente"}
+                    </button>
+                  )}
+                  <button className={`rounded-lg px-2 py-1 text-xs ${m.ativo ? "bg-red-500/20 text-red-200" : "bg-emerald-500/20 text-emerald-200"}`} disabled={pend} onClick={() => agir(() => atualizarUsuarioAction(m.id, { ativo: !m.ativo }))}>
+                    {m.ativo ? "Bloquear" : "Ativar"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </Card>
+
+          {props.papel === "DONO" && props.usuariosErp.length > 0 && (
+            <Card className="space-y-1">
+              <p className="mb-1 font-semibold">Usuários do ERP com gerência no portal</p>
+              {props.usuariosErp.map((u) => (
+                <label key={u.id} className="flex items-center justify-between gap-2 border-t border-white/5 py-2">
+                  <span className="text-sm"><b>{u.nome}</b><span className="block text-xs text-white/50">{u.email} · {u.perfil}</span></span>
+                  <input type="checkbox" className="h-6 w-6 accent-amber-400" disabled={pend || u.perfil === "master"} checked={u.perfil === "master" || u.contempladas_pode_enviar}
+                    onChange={(e) => agir(() => permissaoEnvioAction(u.id, e.target.checked))} />
+                </label>
+              ))}
+            </Card>
+          )}
+        </div>
       )}
     </div>
   );
