@@ -24,6 +24,50 @@ const LIST_SELECT_INDICADOR_CORE =
 const LIST_SELECT_INDICADOR =
   `${LIST_SELECT_INDICADOR_CORE}, parentesco_indicacao, indicador_lead_id`;
 
+function registrosDoEvento({ evento, tipo_evento_lead: tipo }: LeadFilters) {
+  const cadastros = tipo === "cadastro" || (!tipo && Boolean(evento));
+  const checkins = cadastros || tipo === "checkin";
+  const indicacoes = tipo === "indicacao" || (!tipo && Boolean(evento));
+  const relacoes = [
+    ...(cadastros ? ["inscricao:eventos_participantes()"] : []),
+    ...(checkins ? ["presenca:eventos_participantes()", "qualificacao:leads_eventos_qualificacoes()"] : []),
+    ...(indicacoes ? ["indicacao_sorteio:eventos_sorteio_indicacoes()", "indicacao_spl:spl_clientes()"] : []),
+  ];
+  const eventoValido = !evento || /^[a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(evento);
+  const leadDoEvento = evento ? `evento_id.eq.${evento}` : "evento_id.not.is.null";
+
+  return {
+    relacoes,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    apply(query: any) {
+      if (!eventoValido) return query.is("id", null);
+      if (!relacoes.length) return evento ? query.eq("evento_id", evento) : query;
+
+      if (cadastros) query = query.neq("inscricao.status", "cancelado");
+      if (checkins) {
+        query = query.or("checkin_at.not.is.null,status.eq.presente", { referencedTable: "presenca" });
+      }
+      if (indicacoes) {
+        query = query.eq("indicacao_spl.origem", "EVENTO").not("indicacao_spl.evento_id", "is", null);
+      }
+      if (evento) {
+        for (const relacao of relacoes) {
+          const alias = relacao.split(":")[0];
+          query = query.eq(`${alias}.evento_id`, evento);
+        }
+      }
+
+      const cadastro = `inscricao.not.is.null,and(${leadDoEvento},origem.in.(evento,evento_sorteio,evento_checkin))`;
+      const checkin = "presenca.not.is.null,qualificacao.not.is.null";
+      const indicacao = `indicacao_sorteio.not.is.null,indicacao_spl.not.is.null,and(${leadDoEvento},origem.eq.indicacao)`;
+      if (tipo === "cadastro") return query.or(cadastro).is("presenca", null).is("qualificacao", null);
+      if (tipo === "checkin") return query.or(checkin);
+      if (tipo === "indicacao") return query.or(indicacao);
+      return query.or(`${leadDoEvento},inscricao.not.is.null,${checkin},${indicacao}`);
+    },
+  };
+}
+
 function applyLeadFilters(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   query: any,
@@ -75,7 +119,6 @@ function applyLeadFilters(
   }
 
   if (!skipOptional) {
-    if (filters.evento) query = query.eq("evento_id", filters.evento);
     if (filters.temperatura) query = query.eq("temperatura", filters.temperatura);
     if (filters.somente_quentes === "1") {
       query = query.in("temperatura", ["Quente", "Muito quente", "Urgente"]);
@@ -175,13 +218,14 @@ export async function fetchCrmFunilEtapas(empresaId?: string): Promise<CrmFunilE
 
 export async function queryLeadsList(filters: LeadFilters, tenant: LeadTenant, limit = 200): Promise<LeadListRow[]> {
   const supabase = await createClient();
+  const registros = registrosDoEvento(filters);
   const leads = await selectLeads(async (select, skipOptional) => {
-    let base = supabase.from("leads").select(select);
+    let base = supabase.from("leads").select([select, ...registros.relacoes].join(","));
     base = tenant.slug === GAUCHINHO_SLUG
       ? base.or(`empresa_id.eq.${tenant.id},empresa_id.is.null`)
       : base.eq("empresa_id", tenant.id);
     const query = applyLeadFilters(
-      base.order("created_at", { ascending: false }).limit(limit),
+      registros.apply(base).order("created_at", { ascending: false }).limit(limit),
       filters,
       { skipOptionalCrmFilters: skipOptional },
     );
@@ -200,6 +244,7 @@ export async function queryLeadsForKanban(
     q = tenant.slug === GAUCHINHO_SLUG
       ? q.or(`empresa_id.eq.${tenant.id},empresa_id.is.null`)
       : q.eq("empresa_id", tenant.id);
+    if (filters.evento && !skipOptional) q = q.eq("evento_id", filters.evento);
     const query = applyLeadFilters(
       q.order("created_at", { ascending: false }).limit(600),
       filters,

@@ -43,6 +43,7 @@ export default async function LeadsListPage({
     parados_dias: sp.parados_dias,
     acao_vencida: sp.acao_vencida,
     evento: sp.evento,
+    tipo_evento_lead: sp.tipo_evento_lead,
     modelo_interesse: sp.modelo_interesse,
   };
 

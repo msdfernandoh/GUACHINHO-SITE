@@ -123,6 +123,7 @@ export type LeadFilters = {
   parados_dias?: string;
   acao_vencida?: string;
   evento?: string;
+  tipo_evento_lead?: string;
   modelo_interesse?: string;
   etapa?: string;
   fase?: string;

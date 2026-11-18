@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Filtro de registro no evento em Leads (18/11/2026)
+
+A lista administrativa e suas exportações combinam o evento escolhido com
+cadastro sem check-in, check-in realizado ou indicação. A classificação
+consulta inscrições, presenças, qualificações e vínculos de indicação com
+a sessão e o escopo de empresa vigentes. Relatório em
+`docs/relatorios-fases/LEADS-FILTRO-REGISTRO-EVENTO-2026-11-18.md`.
+
 ### Vínculo direto das indicações do sorteio com Leads (18/11/2026)
 
 A migração `20261118170000` adiciona `eventos_sorteio_indicacoes.lead_id`

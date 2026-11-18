@@ -25,6 +25,7 @@ function filtersFromSearchParams(sp: URLSearchParams): LeadFilters {
     somente_quentes: get("somente_quentes"),
     acao_vencida: get("acao_vencida"),
     evento: get("evento"),
+    tipo_evento_lead: get("tipo_evento_lead"),
   };
 }
 

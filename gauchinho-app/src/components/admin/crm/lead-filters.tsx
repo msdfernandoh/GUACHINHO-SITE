@@ -53,6 +53,15 @@ export function LeadFilters({ srds, eventos = [] }: { srds: Srd[]; eventos?: Eve
         </Select>
       </div>
       <div>
+        <Label htmlFor="tipo-evento-lead">Registro no evento</Label>
+        <Select id="tipo-evento-lead" name="tipo_evento_lead" defaultValue={q("tipo_evento_lead")}>
+          <option value="">Todos</option>
+          <option value="cadastro">Cadastro sem check-in</option>
+          <option value="checkin">Check-in realizado</option>
+          <option value="indicacao">Indicação</option>
+        </Select>
+      </div>
+      <div>
         <Label>Temperatura</Label>
         <Select name="temperatura" defaultValue={q("temperatura")}>
           <option value="">—</option>
