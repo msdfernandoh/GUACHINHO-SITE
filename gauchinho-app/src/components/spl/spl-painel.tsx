@@ -27,6 +27,7 @@ import { baixarModeloCarteira, lerPlanilhaCarteira, type LinhaCarteira } from "@
 import { Aviso, BotaoGrande, Campo, CampoPix, Cartao, fone, inputGrande, LinkCopiavel, brl, linkWhatsapp } from "./spl-ui";
 import { SplInstalarApp } from "./spl-instalar-app";
 import { SplTermoCaixa } from "./spl-termo";
+import { SplDashboardImobiliaria } from "./spl-dashboard-imobiliaria";
 
 export type ConviteModelo = { modelo: string; titulo: string; caminho: string };
 
@@ -36,13 +37,14 @@ type Props = {
   convites: ConviteModelo[];
   termos: { versao: string; texto: string } | null;
   vendedores: VendedorSpl[];
+  dashboardsVendedores: Record<string, string>;
   clientes: ClienteSpl[];
   empreendimentos: EmpreendimentoSpl[];
 };
 
-type Aba = "inicio" | "cliente" | "planilha" | "vendedor" | "editar";
+type Aba = "inicio" | "cliente" | "planilha" | "vendedor" | "editar" | "dashboard";
 
-export function SplPainel({ imob, token, convites, termos, vendedores, clientes, empreendimentos }: Props) {
+export function SplPainel({ imob, token, convites, termos, vendedores, dashboardsVendedores, clientes, empreendimentos }: Props) {
   const router = useRouter();
   const [aba, setAba] = useState<Aba>("inicio");
   const origem = typeof window !== "undefined" ? window.location.origin : "";
@@ -100,6 +102,7 @@ export function SplPainel({ imob, token, convites, termos, vendedores, clientes,
 
       {aba === "inicio" ? (
         <>
+          <BotaoGrande onClick={() => setAba("dashboard")} className="w-full">Dashboard</BotaoGrande>
           <SplInstalarApp texto="Coloque este painel na tela inicial do celular" />
           <div className="grid gap-3 sm:grid-cols-2">
             <BotaoGrande tipo="ouro" onClick={() => setAba("cliente")}>
@@ -213,6 +216,12 @@ export function SplPainel({ imob, token, convites, termos, vendedores, clientes,
         </>
       ) : null}
 
+      {aba === "dashboard" ? (
+        <>
+          <Voltar onClick={() => setAba("inicio")} />
+          <SplDashboardImobiliaria clientes={clientes} vendedores={vendedores} modelo={imob.modelo_parceria} links={dashboardsVendedores} origem={origem} />
+        </>
+      ) : null}
       {aba === "cliente" ? <FormCliente token={token} empreendimentos={empreendimentos} onFim={voltar} /> : null}
       {aba === "planilha" ? <FormPlanilha token={token} empreendimentos={empreendimentos} onFim={voltar} /> : null}
       {aba === "vendedor" ? (

@@ -10,6 +10,7 @@ import { contratanteDoTermo, getTermosSpl, termoDoModelo } from "@/lib/spl/termo
 import { preencherTermo } from "@/lib/spl/termos-preencher";
 import { opcoesRemuneracaoVendedor } from "@/lib/spl/types";
 import { SplShell } from "@/components/spl/spl-ui";
+import { caminhoDashboardVendedor } from "@/lib/spl/acesso-dashboard-vendedor";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
@@ -70,6 +71,9 @@ export default async function SplPainelPage({ params }: { params: Promise<{ toke
       <SplPainel
         imob={publica}
         token={imob.token_painel}
+        dashboardsVendedores={Object.fromEntries(vendedores.filter((v) => v.ativo).map((v) => [
+          v.id, caminhoDashboardVendedor(imob.nome, v.codigo, v.id, imob.token_painel),
+        ]))}
         convites={convites}
         termos={termoPreenchido} vendedores={vendedores} clientes={clientes} empreendimentos={empreendimentos} />
     </SplShell>

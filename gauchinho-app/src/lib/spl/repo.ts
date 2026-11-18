@@ -333,16 +333,19 @@ export async function cadastrarCliente(args: {
   return data as ClienteSpl;
 }
 
-export async function listarClientes(imobiliariaId: string): Promise<ClienteSpl[]> {
+export async function listarClientes(imobiliariaId: string, escopo?: { empresaId: string; vendedorId: string }): Promise<ClienteSpl[]> {
   const todos: ClienteSpl[] = [];
   for (let from = 0; ; from += 500) {
-    const { data, error } = await db()
+    let consulta = db()
       .from("spl_clientes")
       .select(CLI_COLS)
-      .eq("imobiliaria_id", imobiliariaId)
+      .eq("imobiliaria_id", imobiliariaId);
+    if (escopo) consulta = consulta.eq("empresa_id", escopo.empresaId).eq("vendedor_id", escopo.vendedorId);
+    const { data, error } = await consulta
       .order("created_at", { ascending: false })
+      .order("id")
       .range(from, from + 499);
-    if (error) break;
+    if (error) throw new Error("Não foi possível carregar os clientes do painel SPL.");
     todos.push(...((data ?? []) as ClienteSpl[]));
     if (!data || data.length < 500) break;
   }

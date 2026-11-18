@@ -26,6 +26,11 @@ API: `POST /api/public/spl/evento`. Relatório:
 
 ### Portfólio SPL para imobiliárias e subdomínio spl.* (15/11/2026)
 
+O painel da imobiliária oferece Dashboard de indicações, volumes e estimativas
+por vendedor. O link individual de cada vendedor valida a assinatura e limita a
+consulta à sua carteira. O cronograma reaproveita a calculadora do Seja Parceiro.
+Relatório em `docs/relatorios-fases/SPL-DASHBOARDS-IMOBILIARIA-VENDEDOR-2026-11-18.md`.
+
 A edição SPL aceita os campos vazios do pré-cadastro. Modelos e percentuais
 estão cadastrados no SPL. Extrato de comissões e cronograma efetivo ainda
 dependem da integração com as previsões e baixas do ERP. Relatório em
