@@ -16,7 +16,10 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
   const [usarPadrao, setUsarPadrao] = useState(true);
   const [tipo, setTipo] = useState<"PERCENTUAL" | "FIXO">(agioPadrao.tipo);
   const [valor, setValor] = useState(agioPadrao.valor);
-  const [substituir, setSubstituir] = useState(true);
+  const [comPadrao, setComPadrao] = useState(true);
+  const [comTipo, setComTipo] = useState<"PERCENTUAL" | "FIXO">("PERCENTUAL");
+  const [comValor, setComValor] = useState(0);
+  const comissaoLote: Acrescimo | null = comPadrao ? null : { tipo: comTipo, valor: comValor };
   const [previa, setPrevia] = useState<LinhaLida[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [pend, start] = useTransition();
@@ -39,7 +42,7 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
         />
 
         {ehDono && (
-          <label className="mt-4 block text-sm font-semibold">Gerente dono destas cotas
+          <label className="mt-4 block text-sm font-semibold">Administrador dono destas cotas
             <select className={`${inputCls} mt-1`} value={gerente}
               onChange={(e) => {
                 const g = e.target.value;
@@ -52,8 +55,8 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
             </select>
             <span className="mt-1 block text-xs font-normal text-slate-500">
               {gerentes.length
-                ? "As reservas, o PIX e o WhatsApp dessas cotas vão para o gerente escolhido."
-                : <>Nenhum gerente cadastrado ainda. Cadastre em <a className="text-[#0047bb] underline" href="/contempladas/painel">Painel → Equipe</a> (papel Gerente).</>}
+                ? "As reservas, o PIX e o WhatsApp dessas cotas vão para o administrador escolhido."
+                : <>Nenhum administrador de cotas cadastrado ainda. Cadastre em <a className="text-[#0047bb] underline" href="/contempladas/painel">Painel → Equipe</a> (papel Administrador de cotas).</>}
             </span>
           </label>
         )}
@@ -84,16 +87,30 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
           </>
         )}
 
-        <label className="mt-3 flex items-center gap-2 text-sm">
-          <input type="checkbox" className="h-5 w-5 accent-[#0047bb]" checked={substituir} onChange={(e) => setSubstituir(e.target.checked)} />
-          Substituir as cotas disponíveis atuais (reservadas e vendidas ficam)
+        <p className="mt-4 text-sm font-semibold">Comissão da revenda</p>
+        <label className="mt-2 flex items-center gap-2 text-sm">
+          <input type="checkbox" className="h-5 w-5 accent-[#0047bb]" checked={comPadrao} onChange={(e) => setComPadrao(e.target.checked)} />
+          Usar a comissão configurada (ou a da tabela de cada cota)
         </label>
+        {!comPadrao && (
+          <div className="mt-2 grid grid-cols-[auto_1fr] gap-2">
+            <select className={`${inputCls} !w-36`} value={comTipo} onChange={(e) => setComTipo(e.target.value as "PERCENTUAL" | "FIXO")}>
+              <option value="PERCENTUAL">% do crédito</option>
+              <option value="FIXO">R$ fixo</option>
+            </select>
+            {comTipo === "FIXO" ? <MoneyInput value={comValor} onChange={setComValor} /> : (
+              <input className={inputCls} type="number" step="0.01" min={0} value={comValor || ""} placeholder="Ex.: 1 (% do crédito)" onChange={(e) => setComValor(Number(e.target.value))} />
+            )}
+            <p className="col-span-2 text-xs text-slate-500">Vale só para as cotas deste envio, por cota.</p>
+          </div>
+        )}
+        <p className="mt-3 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">As cotas novas entram junto com as que já estão no portal. Uma cota só sai quando é marcada como vendida ou excluída.</p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button className={btnSec} disabled={!texto.trim() || pend} onClick={() => start(async () => setPrevia(await preverEnvioAction(texto, personalizado, gerente || null)))}>Conferir</button>
           <button className={btnOuro} disabled={!validas.length || pend}
             onClick={() => start(async () => {
-              const r = await enviarCotasAction(texto, substituir, personalizado, gerente || null);
-              setMsg(r.ok ? `✅ ${r.incluidas} cotas gravadas${r.inativadas ? `, ${r.inativadas} antigas inativadas` : ""}.` : `⚠️ ${r.erro}`);
+              const r = await enviarCotasAction(texto, personalizado, gerente || null, comissaoLote);
+              setMsg(r.ok ? `✅ ${r.incluidas} cotas incluídas.` : `⚠️ ${r.erro}`);
               if (r.ok) { setTexto(""); setPrevia(null); }
             })}>
             {pend ? "Enviando…" : `Enviar ${validas.length || ""}`}

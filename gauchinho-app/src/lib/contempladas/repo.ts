@@ -16,6 +16,7 @@ export type CotaPortal = CotaMotor & {
   preReservas: number;
   /** Fim da pré-reserva mais recente (relógio de escassez). */
   preReservaAte: string | null;
+  comissao_fixada: boolean;
   /** Gerente que subiu a cota (null = dono do portal). */
   dono_auth_id: string | null;
   dono_nome: string | null;
@@ -50,7 +51,7 @@ export type ConfigContempladas = {
 };
 
 export const CONFIG_PADRAO: ConfigContempladas = {
-  pre_reserva_minutos: 120,
+  pre_reserva_minutos: 30,
   whatsapp: null,
   chave_pix: null,
   chave_pix_tipo: "CELULAR",
@@ -132,7 +133,9 @@ export async function configsPorDono(empresaId: string) {
 }
 
 /** Comissão que o usuário logado enxerga, conforme a regra do dono do portal. */
-export function comissaoVisivel(c: { credito: number; comissao_parceiro: number }, cfg: ConfigContempladas) {
+export function comissaoVisivel(c: { credito: number; comissao_parceiro: number; comissao_fixada?: boolean }, cfg: ConfigContempladas) {
+  // Comissão definida no envio do lote vale como está para a revenda.
+  if (c.comissao_fixada) return c.comissao_parceiro;
   const base = cfg.comissao_modo === "PERCENTUAL" ? (c.credito * cfg.comissao_percentual) / 100 : c.comissao_parceiro;
   return Math.round(base * cfg.comissao_repasse_percentual) / 100;
 }
@@ -189,6 +192,7 @@ export async function listarCotas(empresaId: string, opts: { incluirVendidas?: b
     saldo_devedor: num(c.saldo_devedor),
     vencimento_mes: c.vencimento_mes,
     comissao_parceiro: num(c.comissao_parceiro),
+    comissao_fixada: Boolean(c.comissao_fixada),
     status: c.status,
     preReservas: contagem.get(c.id) ?? 0,
     preReservaAte: ate.get(c.id) ?? null,
@@ -229,6 +233,8 @@ export async function importarCotas(params: {
   donoNome: string;
   /** Dono do portal também substitui as cotas antigas sem gerente. */
   incluirSemDono: boolean;
+  /** Comissão da revenda definida neste envio (sobrepõe a da tabela). */
+  comissaoLote?: Acrescimo | null;
 }) {
   const { data: lote, error: loteErr } = await db()
     .from("contempladas_lotes")
@@ -265,6 +271,13 @@ export async function importarCotas(params: {
     status: "DISPONIVEL",
     dono_auth_id: params.donoAuthId,
     dono_nome: params.donoNome,
+    ...(params.comissaoLote
+      ? {
+          comissao_parceiro:
+            Math.round((params.comissaoLote.tipo === "PERCENTUAL" ? (c.credito * params.comissaoLote.valor) / 100 : params.comissaoLote.valor) * 100) / 100,
+          comissao_fixada: true,
+        }
+      : {}),
   }));
   const { data: ins, error } = await db().from("contempladas_cotas").insert(linhas).select("id");
   if (error) throw new Error(`Não foi possível gravar as cotas: ${error.message}`);
@@ -599,4 +612,22 @@ export async function resumoVendas(empresaId: string, dono?: Escopo) {
     noMes: linhas.filter((l) => new Date(l.created_at as string) >= inicioMes).length,
     creditoTotal: linhas.reduce((s, l) => s + num(l.credito), 0),
   };
+}
+
+/** Reaplica o ágio configurado na entrada das cotas disponíveis da unidade (entrada = administradora + ágio). */
+export async function reaplicarAgio(empresaId: string, dono: string | null, incluirSemDono: boolean, cfg: ConfigContempladas) {
+  let q = db().from("contempladas_cotas").select("id,tipo,credito,entrada_original").eq("empresa_id", empresaId).in("status", ["DISPONIVEL", "RESERVADA"]);
+  q = dono ? q.or(`dono_auth_id.eq.${dono}${incluirSemDono ? ",dono_auth_id.is.null" : ""}`) : q.is("dono_auth_id", null);
+  const { data } = await q;
+  let n = 0;
+  for (const c of data ?? []) {
+    const a = c.tipo === "automovel" ? { tipo: cfg.agio_auto_tipo, valor: cfg.agio_auto_valor } : { tipo: cfg.agio_tipo, valor: cfg.agio_valor };
+    const extra = Math.round((a.tipo === "PERCENTUAL" ? (num(c.credito) * a.valor) / 100 : a.valor) * 100) / 100;
+    const { error } = await db()
+      .from("contempladas_cotas")
+      .update({ entrada_acrescimo: extra, entrada: Math.round((num(c.entrada_original) + extra) * 100) / 100, updated_at: new Date().toISOString() })
+      .eq("id", c.id);
+    if (!error) n++;
+  }
+  return n;
 }

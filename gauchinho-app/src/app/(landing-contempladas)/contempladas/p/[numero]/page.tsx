@@ -113,7 +113,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           </div>
           <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 sm:grid-cols-4 sm:divide-y-0">
             {[
-              ["Entrada", brl(entradaFinal), p.desconto > 0 ? `com desconto de ${brl(p.desconto)}` : null],
+              ["Entrada", brl(entradaFinal), p.desconto > 0 ? `oportunidade: desconto de ${brl(p.desconto)}` : null],
               ["Média mensal", brl(r.parcelaMedia), "valor diluído"],
               ["Saldo devedor", brl(r.saldo), null],
               ["Prazo", `${r.prazoMaximo} meses`, "última parcela"],
@@ -149,7 +149,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
               </tfoot>
             </table>
           </div>
-          {p.desconto > 0 && <p className="mt-2 text-right text-sm font-semibold text-emerald-700">Desconto na entrada: −{brl(p.desconto)} · Entrada final {brl(entradaFinal)}</p>}
+          {p.desconto > 0 && <p className="mt-2 text-right text-sm font-semibold text-emerald-700">Oportunidade: desconto de {brl(p.desconto)} na entrada · Entrada final {brl(entradaFinal)}</p>}
         </Secao>
 
         {ver("MENSAL") && (
@@ -171,9 +171,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         )}
 
         {(["SEMESTRAL", "ANUAL"] as const).filter(ver).map((t) => (
-          <Secao key={t} titulo={t === "ANUAL" ? "Resumo anual" : "Resumo semestral"}>
+          <Secao key={t} titulo={t === "ANUAL" ? "Plano anual com antecipação" : "Plano semestral com antecipação"}>
+            <p className="mb-2 text-xs text-slate-500">{t === "ANUAL" ? "Paga as parcelas do ano de uma vez, ideal para quem recebe por safra." : "Paga as parcelas do semestre de uma vez."}</p>
             <table className="w-full">
-              <thead className="bg-slate-50"><tr><th className={`${th} text-left`}>Período</th><th className={`${th} text-right`}>Total no período</th><th className={`${th} text-right`}>Média por mês</th></tr></thead>
+              <thead className="bg-slate-50"><tr><th className={`${th} text-left`}>Período</th><th className={`${th} text-right`}>Pagamento antecipado</th><th className={`${th} text-right`}>Equivale por mês</th></tr></thead>
               <tbody>
                 {agruparPeriodos(meses, t).map((x) => (
                   <tr key={x.rotulo} className="border-t border-slate-100">

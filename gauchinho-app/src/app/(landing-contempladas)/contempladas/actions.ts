@@ -59,7 +59,7 @@ async function donoDoEnvio(empresaId: string, a: acesso.Acesso, gerenteId: strin
     return { authUserId: a.authUserId, nome: cfg.unidade || a.nome, cfg, proprio: true };
   }
   const g = (await acesso.listarGerentes(empresaId)).find((x) => x.authUserId === gerenteId);
-  if (!g) throw new Error("Gerente não encontrado.");
+  if (!g) throw new Error("Administrador de cotas não encontrado.");
   const cfg = await repo.getConfigGerente(empresaId, g.authUserId);
   return { authUserId: g.authUserId, nome: g.unidade || g.nome, cfg, proprio: false };
 }
@@ -80,7 +80,7 @@ export async function preverEnvioAction(texto: string, personalizado: Acrescimo 
 }
 
 /** Sobe as cotas com o ágio do gerente na entrada; as cotas ficam no nome dele. */
-export async function enviarCotasAction(texto: string, substituir: boolean, personalizado: Acrescimo | null = null, gerenteId: string | null = null) {
+export async function enviarCotasAction(texto: string, personalizado: Acrescimo | null = null, gerenteId: string | null = null, comissaoLote: Acrescimo | null = null) {
   return resultado(async () => {
     const { empresaId, a } = await exigirGerencia();
     const dono = await donoDoEnvio(empresaId, a, gerenteId);
@@ -93,7 +93,9 @@ export async function enviarCotasAction(texto: string, substituir: boolean, pers
       usuarioId: erp?.id ?? null,
       cotas,
       acrescimo: agio("imovel"),
-      substituir,
+      // Cotas novas somam às que já estão; uma cota só sai quando é vendida ou excluída.
+      substituir: false,
+      comissaoLote: comissaoLote ? acrescimoValido(comissaoLote) : null,
       texto,
       donoAuthId: dono.authUserId,
       donoNome: dono.nome,
@@ -208,7 +210,7 @@ export async function statusCotaAction(cotaId: string, status: "DISPONIVEL" | "V
   revalidatePath("/contempladas/painel");
 }
 
-export async function salvarConfigAction(c: repo.ConfigContempladas) {
+export async function salvarConfigAction(c: repo.ConfigContempladas, atualizarEntradas = true) {
   return resultado(async () => {
     const { empresaId, a } = await exigirGerencia();
     const v = (x: unknown) => Math.max(0, Number(x) || 0);
@@ -230,9 +232,11 @@ export async function salvarConfigAction(c: repo.ConfigContempladas) {
     };
     if (a.papel === "DONO") await repo.salvarConfig(empresaId, limpo);
     else await repo.salvarConfigGerente(empresaId, a.authUserId, limpo);
+    // Ágio novo atualiza a entrada de todas as cotas disponíveis da unidade.
+    const atualizadas = atualizarEntradas ? await repo.reaplicarAgio(empresaId, a.authUserId, a.papel === "DONO", limpo) : 0;
     revalidatePath("/contempladas");
     revalidatePath("/contempladas/painel");
-    return {};
+    return { atualizadas };
   });
 }
 
@@ -296,7 +300,7 @@ export async function cadastroConviteAction(token: string, p: { nome: string; em
   return resultado(async () => {
     const empresaId = await empresa();
     const convite = await acesso.lerConvite(empresaId, token);
-    if (!convite) throw new Error("Link expirado ou inválido. Peça um novo ao gerente.");
+    if (!convite) throw new Error("Link expirado ou inválido. Peça um novo ao administrador de cotas.");
     validarCadastro(p);
     await acesso.criarUsuarioPortal({ empresaId, nome: p.nome, email: p.email, telefone: p.telefone.replace(/\D/g, "") || null, senha: p.senha, papel: convite.papel, criadoPor: convite.criado_por });
     await acesso.usarConvite(token, convite.usos);

@@ -67,6 +67,7 @@ export function Painel(props: {
   const [busca, setBusca] = useState("");
   const [pend, start] = useTransition();
   const [cfg, setCfg] = useState(props.config);
+  const [atualizarEntradas, setAtualizarEntradas] = useState(true);
   const [mesmoAgio, setMesmoAgio] = useState(
     !props.config || (props.config.agio_tipo === props.config.agio_auto_tipo && props.config.agio_valor === props.config.agio_auto_valor),
   );
@@ -209,8 +210,8 @@ export function Painel(props: {
 
               {c.status === "VENDIDA" && (
                 <div className="mt-3 grid gap-2 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-3">
-                  <p><span className="block text-[11px] font-semibold uppercase text-slate-400">Vendedor</span><b>{c.vendedor_nome ?? "—"}</b></p>
-                  <p><span className="block text-[11px] font-semibold uppercase text-slate-400">Gerente / unidade</span><b>{c.dono_nome ?? "—"}</b>{c.vendida_por_nome && c.vendida_por_nome !== c.dono_nome ? <span className="block text-xs text-slate-500">marcada por {c.vendida_por_nome}</span> : null}</p>
+                  <p><span className="block text-[11px] font-semibold uppercase text-slate-400">Revenda</span><b>{c.vendedor_nome ?? "—"}</b></p>
+                  <p><span className="block text-[11px] font-semibold uppercase text-slate-400">Administrador / unidade</span><b>{c.dono_nome ?? "—"}</b>{c.vendida_por_nome && c.vendida_por_nome !== c.dono_nome ? <span className="block text-xs text-slate-500">marcada por {c.vendida_por_nome}</span> : null}</p>
                   <p><span className="block text-[11px] font-semibold uppercase text-slate-400">Data e hora</span><b>{dataHora(c.vendida_em)}</b></p>
                 </div>
               )}
@@ -294,7 +295,7 @@ export function Painel(props: {
         <Card className="space-y-4">
           <p className="text-sm text-slate-500">
             {props.papel === "DONO"
-              ? "Padrão da empresa: vale para as suas cotas e para gerentes que ainda não configuraram a unidade."
+              ? "Padrão da empresa: vale para as suas cotas e para administradores de cotas que ainda não configuraram a unidade."
               : "Configuração da sua unidade: vale só para as cotas que você sobe."}
           </p>
           <label className="block text-sm font-semibold">Nome da unidade (aparece para o cliente)
@@ -317,8 +318,13 @@ export function Painel(props: {
             </div>
           </div>
 
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <input type="checkbox" className="h-4 w-4 accent-[#0047bb]" checked={atualizarEntradas} onChange={(e) => setAtualizarEntradas(e.target.checked)} />
+            Ao salvar, atualizar a entrada de todas as cotas disponíveis com este ágio
+          </label>
+
           <div>
-            <p className="text-sm font-semibold">Sinal para bloquear a negociação (opcional)</p>
+            <p className="text-sm font-semibold">Sinal mínimo para segurar a cota (opcional)</p>
             <p className="mb-1 text-xs text-slate-500">PIX que o cliente paga para travar a cota. Em branco ou zero: o PIX é a entrada inteira.</p>
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="text-xs text-slate-500">Imóvel<MoneyInput value={cfg.sinal_imovel} onChange={(v) => setCfg({ ...cfg, sinal_imovel: v })} /></label>
@@ -326,7 +332,7 @@ export function Painel(props: {
             </div>
           </div>
 
-          <label className="block text-sm font-semibold">Comissão paga ao vendedor
+          <label className="block text-sm font-semibold">Comissão paga às revendas (todas as cotas)
             <select className={inputCls} value={cfg.comissao_modo} onChange={(e) => setCfg({ ...cfg, comissao_modo: e.target.value as ConfigContempladas["comissao_modo"] })}>
               <option value="TABELA">A comissão de cada cota (tabela)</option>
               <option value="PERCENTUAL">Percentual sobre o crédito</option>
@@ -336,7 +342,7 @@ export function Painel(props: {
             {cfg.comissao_modo === "PERCENTUAL" && (
               <label className="block text-sm">% do crédito<input className={inputCls} type="number" step="0.01" value={cfg.comissao_percentual} onChange={(e) => setCfg({ ...cfg, comissao_percentual: Number(e.target.value) })} /></label>
             )}
-            <label className="block text-sm">Repasse ao vendedor (%)<input className={inputCls} type="number" value={cfg.comissao_repasse_percentual} onChange={(e) => setCfg({ ...cfg, comissao_repasse_percentual: Number(e.target.value) })} /></label>
+            <label className="block text-sm">Repasse à revenda (%)<input className={inputCls} type="number" value={cfg.comissao_repasse_percentual} onChange={(e) => setCfg({ ...cfg, comissao_repasse_percentual: Number(e.target.value) })} /></label>
           </div>
           <label className="block text-sm font-semibold">WhatsApp de reservas da unidade
             <TelInput value={mascaraTelefone(cfg.whatsapp ?? "")} onChange={(v) => setCfg({ ...cfg, whatsapp: v })} />
@@ -350,7 +356,11 @@ export function Painel(props: {
               <input className={inputCls} type="number" min={5} value={cfg.pre_reserva_minutos} onChange={(e) => setCfg({ ...cfg, pre_reserva_minutos: Number(e.target.value) })} />
             </label>
           )}
-          <button className={`${btnOuro} w-full`} disabled={pend} onClick={() => agir(async () => { const r = await salvarConfigAction(cfg); if (!r.ok) throw new Error(r.erro); }, "✅ Configuração salva.")}>Salvar</button>
+          <button className={`${btnOuro} w-full`} disabled={pend} onClick={() => start(async () => {
+            const r = await salvarConfigAction(cfg, atualizarEntradas);
+            setAviso(r.ok ? `✅ Configuração salva.${r.atualizadas ? ` Entrada de ${r.atualizadas} cota(s) atualizada com o novo ágio.` : ""}` : `⚠️ ${r.erro}`);
+            router.refresh();
+          })}>Salvar</button>
         </Card>
       )}
 
@@ -360,9 +370,9 @@ export function Painel(props: {
             <p className="font-semibold">Link de cadastro</p>
             <p className="text-xs text-slate-500">Vale 7 dias. Quem se cadastra pelo link entra só no portal, sem acesso ao ERP.</p>
             <div className="grid grid-cols-2 gap-2">
-              <button className={btnSec} disabled={pend} onClick={() => start(async () => { const r = await gerarConviteAction("VENDEDOR"); if (r.ok) setConvite(`${location.origin}/contempladas/cadastro/${r.token}`); })}>Link de vendedor</button>
+              <button className={btnSec} disabled={pend} onClick={() => start(async () => { const r = await gerarConviteAction("VENDEDOR"); if (r.ok) setConvite(`${location.origin}/contempladas/cadastro/${r.token}`); })}>Link de revenda</button>
               {props.papel === "DONO" && (
-                <button className={btnSec} disabled={pend} onClick={() => start(async () => { const r = await gerarConviteAction("GERENTE"); if (r.ok) setConvite(`${location.origin}/contempladas/cadastro/${r.token}`); })}>Link de gerente</button>
+                <button className={btnSec} disabled={pend} onClick={() => start(async () => { const r = await gerarConviteAction("GERENTE"); if (r.ok) setConvite(`${location.origin}/contempladas/cadastro/${r.token}`); })}>Link de administrador de cotas</button>
               )}
             </div>
             {convite && (
@@ -384,8 +394,8 @@ export function Painel(props: {
             <input className={inputCls} placeholder="Senha inicial (mín. 8)" value={novo.senha} onChange={(e) => setNovo({ ...novo, senha: e.target.value })} />
             {props.papel === "DONO" && (
               <select className={inputCls} value={novo.papel} onChange={(e) => setNovo({ ...novo, papel: e.target.value as "GERENTE" | "VENDEDOR" })}>
-                <option value="VENDEDOR">Vendedor</option>
-                <option value="GERENTE">Gerente</option>
+                <option value="VENDEDOR">Revenda</option>
+                <option value="GERENTE">Administrador de cotas</option>
               </select>
             )}
             <button className={`${btnOuro} w-full`} disabled={pend}
@@ -401,11 +411,11 @@ export function Painel(props: {
             {!props.equipe.length && <p className="text-sm text-slate-500">Ninguém cadastrado ainda.</p>}
             {props.equipe.map((m) => (
               <div key={m.id} className="flex items-center justify-between gap-2 border-t border-slate-100 py-2">
-                <span className="text-sm"><b>{m.nome}</b><span className="block text-xs text-slate-500">{m.email} · {m.papel === "GERENTE" ? "gerente" : "vendedor"}</span></span>
+                <span className="text-sm"><b>{m.nome}</b><span className="block text-xs text-slate-500">{m.email} · {m.papel === "GERENTE" ? "administrador de cotas" : "revenda"}</span></span>
                 <div className="flex gap-1">
                   {props.papel === "DONO" && (
                     <button className="rounded-lg bg-slate-100 px-2 py-1 text-xs" disabled={pend} onClick={() => agir(() => atualizarUsuarioAction(m.id, { papel: m.papel === "GERENTE" ? "VENDEDOR" : "GERENTE" }))}>
-                      {m.papel === "GERENTE" ? "→ vendedor" : "→ gerente"}
+                      {m.papel === "GERENTE" ? "→ revenda" : "→ administrador"}
                     </button>
                   )}
                   <button className={`rounded-lg px-2 py-1 text-xs ${m.ativo ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-800"}`} disabled={pend} onClick={() => agir(() => atualizarUsuarioAction(m.id, { ativo: !m.ativo }))}>

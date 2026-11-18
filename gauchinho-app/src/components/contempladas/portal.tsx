@@ -12,8 +12,8 @@ import type { ConfigPublica } from "@/lib/contempladas/publico";
 const MODOS = [
   ["COMPLETA", "Completa (mensal, semestral e anual)"],
   ["MENSAL", "Só mensal"],
-  ["SEMESTRAL", "Só semestral"],
-  ["ANUAL", "Só anual"],
+  ["SEMESTRAL", "Semestral antecipado"],
+  ["ANUAL", "Anual antecipado (produtor rural)"],
   ["RESUMO", "Média resumida"],
 ] as const;
 

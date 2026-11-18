@@ -52,8 +52,8 @@ export function AcoesProposta(p: Props) {
           <option value="">Ver como…</option>
           <option value="COMPLETA">Completa</option>
           <option value="MENSAL">Mensal</option>
-          <option value="SEMESTRAL">Semestral</option>
-          <option value="ANUAL">Anual</option>
+          <option value="SEMESTRAL">Semestral antecipado</option>
+          <option value="ANUAL">Anual antecipado</option>
           <option value="RESUMO">Média resumida</option>
           <option value="DETALHADA">Detalhada mês a mês</option>
         </select>

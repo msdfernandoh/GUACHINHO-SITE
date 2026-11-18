@@ -15,7 +15,7 @@ export default async function Page() {
   const a = await getAcesso(tenant.empresaId);
   if (!a)
     return (
-      <Shell titulo="Painel" sub="Gerência e vendedores">
+      <Shell titulo="Painel" sub="Administradores de cotas e revendas">
         <LoginBox motivo="Entre com o usuário do portal (ou do ERP)." />
       </Shell>
     );
@@ -33,7 +33,7 @@ export default async function Page() {
     a.papel === "DONO" ? repo.listarUsuariosEnvio(empresaId) : Promise.resolve([]),
     gerencia ? repo.resumoVendas(empresaId, meuEscopo) : Promise.resolve(null),
   ]);
-  const papelTxt = a.papel === "DONO" ? "dono do portal" : a.papel === "GERENTE" ? "gerente" : "vendedor";
+  const papelTxt = a.papel === "DONO" ? "dono do portal" : a.papel === "GERENTE" ? "administrador de cotas" : "revenda";
   return (
     <Shell titulo="Painel" sub={`${a.nome} · ${papelTxt}`} papel={a.papel}>
       <Painel

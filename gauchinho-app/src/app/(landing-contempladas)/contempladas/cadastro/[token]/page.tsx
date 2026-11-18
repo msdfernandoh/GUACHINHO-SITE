@@ -18,7 +18,7 @@ export default async function Page({ params }: { params: Promise<{ token: string
       {convite ? (
         <CadastroConvite token={token} papel={convite.papel} />
       ) : (
-        <Card className="mx-auto max-w-sm text-center">Link expirado ou inválido. Peça um novo ao gerente.</Card>
+        <Card className="mx-auto max-w-sm text-center">Link expirado ou inválido. Peça um novo ao administrador de cotas.</Card>
       )}
     </Shell>
   );

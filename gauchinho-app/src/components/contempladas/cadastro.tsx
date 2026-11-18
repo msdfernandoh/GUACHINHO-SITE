@@ -13,7 +13,7 @@ export function CadastroConvite({ token, papel }: { token: string; papel: "GEREN
   const [pend, start] = useTransition();
   return (
     <Card className="mx-auto max-w-sm">
-      <h1 className="text-lg font-bold">Cadastro de {papel === "GERENTE" ? "gerente" : "vendedor"}</h1>
+      <h1 className="text-lg font-bold">Cadastro de {papel === "GERENTE" ? "administrador de cotas" : "revenda"}</h1>
       <p className="mb-4 text-sm text-slate-500">Acesso ao portal de cotas contempladas.</p>
       <form
         className="space-y-3"
