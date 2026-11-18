@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cadastroConviteAction } from "@/app/(landing-contempladas)/contempladas/actions";
 import { createClient } from "@/lib/supabase/client";
-import { btnOuro, Card, inputCls } from "./ui";
+import { btnOuro, Card, inputCls, TelInput } from "./ui";
 
 export function CadastroConvite({ token, papel }: { token: string; papel: "GERENTE" | "VENDEDOR" }) {
   const router = useRouter();
@@ -31,7 +31,7 @@ export function CadastroConvite({ token, papel }: { token: string; papel: "GEREN
       >
         <input className={inputCls} placeholder="Nome completo" value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} required />
         <input className={inputCls} type="email" placeholder="E-mail (será seu login)" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required />
-        <input className={inputCls} inputMode="tel" placeholder="WhatsApp" value={f.telefone} onChange={(e) => setF({ ...f, telefone: e.target.value })} required />
+        <TelInput value={f.telefone} onChange={(v) => setF({ ...f, telefone: v })} required />
         <input className={inputCls} type="password" placeholder="Senha (mín. 8)" minLength={8} value={f.senha} onChange={(e) => setF({ ...f, senha: e.target.value })} required />
         {erro && <p className="text-sm text-red-300">{erro}</p>}
         <button className={`${btnOuro} w-full`} disabled={pend}>{pend ? "Cadastrando…" : "Criar acesso"}</button>

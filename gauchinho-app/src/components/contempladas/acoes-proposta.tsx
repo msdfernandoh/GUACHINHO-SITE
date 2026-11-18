@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { reservarAction } from "@/app/(landing-contempladas)/contempladas/actions";
-import { brl, btnOuro, btnSec, inputCls } from "./ui";
+import { brl, btnOuro, btnSec, inputCls, TelInput } from "./ui";
 
 type Props = {
   numero: number;
@@ -12,6 +12,7 @@ type Props = {
   disponivel: boolean;
   whatsapp: string | null;
   chavePix: string | null;
+  tipoPix?: string | null;
   favorecido: string | null;
   minutos: number;
   entrada: number;
@@ -98,11 +99,11 @@ export function AcoesProposta(p: Props) {
           {aberto === "PIX" && (
             <div className="rounded-xl bg-white/5 p-3 text-sm">
               <p>Valor da entrada: <b>{brl(p.entrada)}</b></p>
-              {p.chavePix ? <p>Chave PIX: <b className="select-all">{p.chavePix}</b>{p.favorecido && ` · ${p.favorecido}`}</p> : <p className="text-white/60">Peça a chave PIX ao consultor.</p>}
+              {p.chavePix ? <p>Chave PIX{p.tipoPix ? ` (${p.tipoPix})` : ""}: <b className="select-all">{p.chavePix}</b>{p.favorecido && ` · ${p.favorecido}`}</p> : <p className="text-white/60">Peça a chave PIX ao consultor.</p>}
             </div>
           )}
           <input name="nome" className={inputCls} placeholder="Nome completo" required />
-          <input name="telefone" className={inputCls} inputMode="tel" placeholder="WhatsApp com DDD" required />
+          <TelInput name="telefone" placeholder="WhatsApp com DDD" required />
           {aberto === "PIX" && <input name="comprovante" type="file" accept="image/*,application/pdf" capture="environment" className={inputCls} required />}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" className={btnSec} onClick={() => setAberto(null)}>Cancelar</button>

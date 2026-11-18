@@ -8,7 +8,8 @@ export const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency",
 
 export function Shell({ children, titulo, sub, papel = null }: { children: React.ReactNode; titulo: string; sub?: string; papel?: string | null }) {
   return (
-    <div className="min-h-dvh bg-[#07142b] text-white">
+    <div className="contempladas-ui min-h-dvh bg-[#07142b] text-white [color-scheme:dark]">
+      <style>{`.contempladas-ui select option{background:#0b1d3d;color:#fff}.contempladas-ui select option:checked{background:#f59e0b;color:#07142b}`}</style>
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#07142b]/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <a href="/contempladas" className="flex items-center gap-2">
@@ -88,5 +89,57 @@ export function Sair() {
     >
       sair
     </button>
+  );
+}
+
+/* ------------------------------ Máscaras ------------------------------ */
+
+export function mascaraTelefone(raw: string) {
+  const d = raw.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").slice(0, 11);
+  if (!d) return "";
+  if (d.length <= 2) return `(${d}`;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
+/** Campo de celular com máscara (xx) xxxxx-xxxx. Funciona controlado ou com `name` em formulário. */
+export function TelInput({ value, onChange, name, placeholder = "(66) 99999-9999", required }: { value?: string; onChange?: (v: string) => void; name?: string; placeholder?: string; required?: boolean }) {
+  const [interno, setInterno] = useState("");
+  const v = mascaraTelefone(value ?? interno);
+  return (
+    <input className={inputCls} type="tel" inputMode="tel" autoComplete="tel" name={name} placeholder={placeholder} required={required} pattern="\(\d{2}\) \d{4,5}-\d{4}" title="Celular com DDD"
+      value={v} onChange={(e) => { const m = mascaraTelefone(e.target.value); if (onChange) onChange(m); else setInterno(m); }} />
+  );
+}
+
+export type TipoPix = "CELULAR" | "EMAIL" | "CPF" | "CNPJ" | "ALEATORIA";
+export const TIPOS_PIX: [TipoPix, string][] = [["CELULAR", "Celular"], ["CPF", "CPF"], ["CNPJ", "CNPJ"], ["EMAIL", "E-mail"], ["ALEATORIA", "Chave aleatória"]];
+
+export function mascaraPix(tipo: TipoPix, raw: string) {
+  const d = raw.replace(/\D/g, "");
+  if (tipo === "CELULAR") return mascaraTelefone(raw);
+  if (tipo === "CPF") {
+    const x = d.slice(0, 11);
+    return x.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  }
+  if (tipo === "CNPJ") {
+    const x = d.slice(0, 14);
+    return x.replace(/^(\d{2})(\d)/, "$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d)/, ".$1/$2").replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+  }
+  if (tipo === "ALEATORIA") return raw.toLowerCase().replace(/[^0-9a-f-]/g, "").slice(0, 36);
+  return raw.trim().toLowerCase();
+}
+
+export function PixInput({ tipo, valor, onChange }: { tipo: TipoPix; valor: string; onChange: (tipo: TipoPix, valor: string) => void }) {
+  return (
+    <div className="grid grid-cols-[auto_1fr] gap-2">
+      <select className={`${inputCls} !w-40`} value={tipo} onChange={(e) => onChange(e.target.value as TipoPix, "")}>
+        {TIPOS_PIX.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+      <input className={inputCls} value={valor} inputMode={tipo === "CPF" || tipo === "CNPJ" || tipo === "CELULAR" ? "numeric" : tipo === "EMAIL" ? "email" : "text"}
+        placeholder={{ CELULAR: "(66) 99999-9999", CPF: "000.000.000-00", CNPJ: "00.000.000/0000-00", EMAIL: "nome@email.com", ALEATORIA: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" }[tipo]}
+        onChange={(e) => onChange(tipo, mascaraPix(tipo, e.target.value))} />
+    </div>
   );
 }

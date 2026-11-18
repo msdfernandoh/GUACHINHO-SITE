@@ -140,6 +140,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           disponivel={!indisponivel}
           whatsapp={cfg.whatsapp}
           chavePix={cfg.chave_pix}
+          tipoPix={{ CELULAR: "celular", EMAIL: "e-mail", CPF: "CPF", CNPJ: "CNPJ", ALEATORIA: "aleatória" }[cfg.chave_pix_tipo]}
           favorecido={cfg.favorecido_pix}
           minutos={cfg.pre_reserva_minutos}
           entrada={entradaFinal}

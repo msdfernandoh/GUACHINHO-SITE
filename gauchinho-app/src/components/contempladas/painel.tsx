@@ -14,7 +14,7 @@ import {
 } from "@/app/(landing-contempladas)/contempladas/actions";
 import type { ConfigContempladas, CotaPortal } from "@/lib/contempladas/repo";
 import type { Acrescimo } from "@/lib/contempladas/motor";
-import { brl, btnOuro, btnSec, Card, inputCls, Sair } from "./ui";
+import { brl, btnOuro, btnSec, Card, inputCls, PixInput, Sair, TelInput, mascaraTelefone, type TipoPix } from "./ui";
 
 type Reserva = { id: string; tipo: "PRE" | "PIX"; nome: string; telefone: string; cotaIds: string[]; expiraEm: string | null; criadaEm: string; comprovanteUrl: string | null };
 type Proposta = { numero: number; cliente: string | null; vendedor: string | null; credito: number; entrada: number; desconto: number; rentabilidade: number; vendida: boolean; criadaEm: string };
@@ -202,16 +202,16 @@ export function Painel(props: {
             <label className="block text-sm">Repasse ao vendedor (%)<input className={inputCls} type="number" value={cfg.comissao_repasse_percentual} onChange={(e) => setCfg({ ...cfg, comissao_repasse_percentual: Number(e.target.value) })} /></label>
           </div>
           <label className="block text-sm">WhatsApp de reservas
-            <input className={inputCls} value={cfg.whatsapp ?? ""} onChange={(e) => setCfg({ ...cfg, whatsapp: e.target.value })} placeholder="66999999999" />
+            <TelInput value={mascaraTelefone(cfg.whatsapp ?? "")} onChange={(v) => setCfg({ ...cfg, whatsapp: v })} />
           </label>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label className="block text-sm">Chave PIX<input className={inputCls} value={cfg.chave_pix ?? ""} onChange={(e) => setCfg({ ...cfg, chave_pix: e.target.value })} /></label>
-            <label className="block text-sm">Favorecido<input className={inputCls} value={cfg.favorecido_pix ?? ""} onChange={(e) => setCfg({ ...cfg, favorecido_pix: e.target.value })} /></label>
+          <div className="block text-sm">Chave PIX
+            <PixInput tipo={cfg.chave_pix_tipo as TipoPix} valor={cfg.chave_pix ?? ""} onChange={(t, v) => setCfg({ ...cfg, chave_pix_tipo: t, chave_pix: v })} />
           </div>
+          <label className="block text-sm">Favorecido (nome que aparece no PIX)<input className={inputCls} value={cfg.favorecido_pix ?? ""} onChange={(e) => setCfg({ ...cfg, favorecido_pix: e.target.value })} /></label>
           <label className="block text-sm">Tempo da pré-reserva (minutos)
             <input className={inputCls} type="number" min={5} value={cfg.pre_reserva_minutos} onChange={(e) => setCfg({ ...cfg, pre_reserva_minutos: Number(e.target.value) })} />
           </label>
-          <button className={`${btnOuro} w-full`} disabled={pend} onClick={() => agir(() => salvarConfigAction(cfg), "✅ Configuração salva.")}>Salvar</button>
+          <button className={`${btnOuro} w-full`} disabled={pend} onClick={() => agir(async () => { const r = await salvarConfigAction(cfg); if (!r.ok) throw new Error(r.erro); }, "✅ Configuração salva.")}>Salvar</button>
         </Card>
       )}
 
@@ -241,7 +241,7 @@ export function Painel(props: {
             <p className="font-semibold">Cadastrar agora</p>
             <input className={inputCls} placeholder="Nome" value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} />
             <input className={inputCls} type="email" placeholder="E-mail (login)" value={novo.email} onChange={(e) => setNovo({ ...novo, email: e.target.value })} />
-            <input className={inputCls} inputMode="tel" placeholder="WhatsApp" value={novo.telefone} onChange={(e) => setNovo({ ...novo, telefone: e.target.value })} />
+            <TelInput value={novo.telefone} onChange={(v) => setNovo({ ...novo, telefone: v })} />
             <input className={inputCls} placeholder="Senha inicial (mín. 8)" value={novo.senha} onChange={(e) => setNovo({ ...novo, senha: e.target.value })} />
             {props.papel === "DONO" && (
               <select className={inputCls} value={novo.papel} onChange={(e) => setNovo({ ...novo, papel: e.target.value as "GERENTE" | "VENDEDOR" })}>

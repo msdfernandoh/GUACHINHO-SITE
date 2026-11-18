@@ -20,6 +20,7 @@ export type ConfigContempladas = {
   pre_reserva_minutos: number;
   whatsapp: string | null;
   chave_pix: string | null;
+  chave_pix_tipo: "CELULAR" | "EMAIL" | "CPF" | "CNPJ" | "ALEATORIA";
   favorecido_pix: string | null;
   comissao_modo: "TABELA" | "PERCENTUAL";
   comissao_percentual: number;
@@ -33,6 +34,7 @@ export const CONFIG_PADRAO: ConfigContempladas = {
   pre_reserva_minutos: 120,
   whatsapp: null,
   chave_pix: null,
+  chave_pix_tipo: "CELULAR",
   favorecido_pix: null,
   comissao_modo: "TABELA",
   comissao_percentual: 0,
@@ -50,6 +52,7 @@ export async function getConfig(empresaId: string): Promise<ConfigContempladas> 
     pre_reserva_minutos: data.pre_reserva_minutos,
     whatsapp: data.whatsapp,
     chave_pix: data.chave_pix,
+    chave_pix_tipo: data.chave_pix_tipo ?? "CELULAR",
     favorecido_pix: data.favorecido_pix,
     comissao_modo: data.comissao_modo,
     comissao_percentual: num(data.comissao_percentual),

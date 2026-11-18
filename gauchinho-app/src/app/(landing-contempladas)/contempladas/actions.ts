@@ -160,11 +160,12 @@ export async function statusCotaAction(cotaId: string, status: "DISPONIVEL" | "V
 }
 
 export async function salvarConfigAction(c: repo.ConfigContempladas) {
+  return resultado(async () => {
   const { empresaId } = await exigirGerencia();
   await repo.salvarConfig(empresaId, {
     pre_reserva_minutos: Math.min(10080, Math.max(5, Math.round(Number(c.pre_reserva_minutos) || 120))),
     whatsapp: c.whatsapp?.replace(/\D/g, "") || null,
-    chave_pix: c.chave_pix?.trim() || null,
+    ...validarPix(c.chave_pix_tipo, c.chave_pix),
     favorecido_pix: c.favorecido_pix?.trim() || null,
     comissao_modo: c.comissao_modo === "PERCENTUAL" ? "PERCENTUAL" : "TABELA",
     comissao_percentual: Math.max(0, Number(c.comissao_percentual) || 0),
@@ -173,6 +174,8 @@ export async function salvarConfigAction(c: repo.ConfigContempladas) {
     agio_valor: Math.max(0, Number(c.agio_valor) || 0),
   });
   revalidatePath("/contempladas/painel");
+  return {};
+  });
 }
 
 /** Cadastro direto pela gerência. Só o dono cria outro gerente. */
@@ -243,4 +246,22 @@ export async function permissaoEnvioAction(usuarioId: string, pode: boolean) {
   if (!data) throw new Error("Usuário não pertence a esta empresa.");
   await repo.definirPermissaoEnvio(usuarioId, pode);
   revalidatePath("/contempladas/painel");
+}
+
+const TIPOS_PIX = ["CELULAR", "EMAIL", "CPF", "CNPJ", "ALEATORIA"] as const;
+
+/** Valida e normaliza a chave PIX conforme o tipo escolhido. */
+function validarPix(tipo: string, chave: string | null) {
+  const t = (TIPOS_PIX as readonly string[]).includes(tipo) ? (tipo as (typeof TIPOS_PIX)[number]) : "CELULAR";
+  const v = (chave ?? "").trim();
+  if (!v) return { chave_pix_tipo: t, chave_pix: null };
+  const d = v.replace(/\D/g, "");
+  const ok =
+    t === "CELULAR" ? d.length === 11 :
+    t === "CPF" ? d.length === 11 :
+    t === "CNPJ" ? d.length === 14 :
+    t === "EMAIL" ? /^\S+@\S+\.\S+$/.test(v) :
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+  if (!ok) throw new Error("Chave PIX inválida para o tipo escolhido.");
+  return { chave_pix_tipo: t, chave_pix: v };
 }
