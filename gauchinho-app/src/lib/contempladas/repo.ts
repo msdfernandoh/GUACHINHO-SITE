@@ -19,6 +19,12 @@ export type CotaPortal = CotaMotor & {
   /** Gerente que subiu a cota (null = dono do portal). */
   dono_auth_id: string | null;
   dono_nome: string | null;
+  vendida_em: string | null;
+  vendedor_nome: string | null;
+  vendida_por_nome: string | null;
+  exclusao_solicitada_em: string | null;
+  exclusao_solicitada_por: string | null;
+  exclusao_motivo: string | null;
 };
 
 export type ConfigContempladas = {
@@ -188,6 +194,12 @@ export async function listarCotas(empresaId: string, opts: { incluirVendidas?: b
     preReservaAte: ate.get(c.id) ?? null,
     dono_auth_id: c.dono_auth_id ?? null,
     dono_nome: c.dono_nome ?? null,
+    vendida_em: c.vendida_em ?? null,
+    vendedor_nome: c.vendedor_nome ?? null,
+    vendida_por_nome: c.vendida_por_nome ?? null,
+    exclusao_solicitada_em: c.exclusao_solicitada_em ?? null,
+    exclusao_solicitada_por: c.exclusao_solicitada_por ?? null,
+    exclusao_motivo: c.exclusao_motivo ?? null,
   }));
 }
 
@@ -441,25 +453,81 @@ export async function listarReservas(empresaId: string, dono?: Escopo) {
   );
 }
 
-export async function decidirReserva(empresaId: string, reservaId: string, acao: "VENDIDA" | "CANCELAR", dono?: Escopo, porAuthId?: string) {
+export async function decidirReserva(empresaId: string, reservaId: string, acao: "VENDIDA" | "CANCELAR", dono?: Escopo, por?: { authId: string; nome: string }) {
   const { data: r } = await db().from("contempladas_reservas").select("*").eq("empresa_id", empresaId).eq("id", reservaId).maybeSingle();
   if (!r) throw new Error("Reserva não encontrada.");
   if (dono && r.dono_auth_id !== dono) throw new Error("Essa reserva é de outra unidade.");
   await db().from("contempladas_reservas").update({ status: acao === "VENDIDA" ? "CONFIRMADA" : "CANCELADA" }).eq("id", reservaId);
-  if (acao === "VENDIDA") await mudarStatusCotas(empresaId, r.cota_ids, "VENDIDA", undefined, porAuthId);
+  if (acao === "VENDIDA") {
+    // Vendedor: o da proposta que originou a reserva, quando houver.
+    let vendedor: string | null = null;
+    if (r.proposta_id) {
+      const { data: prop } = await db().from("contempladas_propostas").select("vendedor_nome").eq("id", r.proposta_id).maybeSingle();
+      vendedor = (prop?.vendedor_nome as string) ?? null;
+    }
+    await mudarStatusCotas(empresaId, r.cota_ids, "VENDIDA", undefined, por ? { ...por, vendedor } : undefined);
+  }
   else if (r.tipo === "PIX") await mudarStatusCotas(empresaId, r.cota_ids, "DISPONIVEL");
 }
 
-export async function mudarStatusCotas(empresaId: string, ids: string[], status: CotaPortal["status"], dono?: Escopo, porAuthId?: string) {
-  // O banco grava a venda em contempladas_vendas (trigger) com quem marcou.
-  let q = db()
+export async function mudarStatusCotas(
+  empresaId: string,
+  ids: string[],
+  status: CotaPortal["status"],
+  dono?: Escopo,
+  por?: { authId: string; nome: string; vendedor?: string | null },
+) {
+  const agora = new Date().toISOString();
+  if (status !== "VENDIDA") {
+    let q = db()
+      .from("contempladas_cotas")
+      .update({ status, updated_at: agora, exclusao_solicitada_em: null, exclusao_solicitada_por: null, exclusao_motivo: null })
+      .eq("empresa_id", empresaId)
+      .in("id", ids);
+    if (dono) q = q.eq("dono_auth_id", dono);
+    const { error } = await q;
+    if (error) throw new Error(error.message);
+    return;
+  }
+  // Venda: grava vendedor (da proposta mais recente com a cota) e quem marcou.
+  // O banco registra a linha em contempladas_vendas (trigger).
+  for (const id of ids) {
+    let vendedor = por?.vendedor ?? null;
+    if (!vendedor) {
+      const { data: prop } = await db()
+        .from("contempladas_propostas")
+        .select("vendedor_nome")
+        .eq("empresa_id", empresaId)
+        .contains("cota_ids", [id])
+        .not("vendedor_nome", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      vendedor = (prop?.vendedor_nome as string) ?? por?.nome ?? null;
+    }
+    let q = db()
+      .from("contempladas_cotas")
+      .update({ status, updated_at: agora, vendida_por: por?.authId ?? null, vendida_por_nome: por?.nome ?? null, vendedor_nome: vendedor })
+      .eq("empresa_id", empresaId)
+      .eq("id", id);
+    if (dono) q = q.eq("dono_auth_id", dono);
+    const { error } = await q;
+    if (error) throw new Error(error.message);
+  }
+}
+
+export async function solicitarExclusao(empresaId: string, cotaId: string, dono: string, nome: string, motivo: string) {
+  const { error } = await db()
     .from("contempladas_cotas")
-    .update({ status, updated_at: new Date().toISOString(), ...(status === "VENDIDA" ? { vendida_por: porAuthId ?? null } : {}) })
+    .update({ exclusao_solicitada_em: new Date().toISOString(), exclusao_solicitada_por: nome, exclusao_motivo: motivo || null })
     .eq("empresa_id", empresaId)
-    .in("id", ids);
-  if (dono) q = q.eq("dono_auth_id", dono);
-  const { error } = await q;
+    .eq("id", cotaId)
+    .eq("dono_auth_id", dono);
   if (error) throw new Error(error.message);
+}
+
+export async function recusarExclusao(empresaId: string, cotaId: string) {
+  await db().from("contempladas_cotas").update({ exclusao_solicitada_em: null, exclusao_solicitada_por: null, exclusao_motivo: null }).eq("empresa_id", empresaId).eq("id", cotaId);
 }
 
 export async function listarUsuariosEnvio(empresaId: string) {

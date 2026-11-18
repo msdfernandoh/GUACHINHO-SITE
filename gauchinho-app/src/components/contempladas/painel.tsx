@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import {
   atualizarUsuarioAction,
   cadastrarUsuarioAction,
+  decidirExclusaoAction,
   decidirReservaAction,
+  solicitarExclusaoAction,
   gerarConviteAction,
   permissaoEnvioAction,
   salvarPerfilAction,
@@ -20,6 +22,10 @@ type Reserva = { id: string; tipo: "PRE" | "PIX"; nome: string; telefone: string
 type Proposta = { numero: number; cliente: string | null; vendedor: string | null; credito: number; entrada: number; desconto: number; rentabilidade: number; vendida: boolean; criadaEm: string };
 type Membro = { id: string; nome: string; email: string; telefone: string | null; papel: "GERENTE" | "VENDEDOR"; ativo: boolean };
 type UsuarioErp = { id: string; nome: string; email: string; perfil: string; contempladas_pode_enviar: boolean };
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const dataHora = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
 type Aba = "reservas" | "cotas" | "propostas" | "equipe" | "config" | "meu";
 
 function SeletorValor({ valor, onChange, rotuloPct = "% do crédito" }: { valor: Acrescimo; onChange: (v: Acrescimo) => void; rotuloPct?: string }) {
@@ -63,6 +69,8 @@ export function Painel(props: {
   const [novo, setNovo] = useState({ nome: "", email: "", telefone: "", senha: "", papel: "VENDEDOR" as "GERENTE" | "VENDEDOR" });
   const [convite, setConvite] = useState<string | null>(null);
   const porId = new Map(props.cotas.map((c) => [c.id, c]));
+  const [filtroCota, setFiltroCota] = useState<"DISPONIVEL" | "RESERVADA" | "VENDIDA" | "TODAS">("DISPONIVEL");
+  const pedidos = props.cotas.filter((c) => c.exclusao_solicitada_em && c.status !== "INATIVA");
   const agir = (fn: () => Promise<unknown>, ok?: string) =>
     start(async () => {
       try {
@@ -135,21 +143,81 @@ export function Painel(props: {
       )}
 
       {aba === "cotas" && gerencia && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <a href="/contempladas/importar" className={`${btnOuro} block text-center`}>+ Incluir cotas</a>
-          {props.cotas.map((c) => (
-            <Card key={c.id} className="!p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="font-bold">{brl(c.credito)} <span className="text-xs font-normal text-slate-500">{c.codigo}</span></p>
-                  <p className="text-xs text-slate-500">Entrada {brl(c.entrada)} · {c.prazo}x {brl(c.parcela)}</p>
+
+          {props.papel === "DONO" && pedidos.length > 0 && (
+            <Card className="space-y-2 border-amber-300 bg-amber-50">
+              <p className="font-bold text-amber-900">Pedidos de exclusão ({pedidos.length})</p>
+              {pedidos.map((c) => (
+                <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white p-3 text-sm">
+                  <span><b>{c.codigo}</b> · {brl(c.credito)} · {c.dono_nome ?? "—"}<span className="block text-xs text-slate-500">Pedido por {c.exclusao_solicitada_por} em {dataHora(c.exclusao_solicitada_em)}{c.exclusao_motivo ? ` · “${c.exclusao_motivo}”` : ""}</span></span>
+                  <span className="flex gap-2">
+                    <button className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white" disabled={pend} onClick={() => agir(async () => { const r = await decidirExclusaoAction(c.id, true); if (!r.ok) throw new Error(r.erro); })}>Aprovar exclusão</button>
+                    <button className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold" disabled={pend} onClick={() => agir(async () => { const r = await decidirExclusaoAction(c.id, false); if (!r.ok) throw new Error(r.erro); })}>Recusar</button>
+                  </span>
                 </div>
-                <span className={`rounded-lg px-2 py-1 text-xs font-bold ${c.status === "VENDIDA" ? "bg-red-100 text-red-700" : c.status === "RESERVADA" ? "bg-orange-100 text-orange-800" : "bg-emerald-100 text-emerald-800"}`}>{c.status === "RESERVADA" ? "EM ANÁLISE" : c.status}</span>
+              ))}
+            </Card>
+          )}
+
+          <div className="flex flex-wrap gap-1">
+            {([["DISPONIVEL", "Disponíveis"], ["RESERVADA", "Em análise"], ["VENDIDA", "Vendidas"], ["TODAS", "Todas"]] as const).map(([k, l]) => (
+              <button key={k} onClick={() => setFiltroCota(k)} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${filtroCota === k ? "bg-[#0a2a66] text-white" : "bg-white text-slate-600 ring-1 ring-slate-200"}`}>
+                {l} ({k === "TODAS" ? props.cotas.length : props.cotas.filter((c) => c.status === k).length})
+              </button>
+            ))}
+          </div>
+
+          {props.cotas.filter((c) => filtroCota === "TODAS" || c.status === filtroCota).map((c) => (
+            <Card key={c.id} className="!p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{c.tipo === "automovel" ? "🚗" : "🏠"}</span>
+                  <div>
+                    <p className="text-lg font-black text-[#0a2a66]">{brl(c.credito)}</p>
+                    <p className="text-xs text-slate-500">{c.codigo} · <span className="capitalize">{c.administradora}</span> · {c.tipo === "automovel" ? "Veículo" : "Imóvel"}{c.dono_nome ? ` · Unidade ${c.dono_nome}` : ""}</p>
+                  </div>
+                </div>
+                <span className={`rounded-lg px-2 py-1 text-xs font-bold ${c.status === "VENDIDA" ? "bg-slate-200 text-slate-700" : c.status === "RESERVADA" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
+                  {c.status === "RESERVADA" ? "EM ANÁLISE" : c.status === "VENDIDA" ? "VENDIDA" : "DISPONÍVEL"}
+                </span>
               </div>
-              <div className="mt-2 grid grid-cols-3 gap-1 text-xs">
-                <button disabled={pend || c.status === "VENDIDA"} className="rounded-lg bg-emerald-600 py-2 font-bold text-white" onClick={() => agir(() => statusCotaAction(c.id, "VENDIDA"))}>Vendida</button>
-                <button disabled={pend || c.status === "DISPONIVEL"} className="rounded-lg bg-slate-100 py-2" onClick={() => agir(() => statusCotaAction(c.id, "DISPONIVEL"))}>Liberar</button>
-                <button disabled={pend} className="rounded-lg bg-red-100 py-2 text-red-700" onClick={() => agir(() => statusCotaAction(c.id, "INATIVA"))}>Excluir</button>
+
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4 lg:grid-cols-7">
+                {[
+                  ["Entrada", brl(c.entrada)],
+                  ["Entrada administradora", brl(c.entrada_original)],
+                  ["Ágio", brl(c.entrada_acrescimo)],
+                  ["Parcela", brl(c.parcela)],
+                  ["Prazo", `${c.prazo} meses`],
+                  ["Saldo devedor", brl(c.saldo_devedor)],
+                  ["1º vencimento", c.vencimento_mes ? MESES[c.vencimento_mes - 1] : "—"],
+                  ["Comissão", brl(c.comissao_parceiro)],
+                  ["Pré-reservas", String(c.preReservas)],
+                ].map(([l, v]) => (
+                  <div key={l}><dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{l}</dt><dd className="font-semibold text-slate-800">{v}</dd></div>
+                ))}
+              </dl>
+
+              {c.status === "VENDIDA" && (
+                <div className="mt-3 grid gap-2 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-3">
+                  <p><span className="block text-[11px] font-semibold uppercase text-slate-400">Vendedor</span><b>{c.vendedor_nome ?? "—"}</b></p>
+                  <p><span className="block text-[11px] font-semibold uppercase text-slate-400">Gerente / unidade</span><b>{c.dono_nome ?? "—"}</b>{c.vendida_por_nome && c.vendida_por_nome !== c.dono_nome ? <span className="block text-xs text-slate-500">marcada por {c.vendida_por_nome}</span> : null}</p>
+                  <p><span className="block text-[11px] font-semibold uppercase text-slate-400">Data e hora</span><b>{dataHora(c.vendida_em)}</b></p>
+                </div>
+              )}
+              {c.exclusao_solicitada_em && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-900">Exclusão pedida em {dataHora(c.exclusao_solicitada_em)}, aguardando o dono do portal.</p>}
+
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                {c.status !== "VENDIDA" && <button disabled={pend} className="rounded-lg bg-emerald-600 px-4 py-2 font-bold text-white" onClick={() => agir(() => statusCotaAction(c.id, "VENDIDA"))}>✔ Marcar vendida</button>}
+                {c.status !== "DISPONIVEL" && <button disabled={pend} className="rounded-lg bg-slate-100 px-4 py-2 font-semibold" onClick={() => agir(() => statusCotaAction(c.id, "DISPONIVEL"))}>{c.status === "VENDIDA" ? "Desfazer venda" : "Liberar"}</button>}
+                {props.papel === "DONO" ? (
+                  <button disabled={pend} className="rounded-lg bg-red-100 px-4 py-2 font-semibold text-red-700" onClick={() => { if (confirm(`Excluir ${c.codigo} do portal?`)) agir(() => statusCotaAction(c.id, "INATIVA")); }}>Excluir</button>
+                ) : !c.exclusao_solicitada_em && (
+                  <button disabled={pend} className="rounded-lg bg-slate-100 px-4 py-2 font-semibold text-slate-700"
+                    onClick={() => { const m = prompt("Motivo da exclusão (vai para o dono do portal):"); if (m !== null) agir(async () => { const r = await solicitarExclusaoAction(c.id, m); if (!r.ok) throw new Error(r.erro); }, "✅ Pedido de exclusão enviado."); }}>Solicitar exclusão</button>
+                )}
               </div>
             </Card>
           ))}

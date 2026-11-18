@@ -195,13 +195,15 @@ export async function reservarAction(fd: FormData) {
 
 export async function decidirReservaAction(reservaId: string, acao: "VENDIDA" | "CANCELAR") {
   const { empresaId, a } = await exigirGerencia();
-  await repo.decidirReserva(empresaId, reservaId, acao, escopo(a), a.authUserId);
+  await repo.decidirReserva(empresaId, reservaId, acao, escopo(a), { authId: a.authUserId, nome: a.nome });
   revalidatePath("/contempladas/painel");
 }
 
 export async function statusCotaAction(cotaId: string, status: "DISPONIVEL" | "VENDIDA" | "INATIVA") {
   const { empresaId, a } = await exigirGerencia();
-  await repo.mudarStatusCotas(empresaId, [cotaId], status, escopo(a), a.authUserId);
+  // Excluir é só do dono; o gerente pede exclusão.
+  if (status === "INATIVA" && a.papel !== "DONO") throw new Error("Peça a exclusão: o dono do portal aprova.");
+  await repo.mudarStatusCotas(empresaId, [cotaId], status, escopo(a), { authId: a.authUserId, nome: a.nome });
   revalidatePath("/contempladas");
   revalidatePath("/contempladas/painel");
 }
@@ -349,7 +351,29 @@ export async function marcarVendidaAction(cotaId: string) {
     const [c] = await repo.cotasPorIds(empresaId, [cotaId]);
     if (!c) throw new Error("Cota não encontrada.");
     if (a.papel !== "DONO" && c.dono_auth_id !== a.authUserId) throw new Error("Essa cota é de outra unidade.");
-    await repo.mudarStatusCotas(empresaId, [cotaId], "VENDIDA", escopo(a), a.authUserId);
+    await repo.mudarStatusCotas(empresaId, [cotaId], "VENDIDA", escopo(a), { authId: a.authUserId, nome: a.nome });
+    revalidatePath("/contempladas");
+    revalidatePath("/contempladas/painel");
+    return {};
+  });
+}
+
+/** Gerente pede para tirar uma cota da unidade dele; o dono do portal aprova ou recusa. */
+export async function solicitarExclusaoAction(cotaId: string, motivo: string) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirGerencia();
+    await repo.solicitarExclusao(empresaId, cotaId, a.authUserId, a.nome, String(motivo ?? "").slice(0, 300));
+    revalidatePath("/contempladas/painel");
+    return {};
+  });
+}
+
+export async function decidirExclusaoAction(cotaId: string, aprovar: boolean) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirGerencia();
+    if (a.papel !== "DONO") throw new Error("Somente o dono do portal.");
+    if (aprovar) await repo.mudarStatusCotas(empresaId, [cotaId], "INATIVA");
+    else await repo.recusarExclusao(empresaId, cotaId);
     revalidatePath("/contempladas");
     revalidatePath("/contempladas/painel");
     return {};

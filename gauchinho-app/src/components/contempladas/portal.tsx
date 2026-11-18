@@ -23,6 +23,8 @@ const fmtDigitado = (s: string) => {
   return d ? Number(d).toLocaleString("pt-BR") : "";
 };
 
+const MES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
 type Stats = { simulacoes: number; preReservas: number; reservasPix: number; vendidas: number };
 type Tipo = "todos" | "imovel" | "automovel";
 
@@ -241,12 +243,13 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
             <tr>
               <th className="w-12 p-4" />
               <th className="w-12 p-4" />
-              <th className="p-4">Nº</th>
-              <th className="p-4 text-right">Crédito</th>
-              <th className="p-4 text-right">Entrada</th>
-              <th className="p-4 text-center">Parcela</th>
-              <th className="p-4">Administradora</th>
-              <th className="p-4">Unidade</th>
+              <th className="p-4">Cota</th>
+              <th className="p-4 text-right">Crédito<span className="block text-[10px] font-semibold normal-case opacity-80">valor da carta</span></th>
+              <th className="p-4 text-right">Entrada<span className="block text-[10px] font-semibold normal-case opacity-80">pago na compra</span></th>
+              <th className="p-4 text-center">Parcelas<span className="block text-[10px] font-semibold normal-case opacity-80">prazo × valor</span></th>
+              <th className="p-4 text-right">Saldo devedor<span className="block text-[10px] font-semibold normal-case opacity-80">a pagar</span></th>
+              <th className="p-4 text-center">1º venc.</th>
+              <th className="p-4">Administradora<span className="block text-[10px] font-semibold normal-case opacity-80">unidade</span></th>
               {logado && (
                 <th className="p-4 text-right">
                   <button onClick={alternarOculto} className="inline-flex items-center gap-1 opacity-80 hover:opacity-100" title={ocultar ? "Mostrar rentabilidade" : "Ocultar rentabilidade"} aria-label={ocultar ? "Mostrar rentabilidade" : "Ocultar rentabilidade"}>
@@ -270,10 +273,15 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
                   <td className="p-4 text-right font-bold text-[#0a2a66]">{brl(c.credito)}</td>
                   <td className="p-4 text-right">{brl(c.entrada + extraDe(c.credito))}</td>
                   <td className="p-4 text-center">{c.prazo}x de {brl(c.parcela)}</td>
-                  <td className="p-4 capitalize">{c.administradora}</td>
-                  <td className="p-4 text-sm text-slate-600">{nomeUnidade(c)}</td>
+                  <td className="p-4 text-right text-slate-700">{brl(c.saldo_devedor)}</td>
+                  <td className="p-4 text-center text-sm capitalize text-slate-600">{c.vencimento_mes ? MES_CURTO[c.vencimento_mes - 1] : "—"}</td>
+                  <td className="p-4"><span className="capitalize">{c.administradora}</span><span className="block text-xs text-slate-500">{nomeUnidade(c)}</span></td>
                   {logado && <td className="p-4 text-right font-semibold text-emerald-700">{ocultar ? <span className="text-slate-300">•••</span> : brl(c.comissao_parceiro + extraDe(c.credito))}</td>}
-                  <td className="p-4"><Situacao c={c} /></td>
+                  <td className="p-4"><Situacao c={c} />{logado && c.status === "VENDIDA" && (
+                    <span className="mt-1 block text-[11px] leading-tight text-slate-500">
+                      {c.vendedor_nome ? `Vendedor ${c.vendedor_nome}` : ""}{c.dono_nome ? ` · Gerente ${c.dono_nome}` : ""}<br />{c.vendida_em ? new Date(c.vendida_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : ""}
+                    </span>
+                  )}</td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       {podeVender(c) && <button className="rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-bold text-slate-700 hover:border-emerald-600 hover:text-emerald-700" disabled={pend} onClick={() => vender(c)}>✔ Vendida</button>}
@@ -283,7 +291,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
                 </tr>
               );
             })}
-            {!visiveis.length && <tr><td colSpan={11} className="p-10 text-center text-slate-500">Nenhuma cota com esses filtros.</td></tr>}
+            {!visiveis.length && <tr><td colSpan={12} className="p-10 text-center text-slate-500">Nenhuma cota com esses filtros.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -310,6 +318,8 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
                     <span className="text-[#0a2a66]"><IconeTipo tipo={c.tipo} className="h-6 w-6" /></span>
                   </div>
                   <p className="text-sm text-slate-700">Entrada <b>{brl(c.entrada + extraDe(c.credito))}</b> · {c.prazo}x {brl(c.parcela)}</p>
+                  <p className="text-xs text-slate-500">Saldo devedor {brl(c.saldo_devedor)}{c.vencimento_mes ? ` · 1º venc. ${MES_CURTO[c.vencimento_mes - 1]}` : ""}</p>
+                  {logado && c.status === "VENDIDA" && <p className="text-xs text-slate-500">Vendida {c.vendida_em ? new Date(c.vendida_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : ""}{c.vendedor_nome ? ` · ${c.vendedor_nome}` : ""}{c.dono_nome ? ` · ${c.dono_nome}` : ""}</p>}
                   <p className="text-xs text-slate-500">{c.codigo} · <span className="capitalize">{c.administradora}</span> · {nomeUnidade(c)}{verRent ? ` · rentab. ${brl(c.comissao_parceiro + extraDe(c.credito))}` : ""}</p>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <Situacao c={c} />
