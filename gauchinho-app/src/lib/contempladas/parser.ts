@@ -75,17 +75,64 @@ function lerBlocoWhatsApp(bloco: string): Omit<CotaLida, "entrada_acrescimo" | "
   };
 }
 
+const VALOR = String.raw`R?\$?\s*(\d[\d.]*(?:,\d{1,2})?)`;
+function campo(bloco: string, rotulo: string): number | null {
+  const m = bloco.match(new RegExp(rotulo + String.raw`[^:\n]*:\s*` + VALOR, "i"));
+  return m ? parseBrazilianNumber(m[1]) : null;
+}
+
+/**
+ * Formato da lista do WhatsApp com rótulos, uma carta por bloco:
+ * "🏠 CARTA 01 / 💰 Crédito: R$ … / 💵 Entrada: … / 📆 Prazo: 113 parcelas / 💳 Parcela: … /
+ *  📊 Saldo devedor: … / 🗓 Vencimento: Dezembro / 🤝 Comissão parceiro: …"
+ */
+function lerBlocosRotulados(texto: string): LinhaLida[] | null {
+  if (!/cr[eé]dito\s*:/i.test(texto) || !/entrada\s*:/i.test(texto)) return null;
+  const cabecalho = texto.split(/cr[eé]dito\s*:/i)[0];
+  const tipoGeral = TIPO_AUTO.test(cabecalho) ? "automovel" : "imovel";
+  const admGeral = /racon/i.test(cabecalho) ? "racon" : (cabecalho.match(/\b([A-Za-zÀ-ú]+)\s+CONS[OÓ]RCIO/i)?.[1] ?? "racon").toLowerCase();
+  // Cada bloco começa no "Crédito:" (ou no título "CARTA nn" logo antes).
+  const partes = texto.split(/\n(?=[^\n]*(?:\bCARTA\s*\d+|COTA\s*\d+)[^\n]*\n)|━{3,}|-{5,}|_{5,}/i).filter((b) => /cr[eé]dito\s*:/i.test(b));
+  return partes.map((b) => {
+    const credito = campo(b, "cr[eé]dito");
+    const entrada = campo(b, "entrada");
+    const prazo = campo(b, "prazo");
+    const linhaVenc = b.split(/\r?\n/).find((l) => /venc/i.test(l)) ?? "";
+    const tipo = TIPO_AUTO.test(b) || b.includes("🚗") ? "automovel" : tipoGeral;
+    if (!credito || entrada == null || !prazo) return { cota: null, erro: "Crédito, entrada ou prazo não encontrado.", texto: b.trim() };
+    return {
+      cota: {
+        administradora: admGeral,
+        tipo,
+        credito,
+        entrada_original: entrada,
+        prazo: Math.round(prazo),
+        parcela: campo(b, "parcela") ?? 0,
+        saldo_devedor: campo(b, "saldo") ?? 0,
+        vencimento_mes: mesDoTexto(linhaVenc),
+        comissao_parceiro: campo(b, "comiss") ?? 0,
+        texto_original: b.trim(),
+      } as CotaLida,
+      erro: null,
+      texto: b.trim(),
+    };
+  });
+}
+
 /**
  * Lê o texto colado (linhas da planilha ou mensagens do WhatsApp) e aplica o
  * acréscimo de entrada (percentual do crédito ou valor fixo) em cada cota.
  */
 export function lerCotasTexto(texto: string, acrescimo: Acrescimo | ((tipo: "imovel" | "automovel") => Acrescimo)): LinhaLida[] {
   const agioDe = typeof acrescimo === "function" ? acrescimo : () => acrescimo;
+  const rotulados = lerBlocosRotulados(texto);
   const linhas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const tabela = linhas.map((l) => ({ l, c: lerLinhaTabela(l) }));
   const pareceTabela = tabela.filter((x) => x.c).length >= Math.max(1, Math.ceil(linhas.length / 3));
 
-  const brutas: LinhaLida[] = pareceTabela
+  const brutas: LinhaLida[] = rotulados
+    ? rotulados
+    : pareceTabela
     ? tabela
         .filter((x) => /\d/.test(x.l) && !/cr[eé]dito\s+entrada/i.test(x.l))
         .map((x) => ({ cota: x.c as CotaLida | null, erro: x.c ? null : "Linha sem os valores esperados.", texto: x.l }))

@@ -50,6 +50,34 @@ describe("contempladas motor", () => {
     expect(agruparPeriodos(meses, "ANUAL")[0].rotulo).toBe("2026");
   });
 
+  it("lê a lista do WhatsApp com rótulos (uma carta por bloco)", () => {
+    const t = `🏡 RACON CONSÓRCIOS
+🔥 CARTAS CONTEMPLADAS DE IMÓVEIS
+📅 Vencimentos: dezembro ou janeiro, conforme a carta.
+━━━━━━━━━━━━━━
+🏠 CARTA 01
+💰 Crédito: R$ 311.000,00
+💵 Entrada: R$ 195.300,00
+📆 Prazo: 113 parcelas
+💳 Parcela: R$ 2.002,26
+📊 Saldo devedor: R$ 226.255,38
+🗓 Vencimento: Dezembro
+🤝 Comissão parceiro: R$ 5.000,00
+━━━━━━━━━━━━━━
+🏠 CARTA 02
+💰 Crédito: R$ 219.000,00
+💵 Entrada: R$ 48.000,00
+📆 Prazo: 40 parcelas
+💳 Parcela: R$ 7.186,53
+📊 Saldo devedor: R$ 287.461,20
+🗓 Vencimento: Janeiro
+🤝 Comissão parceiro: R$ 5.000,00`;
+    const r = lerCotasTexto(t, { tipo: "FIXO", valor: 0 });
+    expect(r.length).toBe(2);
+    expect(r[0].cota).toMatchObject({ credito: 311000, entrada: 195300, prazo: 113, parcela: 2002.26, saldo_devedor: 226255.38, vencimento_mes: 12, comissao_parceiro: 5000, tipo: "imovel", administradora: "racon" });
+    expect(r[1].cota).toMatchObject({ credito: 219000, prazo: 40, vencimento_mes: 1 });
+  });
+
   it("lê linhas da planilha e aplica acréscimo", () => {
     const t = "racon\tIMÓVEL\tR$ 311.000,00\tR$ 195.300,00\t113\tR$ 2.002,26\tR$ 226.255,38\tdezembro\tR$ 5.000,00";
     const [l] = lerCotasTexto(t, { tipo: "PERCENTUAL", valor: 1 });
