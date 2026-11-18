@@ -153,6 +153,16 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
 
   return (
     <>
+      {!logado && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#0047bb]/20 bg-white p-4">
+          <p className="text-sm text-slate-600"><b className="text-[#0a2a66]">Quer vender ou anunciar cotas?</b> Peça seu acesso de parceiro.</p>
+          <div className="flex flex-wrap gap-2">
+            <a href="/contempladas/solicitar?tipo=revenda" className="rounded-xl bg-[#0047bb] px-4 py-2 text-sm font-bold text-white">Solicitar acesso de revenda</a>
+            <a href="/contempladas/solicitar?tipo=administrador" className="rounded-xl border border-[#0047bb] px-4 py-2 text-sm font-bold text-[#0047bb]">Solicitar acesso de Administrador de Cotas</a>
+          </div>
+        </div>
+      )}
+
       <section className="mb-6 flex flex-wrap items-end justify-between gap-6">
         <div>
           <h1 className="mb-3 text-2xl font-black uppercase tracking-tight text-[#0a2a66] sm:text-3xl">Qual bem você deseja?</h1>

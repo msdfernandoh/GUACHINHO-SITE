@@ -47,10 +47,10 @@ export async function getAcesso(empresaId: string): Promise<Acesso | null> {
     const { data: vinc } = await db().from("empresa_usuarios").select("usuario_id").eq("empresa_id", empresaId).eq("usuario_id", erp.id).maybeSingle();
     if (vinc || erp.perfil === "master") {
       const papel: Papel = erp.perfil === "master" ? "DONO" : erp.contempladas_pode_enviar || portal?.papel === "GERENTE" ? "GERENTE" : "VENDEDOR";
-      return { papel, authUserId: user.id, nome: erp.nome, email: erp.email, origem: "ERP", adicional, telefone: portal?.telefone ?? (erp as { telefone?: string | null }).telefone ?? null, logoUrl: portal?.logo_url ?? null };
+      return { papel, authUserId: user.id, nome: portal?.nome || erp.nome, email: erp.email, origem: "ERP", adicional, telefone: portal?.telefone ?? (erp as { telefone?: string | null }).telefone ?? null, logoUrl: portal?.logo_url ?? null };
     }
   }
-  if (portal?.ativo) {
+  if (portal?.ativo && (portal.status ?? "ATIVO") === "ATIVO") {
     return { papel: portal.papel, authUserId: user.id, nome: portal.nome, email: portal.email, origem: "PORTAL", adicional, telefone: portal.telefone, logoUrl: portal.logo_url };
   }
   return null;
@@ -86,6 +86,8 @@ export async function criarUsuarioPortal(p: {
   senha: string;
   papel: "GERENTE" | "VENDEDOR";
   criadoPor: string | null;
+  extras?: { administradora?: string | null; cidade?: string | null; empresa?: string | null; cnpj?: string | null; cpf?: string | null; tipo_cadastro?: string | null };
+  pendente?: boolean;
 }) {
   const email = p.email.trim().toLowerCase();
   const { data: criado, error } = await db().auth.admin.createUser({
@@ -106,6 +108,9 @@ export async function criarUsuarioPortal(p: {
     telefone: p.telefone,
     papel: p.papel,
     criado_por: p.criadoPor,
+    ...(p.extras ?? {}),
+    status: p.pendente ? "PENDENTE" : "ATIVO",
+    ativo: !p.pendente,
   });
   if (e2) {
     await db().auth.admin.deleteUser(criado.user.id);
@@ -113,16 +118,33 @@ export async function criarUsuarioPortal(p: {
   }
 }
 
+export type MembroPortal = {
+  id: string;
+  nome: string;
+  email: string;
+  telefone: string | null;
+  papel: "GERENTE" | "VENDEDOR";
+  ativo: boolean;
+  status: "ATIVO" | "PENDENTE" | "RECUSADO";
+  administradora: string | null;
+  cidade: string | null;
+  empresa: string | null;
+  cnpj: string | null;
+  cpf: string | null;
+  tipo_cadastro: string | null;
+  created_at: string;
+};
+
 export async function listarUsuariosPortal(empresaId: string) {
   const { data } = await db()
     .from("contempladas_usuarios")
-    .select("id,nome,email,telefone,papel,ativo,created_at")
+    .select("id,nome,email,telefone,papel,ativo,status,administradora,cidade,empresa,cnpj,cpf,tipo_cadastro,created_at")
     .eq("empresa_id", empresaId)
     .order("nome");
-  return (data ?? []) as { id: string; nome: string; email: string; telefone: string | null; papel: "GERENTE" | "VENDEDOR"; ativo: boolean }[];
+  return (data ?? []) as MembroPortal[];
 }
 
-export async function atualizarUsuarioPortal(empresaId: string, id: string, campos: { ativo?: boolean; papel?: "GERENTE" | "VENDEDOR" }) {
+export async function atualizarUsuarioPortal(empresaId: string, id: string, campos: { ativo?: boolean; papel?: "GERENTE" | "VENDEDOR"; status?: "ATIVO" | "PENDENTE" | "RECUSADO" }) {
   const { error } = await db().from("contempladas_usuarios").update(campos).eq("empresa_id", empresaId).eq("id", id);
   if (error) throw new Error(error.message);
 }
@@ -164,4 +186,77 @@ export async function listarGerentes(empresaId: string) {
     mapa.set(g.auth_user_id, { authUserId: g.auth_user_id, nome: g.nome, unidade: unidade.get(g.auth_user_id) ?? null });
   }
   return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+}
+
+/** Situação do cadastro de quem está logado, para mostrar "aguardando aprovação". */
+export async function situacaoCadastro(empresaId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await db().from("contempladas_usuarios").select("status,ativo,nome").eq("empresa_id", empresaId).eq("auth_user_id", user.id).maybeSingle();
+  return data ? { status: (data.status as string) ?? "ATIVO", ativo: data.ativo as boolean, nome: data.nome as string } : null;
+}
+
+/** Dados do próprio cadastro (Meu perfil). */
+export async function meusDados(empresaId: string, a: Acesso) {
+  const { data } = await db()
+    .from("contempladas_usuarios")
+    .select("nome,email,telefone,administradora,cidade,empresa,cnpj,cpf")
+    .eq("empresa_id", empresaId)
+    .eq("auth_user_id", a.authUserId)
+    .maybeSingle();
+  return {
+    nome: (data?.nome as string) ?? a.nome,
+    email: (data?.email as string) ?? a.email,
+    telefone: (data?.telefone as string) ?? a.telefone,
+    administradora: (data?.administradora as string) ?? null,
+    cidade: (data?.cidade as string) ?? null,
+    empresa: (data?.empresa as string) ?? null,
+    cnpj: (data?.cnpj as string) ?? null,
+    cpf: (data?.cpf as string) ?? null,
+  };
+}
+
+/** Atualiza nome, contato, empresa e, para usuários do portal, e-mail e senha de login. */
+export async function atualizarMeusDados(
+  empresaId: string,
+  a: Acesso,
+  d: { nome: string; email: string; telefone: string | null; administradora: string | null; cidade: string | null; empresa: string | null; cnpj: string | null; cpf: string | null; senha: string | null },
+) {
+  const email = d.email.trim().toLowerCase();
+  if (a.origem === "PORTAL") {
+    const mudarEmail = email && email !== a.email.toLowerCase();
+    if (mudarEmail || d.senha) {
+      const { error } = await db().auth.admin.updateUserById(a.authUserId, {
+        ...(mudarEmail ? { email, email_confirm: true } : {}),
+        ...(d.senha ? { password: d.senha } : {}),
+      });
+      if (error) throw new Error(/already|registered|exists/i.test(error.message) ? "Esse e-mail já está em uso." : error.message);
+    }
+  } else if (d.senha) {
+    // Usuário do ERP: troca a senha do mesmo login; e-mail é alterado no ERP.
+    const { error } = await db().auth.admin.updateUserById(a.authUserId, { password: d.senha });
+    if (error) throw new Error(error.message);
+  }
+  const { error } = await db()
+    .from("contempladas_usuarios")
+    .upsert(
+      {
+        empresa_id: empresaId,
+        auth_user_id: a.authUserId,
+        papel: a.papel === "VENDEDOR" ? "VENDEDOR" : "GERENTE",
+        nome: d.nome.trim(),
+        email: a.origem === "PORTAL" ? email : a.email,
+        telefone: d.telefone,
+        administradora: d.administradora,
+        cidade: d.cidade,
+        empresa: d.empresa,
+        cnpj: d.cnpj,
+        cpf: d.cpf,
+      },
+      { onConflict: "empresa_id,auth_user_id" },
+    );
+  if (error) throw new Error(error.message);
 }

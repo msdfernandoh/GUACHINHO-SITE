@@ -7,6 +7,8 @@ import {
   cadastrarUsuarioAction,
   decidirExclusaoAction,
   decidirReservaAction,
+  decidirSolicitacaoAction,
+  salvarMeusDadosAction,
   solicitarExclusaoAction,
   gerarConviteAction,
   permissaoEnvioAction,
@@ -16,12 +18,18 @@ import {
 } from "@/app/(landing-contempladas)/contempladas/actions";
 import type { ConfigContempladas, CotaPortal } from "@/lib/contempladas/repo";
 import type { Acrescimo } from "@/lib/contempladas/motor";
-import { brl, btnOuro, btnSec, Card, inputCls, MoneyInput, PixInput, Sair, TelInput, mascaraTelefone, type TipoPix } from "./ui";
+import { brl, btnOuro, btnSec, Card, inputCls, MoneyInput, PixInput, Sair, TelInput, mascaraPix, mascaraTelefone, type TipoPix } from "./ui";
 
 type Reserva = { id: string; tipo: "PRE" | "PIX"; nome: string; telefone: string; cotaIds: string[]; expiraEm: string | null; criadaEm: string; valorPix: number | null; comprovanteUrl: string | null };
 type Proposta = { numero: number; cliente: string | null; vendedor: string | null; credito: number; entrada: number; desconto: number; rentabilidade: number; vendida: boolean; criadaEm: string };
-type Membro = { id: string; nome: string; email: string; telefone: string | null; papel: "GERENTE" | "VENDEDOR"; ativo: boolean };
+import type { MembroPortal as Membro } from "@/lib/contempladas/acesso";
+type Dados = { nome: string; email: string; telefone: string | null; administradora: string | null; cidade: string | null; empresa: string | null; cnpj: string | null; cpf: string | null };
 type UsuarioErp = { id: string; nome: string; email: string; perfil: string; contempladas_pode_enviar: boolean };
+const TIPO_TXT: Record<string, string> = {
+  ADMINISTRA: "Vai cadastrar cotas para revenda",
+  ADMINISTRA_E_REVENDE: "Vai revender e cadastrar cotas",
+  REVENDE: "Vai apenas vender",
+};
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const dataHora = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -60,6 +68,8 @@ export function Painel(props: {
   equipe: Membro[];
   usuariosErp: UsuarioErp[];
   vendas: { total: number; noMes: number; creditoTotal: number } | null;
+  dados: Dados;
+  origem: "ERP" | "PORTAL";
 }) {
   const router = useRouter();
   const gerencia = props.papel !== "VENDEDOR";
@@ -68,6 +78,17 @@ export function Painel(props: {
   const [pend, start] = useTransition();
   const [cfg, setCfg] = useState(props.config);
   const [atualizarEntradas, setAtualizarEntradas] = useState(true);
+  const [dados, setDados] = useState({
+    nome: props.dados.nome,
+    email: props.dados.email,
+    telefone: mascaraTelefone(props.dados.telefone ?? ""),
+    senha: "",
+    administradora: props.dados.administradora ?? "",
+    cidade: props.dados.cidade ?? "",
+    empresa: props.dados.empresa ?? "",
+    cnpj: mascaraPix("CNPJ", props.dados.cnpj ?? ""),
+    cpf: mascaraPix("CPF", props.dados.cpf ?? ""),
+  });
   const [mesmoAgio, setMesmoAgio] = useState(
     !props.config || (props.config.agio_tipo === props.config.agio_auto_tipo && props.config.agio_valor === props.config.agio_auto_valor),
   );
@@ -78,6 +99,7 @@ export function Painel(props: {
   const [convite, setConvite] = useState<string | null>(null);
   const porId = new Map(props.cotas.map((c) => [c.id, c]));
   const [filtroCota, setFiltroCota] = useState<"DISPONIVEL" | "RESERVADA" | "VENDIDA" | "TODAS">("DISPONIVEL");
+  const pendentes = props.equipe.filter((m) => m.status === "PENDENTE");
   const pedidos = props.cotas.filter((c) => c.exclusao_solicitada_em && c.status !== "INATIVA");
   const agir = (fn: () => Promise<unknown>, ok?: string) =>
     start(async () => {
@@ -95,7 +117,7 @@ export function Painel(props: {
   const somaAberta = props.propostas.filter((p) => !p.vendida).reduce((s, p) => s + p.rentabilidade, 0);
 
   const abas: [Aba, string][] = gerencia
-    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["equipe", "Equipe"], [ "config", props.papel === "DONO" ? "Configurar" : "Minha unidade"], ["meu", "Meu perfil"]]
+    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["equipe", props.papel === "DONO" && props.equipe.some((m) => m.status === "PENDENTE") ? `Equipe (${props.equipe.filter((m) => m.status === "PENDENTE").length} novos)` : "Equipe"], [ "config", props.papel === "DONO" ? "Configurar" : "Minha unidade"], ["meu", "Meu perfil"]]
     : [["propostas", "Minhas propostas"], ["meu", "Meu perfil"]];
 
   return (
@@ -258,6 +280,35 @@ export function Painel(props: {
       )}
 
       {aba === "meu" && (
+        <Card className="mb-3">
+          <form className="space-y-3" onSubmit={(e) => {
+            e.preventDefault();
+            start(async () => {
+              const r = await salvarMeusDadosAction(dados);
+              setAviso(r.ok ? "✅ Seus dados foram atualizados." : `⚠️ ${r.erro}`);
+              if (r.ok) { setDados({ ...dados, senha: "" }); router.refresh(); }
+            });
+          }}>
+            <p className="font-semibold">Meus dados</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Nome completo<input className={inputCls} value={dados.nome} onChange={(e) => setDados({ ...dados, nome: e.target.value })} /></label>
+              <label className="text-xs font-semibold text-slate-600">E-mail de login
+                <input className={inputCls} type="email" value={dados.email} disabled={props.origem === "ERP"} onChange={(e) => setDados({ ...dados, email: e.target.value })} />
+                {props.origem === "ERP" && <span className="font-normal text-slate-400">Usuário do ERP: o e-mail é alterado no ERP.</span>}
+              </label>
+              <label className="text-xs font-semibold text-slate-600">Nova senha (deixe em branco para manter)<input className={inputCls} type="password" minLength={8} value={dados.senha} onChange={(e) => setDados({ ...dados, senha: e.target.value })} /></label>
+              <label className="text-xs font-semibold text-slate-600">CPF<input className={inputCls} inputMode="numeric" value={dados.cpf} onChange={(e) => setDados({ ...dados, cpf: mascaraPix("CPF", e.target.value) })} /></label>
+              <label className="text-xs font-semibold text-slate-600">Nome da empresa<input className={inputCls} value={dados.empresa} onChange={(e) => setDados({ ...dados, empresa: e.target.value })} /></label>
+              <label className="text-xs font-semibold text-slate-600">CNPJ<input className={inputCls} inputMode="numeric" value={dados.cnpj} onChange={(e) => setDados({ ...dados, cnpj: mascaraPix("CNPJ", e.target.value) })} /></label>
+              <label className="text-xs font-semibold text-slate-600">Administradora<input className={inputCls} value={dados.administradora} onChange={(e) => setDados({ ...dados, administradora: e.target.value })} /></label>
+              <label className="text-xs font-semibold text-slate-600">Cidade<input className={inputCls} value={dados.cidade} onChange={(e) => setDados({ ...dados, cidade: e.target.value })} /></label>
+            </div>
+            <button className={`${btnOuro} w-full`} disabled={pend}>Salvar meus dados</button>
+          </form>
+        </Card>
+      )}
+
+      {aba === "meu" && (
         <Card>
           <form className="space-y-3" onSubmit={(e) => {
             e.preventDefault();
@@ -406,12 +457,32 @@ export function Painel(props: {
               })}>Cadastrar</button>
           </Card>
 
+          {props.papel === "DONO" && pendentes.length > 0 && (
+            <Card className="space-y-2 border-amber-300 bg-amber-50">
+              <p className="font-bold text-amber-900">Solicitações de acesso ({pendentes.length})</p>
+              {pendentes.map((m) => (
+                <div key={m.id} className="rounded-xl bg-white p-3 text-sm">
+                  <p className="font-bold">{m.nome} <span className="font-normal text-slate-500">· {TIPO_TXT[m.tipo_cadastro ?? ""] ?? (m.papel === "GERENTE" ? "Administrador de cotas" : "Revenda")}</span></p>
+                  <p className="text-xs text-slate-600">
+                    {m.email} · {mascaraTelefone(m.telefone ?? "")} · CPF {mascaraPix("CPF", m.cpf ?? "")}
+                    {m.empresa ? ` · ${m.empresa}` : ""}{m.cnpj ? ` (${mascaraPix("CNPJ", m.cnpj)})` : ""}{m.administradora ? ` · ${m.administradora}` : ""}{m.cidade ? ` · ${m.cidade}` : ""}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white" disabled={pend} onClick={() => agir(async () => { const r = await decidirSolicitacaoAction(m.id, true); if (!r.ok) throw new Error(r.erro); }, `✅ ${m.nome} aprovado.`)}>Aprovar</button>
+                    <button className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold" disabled={pend} onClick={() => agir(async () => { const r = await decidirSolicitacaoAction(m.id, false); if (!r.ok) throw new Error(r.erro); })}>Recusar</button>
+                    {m.telefone && <a className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-emerald-700" href={`https://wa.me/55${m.telefone}`} target="_blank" rel="noreferrer">WhatsApp</a>}
+                  </div>
+                </div>
+              ))}
+            </Card>
+          )}
+
           <Card className="space-y-1">
             <p className="mb-1 font-semibold">Usuários do portal</p>
             {!props.equipe.length && <p className="text-sm text-slate-500">Ninguém cadastrado ainda.</p>}
-            {props.equipe.map((m) => (
+            {props.equipe.filter((m) => m.status !== "PENDENTE").map((m) => (
               <div key={m.id} className="flex items-center justify-between gap-2 border-t border-slate-100 py-2">
-                <span className="text-sm"><b>{m.nome}</b><span className="block text-xs text-slate-500">{m.email} · {m.papel === "GERENTE" ? "administrador de cotas" : "revenda"}</span></span>
+                <span className="text-sm"><b>{m.nome}</b><span className="block text-xs text-slate-500">{m.email} · {m.papel === "GERENTE" ? "administrador de cotas" : "revenda"}{m.empresa ? ` · ${m.empresa}` : ""}{m.cidade ? ` · ${m.cidade}` : ""}{m.status === "RECUSADO" ? " · recusado" : ""}</span></span>
                 <div className="flex gap-1">
                   {props.papel === "DONO" && (
                     <button className="rounded-lg bg-slate-100 px-2 py-1 text-xs" disabled={pend} onClick={() => agir(() => atualizarUsuarioAction(m.id, { papel: m.papel === "GERENTE" ? "VENDEDOR" : "GERENTE" }))}>

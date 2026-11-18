@@ -383,3 +383,93 @@ export async function decidirExclusaoAction(cotaId: string, aprovar: boolean) {
     return {};
   });
 }
+
+/* ------------------------- Solicitação de acesso ------------------------- */
+
+const TIPOS_CADASTRO = { ADMINISTRA: "GERENTE", ADMINISTRA_E_REVENDE: "GERENTE", REVENDE: "VENDEDOR" } as const;
+const so = (v: unknown) => String(v ?? "").trim();
+const digitos = (v: unknown) => so(v).replace(/\D/g, "");
+
+/** Cadastro público pelo portal: fica pendente até o dono aprovar. */
+export async function solicitarAcessoAction(p: {
+  tipo: keyof typeof TIPOS_CADASTRO;
+  nome: string;
+  email: string;
+  telefone: string;
+  senha: string;
+  administradora: string;
+  cidade: string;
+  empresa: string;
+  cnpj: string;
+  cpf: string;
+}) {
+  return resultado(async () => {
+    const empresaId = await empresa();
+    const tipo = p.tipo in TIPOS_CADASTRO ? p.tipo : "REVENDE";
+    validarCadastro(p);
+    const cpf = digitos(p.cpf);
+    const cnpj = digitos(p.cnpj);
+    if (cpf.length !== 11) throw new Error("CPF inválido.");
+    if (cnpj && cnpj.length !== 14) throw new Error("CNPJ inválido.");
+    if (digitos(p.telefone).length < 10) throw new Error("Informe o WhatsApp com DDD.");
+    await acesso.criarUsuarioPortal({
+      empresaId,
+      nome: p.nome,
+      email: p.email,
+      telefone: digitos(p.telefone),
+      senha: p.senha,
+      papel: TIPOS_CADASTRO[tipo],
+      criadoPor: null,
+      pendente: true,
+      extras: { administradora: so(p.administradora) || null, cidade: so(p.cidade) || null, empresa: so(p.empresa) || null, cnpj: cnpj || null, cpf, tipo_cadastro: tipo },
+    });
+    return {};
+  });
+}
+
+export async function decidirSolicitacaoAction(id: string, aprovar: boolean) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirGerencia();
+    if (a.papel !== "DONO") throw new Error("Somente o dono do portal aprova cadastros.");
+    await acesso.atualizarUsuarioPortal(empresaId, id, aprovar ? { status: "ATIVO", ativo: true } : { status: "RECUSADO", ativo: false });
+    revalidatePath("/contempladas/painel");
+    return {};
+  });
+}
+
+/** Meu perfil: nome, e-mail, senha, contato e empresa. */
+export async function salvarMeusDadosAction(d: {
+  nome: string;
+  email: string;
+  telefone: string;
+  senha: string;
+  administradora: string;
+  cidade: string;
+  empresa: string;
+  cnpj: string;
+  cpf: string;
+}) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirLogado();
+    if (so(d.nome).length < 3) throw new Error("Informe o nome completo.");
+    if (!/^\S+@\S+\.\S+$/.test(so(d.email))) throw new Error("E-mail inválido.");
+    if (d.senha && d.senha.length < 8) throw new Error("A senha nova precisa ter ao menos 8 caracteres.");
+    const cpf = digitos(d.cpf);
+    const cnpj = digitos(d.cnpj);
+    if (cpf && cpf.length !== 11) throw new Error("CPF inválido.");
+    if (cnpj && cnpj.length !== 14) throw new Error("CNPJ inválido.");
+    await acesso.atualizarMeusDados(empresaId, a, {
+      nome: so(d.nome),
+      email: so(d.email),
+      telefone: digitos(d.telefone) || null,
+      administradora: so(d.administradora) || null,
+      cidade: so(d.cidade) || null,
+      empresa: so(d.empresa) || null,
+      cnpj: cnpj || null,
+      cpf: cpf || null,
+      senha: d.senha || null,
+    });
+    revalidatePath("/contempladas/painel");
+    return {};
+  });
+}
