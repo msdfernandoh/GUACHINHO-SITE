@@ -8,6 +8,10 @@ describe("máscaras", () => {
     expect(mascaraTelefone("6699998888")).toBe("(66) 9999-8888");
     expect(mascaraTelefone("66")).toBe("(66");
   });
+  it("mantém vazio o telefone ausente no pré-cadastro", () => {
+    expect(mascaraTelefone(null)).toBe("");
+    expect(mascaraTelefone(undefined)).toBe("");
+  });
   it("CNPJ e CPF", () => {
     expect(mascaraCnpj("11222333000181999")).toBe("11.222.333/0001-81");
     expect(mascaraCpf("52998224725")).toBe("529.982.247-25");

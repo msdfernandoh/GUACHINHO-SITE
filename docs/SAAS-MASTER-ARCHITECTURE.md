@@ -26,6 +26,11 @@ API: `POST /api/public/spl/evento`. Relatório:
 
 ### Portfólio SPL para imobiliárias e subdomínio spl.* (15/11/2026)
 
+A edição SPL aceita os campos vazios do pré-cadastro. Modelos e percentuais
+estão cadastrados no SPL. Extrato de comissões e cronograma efetivo ainda
+dependem da integração com as previsões e baixas do ERP. Relatório em
+`docs/relatorios-fases/SPL-EDICAO-E-COMISSOES-2026-11-18.md`.
+
 O painel e a edição aceitam os códigos de acesso de 32 caracteres do cadastro
 e os hexadecimais de 64 caracteres do pré-cadastro de evento, com ou sem o nome
 da imobiliária no endereço. Relatório em

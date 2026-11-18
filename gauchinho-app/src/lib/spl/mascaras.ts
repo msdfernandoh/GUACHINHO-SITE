@@ -1,8 +1,8 @@
 const dig = (v: string) => v.replace(/\D/g, "");
 
 /** (66) 99999-9999 ou (66) 9999-9999. */
-export function mascaraTelefone(v: string): string {
-  const d = dig(v).slice(0, 11);
+export function mascaraTelefone(v: string | null | undefined): string {
+  const d = dig(v ?? "").slice(0, 11);
   if (d.length <= 2) return d.length ? `(${d}` : "";
   if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
   if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;

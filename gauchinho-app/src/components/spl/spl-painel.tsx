@@ -313,14 +313,14 @@ function FormEditar({
   const pixTipo = (imob.chave_pix_tipo ?? "") as PixTipo | "";
   const [f, setF] = useState({
     nome: imob.nome,
-    responsavel: imob.responsavel,
+    responsavel: imob.responsavel ?? "",
     telefone: mascaraTelefone(imob.telefone),
-    email: imob.email,
+    email: imob.email ?? "",
     endereco: imob.endereco ?? "",
     cnpj: imob.cnpj ? mascaraCnpj(imob.cnpj) : "",
     chave_pix_tipo: pixTipo,
     chave_pix: imob.chave_pix ? (pixTipo ? mascaraPix(pixTipo, imob.chave_pix) : imob.chave_pix) : "",
-    modelo_parceria: imob.modelo_parceria as ModeloParceria,
+    modelo_parceria: (imob.modelo_parceria ?? "") as ModeloParceria | "",
     quantidade_vendedores: String(imob.quantidade_vendedores ?? 0),
     modelo_vendedores: imob.modelo_vendedores as ModeloVendedoresImob,
   });
