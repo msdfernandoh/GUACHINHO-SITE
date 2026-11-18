@@ -34,6 +34,15 @@ function IconeTipo({ tipo, className = "h-7 w-7" }: { tipo: string; className?: 
   );
 }
 
+function Olho({ aberto }: { aberto: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      {aberto ? <circle cx="12" cy="12" r="3" /> : <path d="M3 3l18 18" />}
+    </svg>
+  );
+}
+
 function Contador({ ate }: { ate: string }) {
   const [agora, setAgora] = useState(() => Date.now());
   useEffect(() => {
@@ -65,7 +74,13 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
   const [credito, setCredito] = useState("");
   const [entrada, setEntrada] = useState("");
   const [pref, setPref] = useState<Preferencia>("MENOR_PARCELA");
-  const [maxCotas, setMaxCotas] = useState(3);
+  const [maxCotas, setMaxCotas] = useState(0);
+  // Olho discreto: esconde a rentabilidade quando o vendedor está na frente do cliente.
+  const [ocultar, setOcultar] = useState(false);
+  useEffect(() => {
+    try { setOcultar(localStorage.getItem("contempladas-ocultar-rent") === "1"); } catch {}
+  }, []);
+  const alternarOculto = () => setOcultar((v) => { try { localStorage.setItem("contempladas-ocultar-rent", v ? "0" : "1"); } catch {} return !v; });
   const [opcoes, setOpcoes] = useState<{ rotulo: string; c: Combinacao }[] | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [sel, setSel] = useState<string[]>([]);
@@ -92,6 +107,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
   const extra = resumo ? extraDe(resumo.credito) : 0;
   const desc = logado ? numBr(desconto) : 0;
   const rentDe = (c: Combinacao, d = 0) => c.comissao + extraDe(c.credito) - d;
+  const verRent = Boolean(logado) && !ocultar;
   const disponiveis = cotas.filter((c) => c.status === "DISPONIVEL" && (tipo === "todos" || c.tipo === tipo));
   const negociando = negociar?.map((id) => porId.get(id)).filter(Boolean) as CotaPortal[] | undefined;
   const unidadeDe = (c: CotaPortal) => unidades[c.dono_auth_id ?? ""] ?? unidades[""];
@@ -178,6 +194,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
           </label>
           <label className="text-xs font-semibold text-slate-600">Juntar até
             <select className={inputCls} value={maxCotas} onChange={(e) => setMaxCotas(Number(e.target.value))}>
+              <option value={0}>Todas</option>
               {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n} {n === 1 ? "cota" : "cotas"}</option>)}
             </select>
           </label>
@@ -196,7 +213,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
                   <p className="text-2xl font-black text-[#0a2a66]">{brl(c.credito)}</p>
                   <p className="text-sm text-slate-700">Entrada {brl(c.entrada + extraDe(c.credito))}</p>
                   <p className="mt-1 text-xs text-slate-500">{c.cotas.length} {c.cotas.length > 1 ? "cotas juntas" : "cota"} · média {brl(c.parcelaMedia)}/mês · até {c.prazoMaximo} meses · saldo {brl(c.saldo)}</p>
-                  {logado && <p className="mt-1 text-xs font-bold text-emerald-700">Sua rentabilidade {brl(rentDe(c))}</p>}
+                  {verRent && <p className="mt-1 text-xs font-bold text-emerald-700">Sua rentabilidade {brl(rentDe(c))}</p>}
                 </button>
               );
             })}
@@ -217,7 +234,13 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
               <th className="p-4 text-center">Parcela</th>
               <th className="p-4">Administradora</th>
               <th className="p-4">Unidade</th>
-              {logado && <th className="p-4 text-right">Rentab.</th>}
+              {logado && (
+                <th className="p-4 text-right">
+                  <button onClick={alternarOculto} className="inline-flex items-center gap-1 opacity-80 hover:opacity-100" title={ocultar ? "Mostrar rentabilidade" : "Ocultar rentabilidade"} aria-label={ocultar ? "Mostrar rentabilidade" : "Ocultar rentabilidade"}>
+                    <Olho aberto={!ocultar} />{!ocultar && "Rentab."}
+                  </button>
+                </th>
+              )}
               <th className="p-4">Situação</th>
               <th className="p-4" />
             </tr>
@@ -236,7 +259,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
                   <td className="p-4 text-center">{c.prazo}x de {brl(c.parcela)}</td>
                   <td className="p-4 capitalize">{c.administradora}</td>
                   <td className="p-4 text-sm text-slate-600">{nomeUnidade(c)}</td>
-                  {logado && <td className="p-4 text-right font-semibold text-emerald-700">{brl(c.comissao_parceiro + extraDe(c.credito))}</td>}
+                  {logado && <td className="p-4 text-right font-semibold text-emerald-700">{ocultar ? <span className="text-slate-300">•••</span> : brl(c.comissao_parceiro + extraDe(c.credito))}</td>}
                   <td className="p-4"><Situacao c={c} /></td>
                   <td className="p-4 text-right">
                     {livre && <button className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700" onClick={() => setNegociar([c.id])}>Negociar</button>}
@@ -251,6 +274,13 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
 
       {/* Cartões (celular) */}
       <div className="space-y-3 lg:hidden">
+        {logado && (
+          <div className="flex justify-end">
+            <button onClick={alternarOculto} className="inline-flex items-center gap-1 text-xs text-slate-400" aria-label={ocultar ? "Mostrar rentabilidade" : "Ocultar rentabilidade"}>
+              <Olho aberto={!ocultar} />
+            </button>
+          </div>
+        )}
         {visiveis.map((c) => {
           const marcada = sel.includes(c.id);
           const livre = c.status === "DISPONIVEL";
@@ -264,7 +294,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
                     <span className="text-[#0a2a66]"><IconeTipo tipo={c.tipo} className="h-6 w-6" /></span>
                   </div>
                   <p className="text-sm text-slate-700">Entrada <b>{brl(c.entrada + extraDe(c.credito))}</b> · {c.prazo}x {brl(c.parcela)}</p>
-                  <p className="text-xs text-slate-500">{c.codigo} · <span className="capitalize">{c.administradora}</span> · {nomeUnidade(c)}{logado ? ` · rentab. ${brl(c.comissao_parceiro + extraDe(c.credito))}` : ""}</p>
+                  <p className="text-xs text-slate-500">{c.codigo} · <span className="capitalize">{c.administradora}</span> · {nomeUnidade(c)}{verRent ? ` · rentab. ${brl(c.comissao_parceiro + extraDe(c.credito))}` : ""}</p>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <Situacao c={c} />
                     {livre && <button className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={() => setNegociar([c.id])}>Negociar</button>}
@@ -286,7 +316,11 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
               <span>Entrada <b>{brl(resumo.entrada + extra - desc)}</b>{desc > 0 && <span className="text-xs text-slate-500"> (−{brl(desc)})</span>}</span>
               <span>Média <b>{brl(resumo.parcelaMedia)}</b>/mês</span>
               <span className="text-slate-500">Saldo {brl(resumo.saldo)}</span>
-              {logado && <span className="font-bold text-emerald-700">Rentabilidade {brl(rentDe(resumo, desc))}</span>}
+              {logado && (
+                <button onClick={alternarOculto} className="inline-flex items-center gap-1 font-bold text-emerald-700" aria-label={ocultar ? "Mostrar rentabilidade" : "Ocultar rentabilidade"}>
+                  <Olho aberto={!ocultar} />{!ocultar && <>Rentabilidade {brl(rentDe(resumo, desc))}</>}
+                </button>
+              )}
               {misturaUnidades && <span className="text-xs font-semibold text-amber-700">Cotas de unidades diferentes: dá para gerar a proposta, mas a reserva é feita com cada unidade.</span>}
             </div>
             <div className="grid gap-2 lg:grid-cols-[1fr_1fr_1fr_auto]">

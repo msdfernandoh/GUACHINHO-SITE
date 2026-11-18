@@ -97,6 +97,42 @@ function combinar(cotas: CotaMotor[], maxCotas: number, entradaMax: number | nul
 }
 
 /**
+ * Sem limite de cotas e com muitas cotas: busca em feixe. A cada nível junta mais
+ * uma cota e guarda só as combinações mais perto do crédito pedido.
+ */
+function combinarFeixe(cotas: CotaMotor[], entradaMax: number | null, teto: number, alvo: number, largura = 400): CotaMotor[][] {
+  const lista = [...cotas].sort((a, b) => a.credito - b.credito);
+  const out: CotaMotor[][] = [];
+  type No = { idx: number[]; credito: number; entrada: number };
+  let nivel: No[] = lista
+    .map((c, i) => ({ idx: [i], credito: c.credito, entrada: c.entrada }))
+    .filter((n) => n.credito <= teto && (entradaMax == null || n.entrada <= entradaMax));
+  while (nivel.length) {
+    for (const n of nivel) out.push(n.idx.map((i) => lista[i]));
+    const prox: No[] = [];
+    const vistos = new Set<string>();
+    for (const n of nivel) {
+      if (n.credito >= alvo) continue; // já passou do pedido: juntar mais só afasta
+      const usados = new Set(n.idx);
+      for (let j = 0; j < lista.length; j++) {
+        if (usados.has(j)) continue;
+        const cr = n.credito + lista[j].credito;
+        const en = n.entrada + lista[j].entrada;
+        if (cr > teto) break;
+        if (entradaMax != null && en > entradaMax) continue;
+        const idx = [...n.idx, j].sort((a, b) => a - b);
+        const k = idx.join(",");
+        if (vistos.has(k)) continue;
+        vistos.add(k);
+        prox.push({ idx, credito: cr, entrada: en });
+      }
+    }
+    nivel = prox.sort((a, b) => Math.abs(a.credito - alvo) - Math.abs(b.credito - alvo)).slice(0, largura);
+  }
+  return out;
+}
+
+/**
  * Procura uma opção um pouco acima e outra um pouco abaixo do crédito pedido,
  * dentro da entrada máxima. Entre opções com crédito quase igual (faixa de 2%),
  * decide pela preferência: menor parcela ou menor prazo.
@@ -111,10 +147,13 @@ export function buscarCombinacoes(cotas: CotaMotor[], p: BuscaParams): Resultado
 }
 
 function buscarDentro(cotas: CotaMotor[], p: BuscaParams): ResultadoBusca {
-  const maxCotas = Math.min(Math.max(p.maxCotas ?? 3, 1), 4);
+  // maxCotas 0 (ou ausente) = sem limite de cotas juntas.
+  const semLimite = !p.maxCotas || p.maxCotas > 4;
+  const maxCotas = semLimite ? cotas.length : Math.max(p.maxCotas!, 1);
   const alvo = Math.max(0, p.credito);
   const faixa = Math.max(alvo * 0.02, 5000);
-  const candidatas = combinar(cotas, maxCotas, p.entradaMax, alvo * 2.5 + faixa).map(resumirCombinacao);
+  const teto = alvo * 2.5 + faixa;
+  const candidatas = (semLimite && cotas.length > 12 ? combinarFeixe(cotas, p.entradaMax, teto, alvo) : combinar(cotas, maxCotas, p.entradaMax, teto)).map(resumirCombinacao);
 
   const escolher = (lista: Combinacao[], dist: (c: Combinacao) => number) => {
     if (!lista.length) return null;

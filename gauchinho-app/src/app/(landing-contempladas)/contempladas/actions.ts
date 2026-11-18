@@ -117,7 +117,7 @@ export async function simularAction(p: { credito: number; entradaMax: number | n
   const entradaMax = p.entradaMax ? Math.max(0, Number(p.entradaMax)) : null;
   const preferencia: Preferencia = p.preferencia === "MENOR_PRAZO" ? "MENOR_PRAZO" : "MENOR_PARCELA";
   await repo.registrarSimulacao(empresaId, credito, entradaMax, preferencia);
-  return buscarCombinacoes(cotas, { credito, entradaMax, preferencia, maxCotas: p.maxCotas ?? 3 });
+  return buscarCombinacoes(cotas, { credito, entradaMax, preferencia, maxCotas: p.maxCotas ?? 0 });
 }
 
 export async function gerarPropostaAction(p: { cotaIds: string[]; modo: string; desconto?: number; clienteNome?: string; clienteTelefone?: string }) {

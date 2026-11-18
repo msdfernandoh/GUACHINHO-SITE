@@ -26,6 +26,13 @@ describe("contempladas motor", () => {
     expect(r.acima?.credito).toBe(925000);
   });
 
+  it("sem limite de cotas junta quantas precisar", () => {
+    const muitas = Array.from({ length: 30 }, (_, i) => cota(`m${i}`, 100000 + i * 1000, 20000, 60, 1500));
+    const r = buscarCombinacoes(muitas, { credito: 3000000, entradaMax: null, preferencia: "MENOR_PARCELA", maxCotas: 0 });
+    expect(r.acima!.cotas.length).toBeGreaterThan(20);
+    expect(Math.abs(r.acima!.credito - 3000000)).toBeLessThan(150000);
+  });
+
   it("respeita a entrada máxima", () => {
     const r = buscarCombinacoes(cotas, { credito: 300000, entradaMax: 50000, preferencia: "MENOR_PRAZO" });
     expect(r.acima).toBeNull();
