@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { configsPorDono, obterProposta } from "@/lib/contempladas/repo";
-import { agruparPeriodos, cronogramaMensal, faixasMensais, resumirCombinacao, rotuloMes } from "@/lib/contempladas/motor";
+import { agruparPeriodos, cronogramaMensal, faixasMensais, pct, resumirCombinacao, rotuloMes, taxaJuncao } from "@/lib/contempladas/motor";
 import { AcoesProposta } from "@/components/contempladas/acoes-proposta";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +43,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const entradaFinal = r.entrada + p.adicional - p.desconto;
   const entradaCota = (credito: number, entrada: number) => entrada + (r.credito ? (p.adicional * credito) / r.credito : 0);
   const meses = cronogramaMensal(p.cotas, new Date(p.criadaEm));
+  const taxa = taxaJuncao(p.cotas, entradaFinal, new Date(p.criadaEm));
   const faixas = faixasMensais(meses);
   const vendidas = p.cotas.filter((c) => c.status === "VENDIDA").length;
   const indisponivel = p.cotas.some((c) => c.status !== "DISPONIVEL");
@@ -111,6 +112,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
             <p className="text-4xl font-black">{brl(r.credito)}</p>
             <p className="text-xs text-white/60">{p.cotas.length} {p.cotas.length > 1 ? "cotas contempladas somadas" : "cota contemplada"}</p>
           </div>
+          {taxa && (
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-200 bg-[#0047bb]/5 px-5 py-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Taxa efetiva da proposta</p>
+              <p className="text-xl font-black text-[#0047bb]">{pct(taxa.mensal)} ao mês · {pct(taxa.anual)} ao ano</p>
+            </div>
+          )}
           <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 sm:grid-cols-4 sm:divide-y-0">
             {[
               ["Entrada", brl(entradaFinal), p.desconto > 0 ? `oportunidade: desconto de ${brl(p.desconto)}` : null],
@@ -209,7 +216,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         )}
 
         <p className="rounded-lg bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-500">
-          Valores informados pela administradora na data desta proposta, sem o reajuste anual das parcelas. A reserva da cota só é garantida após o PIX da entrada e a confirmação da transferência pela administradora. Disponibilidade sujeita a confirmação no momento do fechamento.
+          Valores informados pela administradora na data desta proposta, sem o reajuste anual das parcelas. Taxa efetiva calculada sobre o crédito menos a entrada, frente às parcelas a pagar. A reserva da cota só é garantida após o PIX da entrada e a confirmação da transferência pela administradora. Disponibilidade sujeita a confirmação no momento do fechamento.
         </p>
 
         <section className="break-inside-avoid pt-10">

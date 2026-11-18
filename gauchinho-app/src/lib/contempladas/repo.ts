@@ -17,6 +17,8 @@ export type CotaPortal = CotaMotor & {
   /** Fim da pré-reserva mais recente (relógio de escassez). */
   preReservaAte: string | null;
   comissao_fixada: boolean;
+  /** Taxa de transferência da própria cota (lida no envio); null = padrão da unidade. */
+  transferencia: number | null;
   /** Gerente que subiu a cota (null = dono do portal). */
   dono_auth_id: string | null;
   dono_nome: string | null;
@@ -46,6 +48,11 @@ export type ConfigContempladas = {
   /** Sinal (PIX) que bloqueia a negociação; 0 = entrada inteira. */
   sinal_imovel: number;
   sinal_auto: number;
+  /** Taxa de transferência padrão por cota (quando a cota não traz a dela). */
+  transferencia_imovel: number;
+  transferencia_auto: number;
+  /** Dia de vencimento usado nas mensagens (ex.: 10/12). */
+  dia_vencimento: number;
   /** Nome da unidade do gerente (vazio no padrão da empresa). */
   unidade?: string | null;
 };
@@ -65,6 +72,9 @@ export const CONFIG_PADRAO: ConfigContempladas = {
   agio_auto_valor: 0,
   sinal_imovel: 0,
   sinal_auto: 0,
+  transferencia_imovel: 0,
+  transferencia_auto: 0,
+  dia_vencimento: 10,
 };
 
 const num = (v: unknown) => (v == null ? 0 : Number(v));
@@ -86,6 +96,9 @@ function lerConfig(data: Linha, minutos: number): ConfigContempladas {
     agio_auto_valor: num(data.agio_auto_valor),
     sinal_imovel: num(data.sinal_imovel),
     sinal_auto: num(data.sinal_auto),
+    transferencia_imovel: num(data.transferencia_imovel),
+    transferencia_auto: num(data.transferencia_auto),
+    dia_vencimento: Number(data.dia_vencimento) || 10,
     unidade: (data.unidade as string) ?? null,
   };
 }
@@ -193,6 +206,7 @@ export async function listarCotas(empresaId: string, opts: { incluirVendidas?: b
     vencimento_mes: c.vencimento_mes,
     comissao_parceiro: num(c.comissao_parceiro),
     comissao_fixada: Boolean(c.comissao_fixada),
+    transferencia: c.transferencia == null ? null : num(c.transferencia),
     status: c.status,
     preReservas: contagem.get(c.id) ?? 0,
     preReservaAte: ate.get(c.id) ?? null,

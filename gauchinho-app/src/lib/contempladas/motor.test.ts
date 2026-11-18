@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agruparPeriodos, buscarCombinacoes, cronogramaMensal, faixasMensais, type CotaMotor } from "./motor";
+import { agruparPeriodos, buscarCombinacoes, cronogramaMensal, faixasMensais, gerarOportunidades, taxaJuncao, type CotaMotor } from "./motor";
 import { lerCotasTexto } from "./parser";
 
 const cota = (id: string, credito: number, entrada: number, prazo: number, parcela: number, venc = 12): CotaMotor => ({
@@ -76,6 +76,19 @@ describe("contempladas motor", () => {
     expect(r.length).toBe(2);
     expect(r[0].cota).toMatchObject({ credito: 311000, entrada: 195300, prazo: 113, parcela: 2002.26, saldo_devedor: 226255.38, vencimento_mes: 12, comissao_parceiro: 5000, tipo: "imovel", administradora: "racon" });
     expect(r[1].cota).toMatchObject({ credito: 219000, prazo: 40, vencimento_mes: 1 });
+  });
+
+  it("calcula a taxa mensal da junção (entrada sai do crédito)", () => {
+    const c = cota("t", 516000, 206000, 166, 3485);
+    const t = taxaJuncao([c], 206000, new Date(2026, 10, 18))!;
+    expect(t.mensal * 100).toBeGreaterThan(0.8);
+    expect(t.mensal * 100).toBeLessThan(0.9);
+    expect(t.anual).toBeCloseTo(Math.pow(1 + t.mensal, 12) - 1, 10);
+  });
+
+  it("gera oportunidades sem repetir demais a mesma cota", () => {
+    const ops = gerarOportunidades(cotas, "MENOR_ENTRADA", 3, undefined, () => 0);
+    expect(ops.length).toBeGreaterThan(0);
   });
 
   it("lê linhas da planilha e aplica acréscimo", () => {

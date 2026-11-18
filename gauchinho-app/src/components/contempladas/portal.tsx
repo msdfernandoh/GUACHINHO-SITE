@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { gerarPropostaAction, marcarVendidaAction, simularAction } from "@/app/(landing-contempladas)/contempladas/actions";
-import { resumirCombinacao, valorAcrescimo, type Acrescimo, type Combinacao, type Preferencia } from "@/lib/contempladas/motor";
+import { pct, resumirCombinacao, taxaJuncao, valorAcrescimo, type Acrescimo, type Combinacao, type Preferencia } from "@/lib/contempladas/motor";
 import type { CotaPortal } from "@/lib/contempladas/repo";
 import { brl, btnOuro, btnSec, Card, inputCls, mascaraTelefone, MoneyInput } from "./ui";
 import { Negociar } from "./negociar";
+import { Oportunidades, TextoJuncao } from "./whatsapp-textos";
 import type { ConfigPublica } from "@/lib/contempladas/publico";
 
 const MODOS = [
@@ -63,7 +64,7 @@ function Situacao({ c }: { c: CotaPortal }) {
   return <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Disponível</span>;
 }
 
-export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: { cotas: CotaPortal[]; stats: Stats; logado: string | null; adicional: Acrescimo | null; unidades: Record<string, ConfigPublica>; gerencia: { dono: boolean; authUserId: string } | null }) {
+export function Portal({ cotas, stats, logado, adicional, unidades, gerencia, meuWhatsapp = null }: { cotas: CotaPortal[]; stats: Stats; logado: string | null; adicional: Acrescimo | null; unidades: Record<string, ConfigPublica>; gerencia: { dono: boolean; authUserId: string } | null; meuWhatsapp?: string | null }) {
   const router = useRouter();
   const [tipo, setTipo] = useState<Tipo>("todos");
   const [adm, setAdm] = useState("");
@@ -84,6 +85,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
   const [aviso, setAviso] = useState<string | null>(null);
   const [sel, setSel] = useState<string[]>([]);
   const [negociar, setNegociar] = useState<string[] | null>(null);
+  const [janela, setJanela] = useState<"texto" | "oportunidades" | null>(null);
   const [modo, setModo] = useState("COMPLETA");
   const [desconto, setDesconto] = useState(0);
   const [cliente, setCliente] = useState("");
@@ -120,6 +122,12 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
       setSel((s) => s.filter((x) => x !== c.id));
       router.refresh();
     });
+  };
+  // Taxa efetiva (TIR): cliente recebe crédito − entrada e paga o cronograma de parcelas.
+  const taxaDe = (cs: CotaPortal[], entradaCliente: number) => taxaJuncao(cs, entradaCliente);
+  const taxaTxt = (cs: CotaPortal[], e: number) => {
+    const t = taxaDe(cs, e);
+    return t ? `${pct(t.mensal)} a.m. · ${pct(t.anual)} a.a.` : "—";
   };
   const misturaUnidades = new Set(escolhidas.map((c) => c.dono_auth_id ?? "")).size > 1;
 
@@ -196,7 +204,10 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
 
       <Card className="mb-6 !p-5">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-extrabold text-[#0a2a66]">Simule e junte cartas</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-lg font-extrabold text-[#0a2a66]">Simule e junte cartas</h2>
+            <button className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white" onClick={() => setJanela("oportunidades")}>✨ Gerar oportunidades para WhatsApp</button>
+          </div>
           <p className="text-xs text-slate-500">{disponiveis.length} disponíveis · {stats.simulacoes} simulações · {stats.preReservas} pré-reservas · {stats.reservasPix} em análise</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_160px_auto]">
@@ -233,6 +244,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
                   <p className="text-2xl font-black text-[#0a2a66]">{brl(c.credito)}</p>
                   <p className="text-sm text-slate-700">Entrada {brl(c.entrada + extraDe(c.credito))}</p>
                   <p className="mt-1 text-xs text-slate-500">{c.cotas.length} {c.cotas.length > 1 ? "cotas juntas" : "cota"} · média {brl(c.parcelaMedia)}/mês · até {c.prazoMaximo} meses · saldo {brl(c.saldo)}</p>
+                  <p className="mt-1 text-xs font-bold text-[#0047bb]">Taxa {taxaTxt(c.cotas as CotaPortal[], c.entrada + extraDe(c.credito))}</p>
                   {verRent && <p className="mt-1 text-xs font-bold text-emerald-700">Sua rentabilidade {brl(rentDe(c))}</p>}
                 </button>
               );
@@ -253,6 +265,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
               <th className="p-4 text-right">Entrada<span className="block text-[10px] font-semibold normal-case opacity-80">pago na compra</span></th>
               <th className="p-4 text-center">Parcelas<span className="block text-[10px] font-semibold normal-case opacity-80">prazo × valor</span></th>
               <th className="p-4 text-right">Saldo devedor<span className="block text-[10px] font-semibold normal-case opacity-80">a pagar</span></th>
+              <th className="p-4 text-center">Taxa<span className="block text-[10px] font-semibold normal-case opacity-80">mensal · anual</span></th>
               <th className="p-4 text-center">1º venc.</th>
               <th className="p-4">Administradora<span className="block text-[10px] font-semibold normal-case opacity-80">unidade</span></th>
               {logado && (
@@ -279,6 +292,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
                   <td className="p-4 text-right">{brl(c.entrada + extraDe(c.credito))}</td>
                   <td className="p-4 text-center">{c.prazo}x de {brl(c.parcela)}</td>
                   <td className="p-4 text-right text-slate-700">{brl(c.saldo_devedor)}</td>
+                  <td className="p-4 text-center text-xs font-semibold text-[#0047bb]">{taxaTxt([c], c.entrada + extraDe(c.credito))}</td>
                   <td className="p-4 text-center text-sm capitalize text-slate-600">{c.vencimento_mes ? MES_CURTO[c.vencimento_mes - 1] : "—"}</td>
                   <td className="p-4"><span className="capitalize">{c.administradora}</span><span className="block text-xs text-slate-500">{nomeUnidade(c)}</span></td>
                   {logado && <td className="p-4 text-right font-semibold text-emerald-700">{ocultar ? <span className="text-slate-300">•••</span> : brl(c.comissao_parceiro + extraDe(c.credito))}</td>}
@@ -296,7 +310,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
                 </tr>
               );
             })}
-            {!visiveis.length && <tr><td colSpan={12} className="p-10 text-center text-slate-500">Nenhuma cota com esses filtros.</td></tr>}
+            {!visiveis.length && <tr><td colSpan={13} className="p-10 text-center text-slate-500">Nenhuma cota com esses filtros.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -323,6 +337,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
                     <span className="text-[#0a2a66]"><IconeTipo tipo={c.tipo} className="h-6 w-6" /></span>
                   </div>
                   <p className="text-sm text-slate-700">Entrada <b>{brl(c.entrada + extraDe(c.credito))}</b> · {c.prazo}x {brl(c.parcela)}</p>
+                  <p className="text-xs font-semibold text-[#0047bb]">Taxa {taxaTxt([c], c.entrada + extraDe(c.credito))}</p>
                   <p className="text-xs text-slate-500">Saldo devedor {brl(c.saldo_devedor)}{c.vencimento_mes ? ` · 1º venc. ${MES_CURTO[c.vencimento_mes - 1]}` : ""}</p>
                   {logado && c.status === "VENDIDA" && <p className="text-xs text-slate-500">Vendida {c.vendida_em ? new Date(c.vendida_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : ""}{c.vendedor_nome ? ` · ${c.vendedor_nome}` : ""}{c.dono_nome ? ` · ${c.dono_nome}` : ""}</p>}
                   <p className="text-xs text-slate-500">{c.codigo} · <span className="capitalize">{c.administradora}</span> · {nomeUnidade(c)}{verRent ? ` · rentab. ${brl(c.comissao_parceiro + extraDe(c.credito))}` : ""}</p>
@@ -350,6 +365,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
               <span>Entrada <b>{brl(resumo.entrada + extra - desc)}</b>{desc > 0 && <span className="text-xs text-slate-500"> (−{brl(desc)})</span>}</span>
               <span>Média <b>{brl(resumo.parcelaMedia)}</b>/mês</span>
               <span className="text-slate-500">Saldo {brl(resumo.saldo)}</span>
+              <span className="font-bold text-[#0047bb]">Taxa {taxaTxt(escolhidas, resumo.entrada + extra - desc)}</span>
               {logado && (
                 <button onClick={alternarOculto} className="inline-flex items-center gap-1 font-bold text-emerald-700" aria-label={ocultar ? "Mostrar rentabilidade" : "Ocultar rentabilidade"}>
                   <Olho aberto={!ocultar} />{!ocultar && <>Rentabilidade {brl(rentDe(resumo, desc))}</>}
@@ -372,11 +388,21 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
                 <button className={`${btnSec} !py-2`} onClick={() => setSel([])}>Limpar</button>
                 <button className="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-40" disabled={misturaUnidades}
                   title={misturaUnidades ? "Cotas de unidades diferentes: negocie cada uma separadamente" : undefined} onClick={() => setNegociar(sel)}>Negociar</button>
+                <button className="rounded-xl border border-emerald-600 px-3 py-2 text-sm font-bold text-emerald-700" onClick={() => setJanela("texto")}>Texto WhatsApp</button>
                 <button className={`${btnOuro} !py-2`} disabled={pend} onClick={gerar}>Gerar proposta</button>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {janela === "texto" && escolhidas.length > 0 && (
+        <TextoJuncao cotas={escolhidas} modo={modo} desconto={desc} cliente={cliente} clienteTel={clienteTel}
+          unidadeDe={unidadeDe} entradaDe={(c) => c.entrada + extraDe(c.credito) - (c.cotas.length === escolhidas.length ? desc : 0)} meuWhatsapp={meuWhatsapp} onClose={() => setJanela(null)} />
+      )}
+      {janela === "oportunidades" && (
+        <Oportunidades cotas={disponiveis.filter((c) => !adm || c.administradora === adm)} onSelecionar={setSel}
+          unidadeDe={unidadeDe} entradaDe={(c) => c.entrada + extraDe(c.credito)} meuWhatsapp={meuWhatsapp} onClose={() => setJanela(null)} />
       )}
 
       {negociando && negociando.length > 0 && (

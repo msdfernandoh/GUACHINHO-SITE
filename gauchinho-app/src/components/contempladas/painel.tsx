@@ -383,6 +383,16 @@ export function Painel(props: {
             </div>
           </div>
 
+          <div>
+            <p className="text-sm font-semibold">Mensagens de WhatsApp</p>
+            <p className="mb-1 text-xs text-slate-500">Taxa de transferência padrão por cota (quando a lista não traz) e dia do vencimento.</p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <label className="text-xs text-slate-500">Transferência imóvel<MoneyInput value={cfg.transferencia_imovel} onChange={(v) => setCfg({ ...cfg, transferencia_imovel: v })} /></label>
+              <label className="text-xs text-slate-500">Transferência veículo<MoneyInput value={cfg.transferencia_auto} onChange={(v) => setCfg({ ...cfg, transferencia_auto: v })} /></label>
+              <label className="text-xs text-slate-500">Dia do vencimento<input className={inputCls} type="number" min={1} max={31} value={cfg.dia_vencimento} onChange={(e) => setCfg({ ...cfg, dia_vencimento: Number(e.target.value) })} /></label>
+            </div>
+          </div>
+
           <label className="block text-sm font-semibold">Comissão paga às revendas (todas as cotas)
             <select className={inputCls} value={cfg.comissao_modo} onChange={(e) => setCfg({ ...cfg, comissao_modo: e.target.value as ConfigContempladas["comissao_modo"] })}>
               <option value="TABELA">A comissão de cada cota (tabela)</option>

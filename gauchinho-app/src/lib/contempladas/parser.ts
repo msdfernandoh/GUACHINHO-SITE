@@ -15,6 +15,7 @@ export type CotaLida = {
   saldo_devedor: number;
   vencimento_mes: number | null;
   comissao_parceiro: number;
+  transferencia?: number | null;
   texto_original: string;
 };
 
@@ -111,6 +112,7 @@ function lerBlocosRotulados(texto: string): LinhaLida[] | null {
         saldo_devedor: campo(b, "saldo") ?? 0,
         vencimento_mes: mesDoTexto(linhaVenc),
         comissao_parceiro: campo(b, "comiss") ?? 0,
+        transferencia: campo(b, "transfer"),
         texto_original: b.trim(),
       } as CotaLida,
       erro: null,

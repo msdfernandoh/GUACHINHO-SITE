@@ -228,6 +228,9 @@ export async function salvarConfigAction(c: repo.ConfigContempladas, atualizarEn
       agio_auto_valor: v(c.agio_auto_valor),
       sinal_imovel: v(c.sinal_imovel),
       sinal_auto: v(c.sinal_auto),
+      transferencia_imovel: v(c.transferencia_imovel),
+      transferencia_auto: v(c.transferencia_auto),
+      dia_vencimento: Math.min(31, Math.max(1, Math.round(Number(c.dia_vencimento) || 10))),
       unidade: c.unidade?.trim() || null,
     };
     if (a.papel === "DONO") await repo.salvarConfig(empresaId, limpo);

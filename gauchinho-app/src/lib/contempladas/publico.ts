@@ -10,6 +10,9 @@ export type ConfigPublica = {
   minutos: number;
   sinalImovel: number;
   sinalAuto: number;
+  transferenciaImovel: number;
+  transferenciaAuto: number;
+  diaVencimento: number;
 };
 
 const ROTULO_PIX = { CELULAR: "celular", EMAIL: "e-mail", CPF: "CPF", CNPJ: "CNPJ", ALEATORIA: "aleatória" } as const;
@@ -25,5 +28,8 @@ export function configPublica(cfg: ConfigContempladas, unidade: string | null = 
     minutos: cfg.pre_reserva_minutos,
     sinalImovel: cfg.sinal_imovel,
     sinalAuto: cfg.sinal_auto,
+    transferenciaImovel: cfg.transferencia_imovel,
+    transferenciaAuto: cfg.transferencia_auto,
+    diaVencimento: cfg.dia_vencimento,
   };
 }

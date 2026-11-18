@@ -267,3 +267,84 @@ export function rotuloMes(k: string) {
   const [a, m] = k.split("-").map(Number);
   return `${NOMES_MES[m - 1]}/${String(a).slice(2)}`;
 }
+
+/* ------------------------------ Taxa da junção ------------------------------ */
+
+/**
+ * Custo efetivo da junção: o cliente recebe (crédito − entrada) e paga as parcelas
+ * mês a mês (cronograma de todas as cotas). A taxa mensal é a TIR desse fluxo;
+ * a anual é (1 + mensal)^12 − 1. Retorna null quando não dá para calcular.
+ */
+export function taxaJuncao(cotas: CotaMotor[], entrada: number, hoje: Date = new Date()): { mensal: number; anual: number } | null {
+  const credito = cotas.reduce((s, c) => s + c.credito, 0);
+  const liquido = credito - entrada;
+  const meses = cronogramaMensal(cotas, hoje);
+  if (liquido <= 0 || !meses.length) return null;
+  // Mês 1 = primeiro vencimento; meses sem parcela entre eles contam no tempo.
+  const [a0, m0] = meses[0].mes.split("-").map(Number);
+  const fluxo = meses.map((m) => {
+    const [a, mm] = m.mes.split("-").map(Number);
+    return { t: (a - a0) * 12 + (mm - m0) + 1, v: m.total };
+  });
+  const total = fluxo.reduce((s, f) => s + f.v, 0);
+  if (total <= liquido) return { mensal: 0, anual: 0 };
+  const vp = (i: number) => fluxo.reduce((s, f) => s + f.v / Math.pow(1 + i, f.t), 0);
+  let lo = 0;
+  let hi = 0.2;
+  if (vp(hi) > liquido) return null;
+  for (let k = 0; k < 80; k++) {
+    const mid = (lo + hi) / 2;
+    if (vp(mid) > liquido) lo = mid;
+    else hi = mid;
+  }
+  const mensal = (lo + hi) / 2;
+  return { mensal, anual: Math.pow(1 + mensal, 12) - 1 };
+}
+
+export const pct = (x: number) => `${(x * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+
+/* --------------------------- Oportunidades (junções) --------------------------- */
+
+export type CriterioOportunidade = "MENOR_ENTRADA" | "MENOR_PARCELA" | "MENOR_TAXA";
+
+/**
+ * Gera várias junções boas: combina 1 a 3 cotas, ordena pelo critério e sorteia
+ * entre as melhores, evitando repetir a mesma cota em muitas mensagens.
+ */
+export function gerarOportunidades(
+  cotas: CotaMotor[],
+  criterio: CriterioOportunidade,
+  quantidade = 8,
+  entradaDe: (c: Combinacao) => number = (c) => c.entrada,
+  aleatorio: () => number = Math.random,
+): Combinacao[] {
+  const lista = cotas.slice(0, 80);
+  const combos: CotaMotor[][] = [];
+  for (let i = 0; i < lista.length; i++) {
+    combos.push([lista[i]]);
+    for (let j = i + 1; j < lista.length; j++) {
+      combos.push([lista[i], lista[j]]);
+      if (lista.length <= 40) for (let k = j + 1; k < lista.length; k++) combos.push([lista[i], lista[j], lista[k]]);
+    }
+  }
+  const avaliadas = combos.map((cs) => {
+    const c = resumirCombinacao(cs);
+    const nota =
+      criterio === "MENOR_ENTRADA" ? entradaDe(c) / c.credito
+      : criterio === "MENOR_PARCELA" ? c.parcelaMedia / c.credito
+      : (taxaJuncao(cs, entradaDe(c))?.mensal ?? 1);
+    return { c, nota };
+  });
+  avaliadas.sort((a, b) => a.nota - b.nota);
+  const melhores = avaliadas.slice(0, Math.max(quantidade * 5, 20));
+  const escolhidas: Combinacao[] = [];
+  const uso = new Map<string, number>();
+  while (melhores.length && escolhidas.length < quantidade) {
+    const idx = Math.floor(aleatorio() * Math.min(melhores.length, quantidade * 2));
+    const [{ c }] = melhores.splice(idx, 1);
+    if (c.cotas.some((x) => (uso.get(x.id) ?? 0) >= 2)) continue;
+    c.cotas.forEach((x) => uso.set(x.id, (uso.get(x.id) ?? 0) + 1));
+    escolhidas.push(c);
+  }
+  return escolhidas;
+}

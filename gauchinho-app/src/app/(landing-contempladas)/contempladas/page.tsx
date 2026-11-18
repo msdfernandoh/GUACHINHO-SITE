@@ -37,6 +37,7 @@ export default async function Page() {
       <Portal cotas={lista} stats={stats} logado={a ? a.nome : null}
         adicional={a?.adicional ?? null}
         unidades={unidades}
+        meuWhatsapp={a?.telefone ?? null}
         gerencia={a && (a.papel === "DONO" || a.papel === "GERENTE") ? { dono: a.papel === "DONO", authUserId: a.authUserId } : null}
       />
     </Shell>
