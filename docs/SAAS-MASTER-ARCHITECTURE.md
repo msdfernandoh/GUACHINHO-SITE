@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Consulta de despesas por mês e histórico de pagamentos (18/11/2026)
+
+O Fechamento dos Sócios exibe contas em aberto por mês de vencimento e usa
+a data de pagamento no histórico de despesas pagas. O detalhamento mensal
+usa o mesmo conjunto de contas que o total mensal. O resumo do acerto
+continua limitado ao corte corrente e os períodos lacrados são consultáveis.
+Contas a Pagar oferece o histórico completo ou por mês de pagamento no
+topo da tela. Relatório em
+`docs/relatorios-fases/FECHAMENTO-E-HISTORICO-CONTAS-PAGAS-2026-11-18.md`.
+
 ### Check-in SPL "Pesquisa, Sorteio e Desafio" (16/11/2026)
 - 2026-11-18: WhatsApp templates e envios automáticos (campanhas, automação de novo lead, fila por cron, descadastro); migration 349. Relatório WHATSAPP-TEMPLATES-ENVIOS-2026-11-18.md.
 `eventos.checkin_fluxo` (`padrao` | `spl_imobiliarias`, migration 345) troca o
@@ -1747,6 +1757,13 @@ Novos anexos usam caminho `empresa_id/competencia/uuid_nome`, não sobrescrevem 
 O build de produção e os seis testes contratuais da subfase foram aprovados. Em 26/08/2026, a migration 128 foi aplicada no Supabase Production canônico. O pós-check confirmou bucket privado com limite de 20 MB, quatro políticas tenant-aware e trigger de integridade ativo. Evidências e procedimento estão em `docs/relatorios-fases/FASE-128-HARDENING-CONTAS-PAGAR-PRIVACIDADE-TENANT.md`.
 
 ## 8. Contas recorrentes e duplicação — Migration 129
+
+A seção **Listar fixas mensais** de Contas a Pagar consulta sob demanda as
+séries mensais com lançamentos em aberto da empresa ativa. A consulta usa a
+sessão autenticada, RLS e paginação, e exibe o primeiro vencimento em aberto,
+o valor e a posição desse lançamento em cada série. As duplicações mensais
+são identificadas na lista. Relatório em
+`docs/relatorios-fases/CONTAS-PAGAR-FIXAS-MENSAIS-2026-11-18.md`.
 
 A migration `129_financeiro_contas_recorrentes_duplicacao.sql` introduz séries financeiras tenant-aware e idempotentes. Uma série possui UUID, empresa, tipo, primeiro vencimento, total de ocorrências e usuário responsável. As ocorrências permanecem fatos independentes em `financeiro_contas_pagar`, identificadas por série, índice e total.
 

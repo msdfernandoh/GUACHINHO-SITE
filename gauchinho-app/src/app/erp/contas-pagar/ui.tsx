@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { DuplicidadesPanel } from "./duplicidades-panel";
+import { ProgramacoesMensaisPanel } from "./programacoes-mensais-panel";
+import { resolverIntervaloPeriodo } from "@/lib/erp/conta-corrente-periodos";
 import {
   AlertCircle,
   Banknote,
@@ -455,6 +457,8 @@ export function ContasPagarClient({
     setInicio(`${ano}-${mes}-01`);
     setFim(`${ano}-${mes}-${String(ultimoDia).padStart(2, "0")}`);
     setDataTipo("vencimento");
+    setFiltro("abertas");
+    setOrdenacao("vencimento_asc");
     setCardFiltro(null);
     setPagina(1);
   }
@@ -478,6 +482,23 @@ export function ContasPagarClient({
     setInicio("");
     setFim("");
     setPagina(1);
+  }
+
+  function filtrarPagas(competencia?: string) {
+    const periodo = competencia ? resolverIntervaloPeriodo({ tipoPeriodo: "mes", competencia }) : null;
+    setFiltro("pagas");
+    setDataTipo("pagamento");
+    setInicio(periodo?.dataInicio ?? "");
+    setFim(periodo?.dataFim ?? "");
+    setCardFiltro(null);
+    setBancoFiltro("");
+    setCentroFiltro("");
+    setSocioFiltro("");
+    setBuscaLivre("");
+    setOrdenacao("pagamento_desc");
+    setVisao("despesas");
+    setPagina(1);
+    document.getElementById("lista-despesas")?.scrollIntoView({ block: "start" });
   }
 
   const contasOrdenadas = contas;
@@ -633,6 +654,26 @@ export function ContasPagarClient({
         </div>
       </header>
 
+      <section aria-label="Histórico de contas pagas" className="flex flex-wrap items-end gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+        <button type="button" onClick={() => filtrarPagas()} className="rounded-lg bg-emerald-800 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-900">
+          Pagas desde o início
+        </button>
+        <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => {
+          event.preventDefault();
+          const mes = String(new FormData(event.currentTarget).get("mes") ?? "");
+          if (/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) filtrarPagas(mes);
+        }}>
+          <label className="text-xs font-bold text-emerald-950">
+            Mês do pagamento
+            <Input type="month" name="mes" required className="mt-1 block" />
+          </label>
+          <button type="submit" className="rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm font-bold text-emerald-900 hover:bg-emerald-100">
+            Ver pagas do mês
+          </button>
+        </form>
+      </section>
+
+      <ProgramacoesMensaisPanel refreshKey={refreshKey} />
       <DuplicidadesPanel onDecisao={() => setRefreshKey((atual) => atual + 1)} />
 
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/60 px-4 py-3 shadow-sm">
@@ -1303,7 +1344,7 @@ export function ContasPagarClient({
       </section>
 
       {/* Navegação entre Visualizações (Despesas vs Log de Utilização) */}
-      <div className="flex border-b">
+      <div id="lista-despesas" className="flex scroll-mt-20 border-b">
         <button
           type="button"
           onClick={() => setVisao("despesas")}

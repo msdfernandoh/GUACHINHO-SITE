@@ -58,12 +58,14 @@ function TabelaContas({
   centros = [],
   bancos = [],
   duplicadasIds = [],
+  inicioEdicao,
 }: {
   itens: ContaResumo[];
   vazio: string;
   centros?: PainelFechamento["centrosCusto"];
   bancos?: PainelFechamento["contasEmpresa"];
   duplicadasIds?: string[];
+  inicioEdicao?: string;
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState<ContaResumo | null>(null);
@@ -161,7 +163,7 @@ function TabelaContas({
                       <FileText className="mr-1 inline h-3.5 w-3.5" />
                       Visualizar
                     </button>
-                  ) : (
+                  ) : (!inicioEdicao || item.pagoEm >= inicioEdicao) && (
                     <button
                       type="button"
                       disabled={pendente}
@@ -172,6 +174,7 @@ function TabelaContas({
                       Incluir arquivo
                     </button>
                   )}
+                  {(!inicioEdicao || item.pagoEm >= inicioEdicao) && <>
                   <button
                     type="button"
                     disabled={pendente}
@@ -188,6 +191,7 @@ function TabelaContas({
                   >
                     Excluir
                   </button>
+                  </>}
                 </td>
               </tr>
             ))}
@@ -602,7 +606,9 @@ export function PainelFechamentoSocios({
   const [listaDespesa, setListaDespesa] = useState<string | null>(null);
   const [listaComissao, setListaComissao] = useState<string | null>(null);
   const [resumoAberto, setResumoAberto] = useState<string | null>(null);
-  const todasContas = dados.despesasPorMes.flatMap((mes) => mes.itens);
+  const [mesAbertas, setMesAbertas] = useState(dados.hoje.slice(0, 7));
+  const abertasDoMes = dados.contasAbertas.filter((conta) => conta.vencimento.slice(0, 7) === mesAbertas);
+  const contasDoFechamento = dados.despesasPorMes.flatMap((mes) => mes.itens).filter((item) => item.pagoEm >= dados.inicio);
   const calculo = useMemo(() => {
     try {
       return calcularFechamentoSocios({
@@ -887,8 +893,8 @@ export function PainelFechamentoSocios({
             <TabelaContas
               itens={
                 resumoAberto === "contas"
-                  ? todasContas
-                  : todasContas.filter((item) => item.semSaida)
+                  ? contasDoFechamento
+                  : contasDoFechamento.filter((item) => item.semSaida)
               }
               vazio="Nenhuma conta nesta seleção."
               centros={dados.centrosCusto}
@@ -978,6 +984,39 @@ export function PainelFechamentoSocios({
 
         {aba === "despesas" ? (
           <div className="p-5">
+            <section className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-black text-slate-950">Contas em aberto por vencimento</h3>
+                  <p className="text-sm text-slate-700">O acerto considera despesas pagas no período.</p>
+                </div>
+                <label className="flex flex-wrap items-center gap-2 text-sm font-bold text-slate-700">
+                  Mês de vencimento
+                  <input type="month" value={mesAbertas} onChange={(event) => setMesAbertas(event.target.value)} className="rounded-lg border border-amber-300 bg-white px-2 py-1" />
+                </label>
+              </div>
+              {abertasDoMes.length ? (
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="border-b border-amber-200">
+                      <tr><th scope="col" className="p-2">Vencimento</th><th scope="col" className="p-2">Despesa</th><th scope="col" className="p-2 text-right">Valor</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-amber-200">
+                      {abertasDoMes.map((conta) => (
+                        <tr key={conta.id}>
+                          <td className="whitespace-nowrap p-2">{conta.vencimento.split("-").reverse().join("/")}</td>
+                          <th scope="row" className="p-2 font-medium">{conta.descricao}</th>
+                          <td className="whitespace-nowrap p-2 text-right">{brl(conta.valor)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="border-t border-amber-300 font-bold">
+                      <tr><th scope="row" colSpan={2} className="p-2">Total em aberto</th><td className="p-2 text-right">{brl(abertasDoMes.reduce((total, conta) => total + conta.valor, 0))}</td></tr>
+                    </tfoot>
+                  </table>
+                </div>
+              ) : <p className="mt-3 text-sm text-slate-700">Nenhuma conta em aberto para o mês selecionado.</p>}
+            </section>
             <div className="mb-4 rounded-xl bg-indigo-50 p-3 text-sm text-indigo-950">
               <strong>Como ler:</strong> vermelho significa que o gasto passou
               do teto; amarelo mostra aumento contra o mês anterior. Impostos
@@ -1127,6 +1166,7 @@ export function PainelFechamentoSocios({
                               centros={dados.centrosCusto}
                               bancos={dados.contasEmpresa}
                               duplicadasIds={dados.duplicidades?.contasIds}
+                              inicioEdicao={dados.inicio}
                             />
                             {itens.some((item) => !item.centroId) && (
                               <p className="mt-3 text-xs font-bold text-amber-800">

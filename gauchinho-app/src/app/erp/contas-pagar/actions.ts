@@ -86,6 +86,33 @@ export async function consultarProjecaoCaixa(meses = 12): Promise<ProjecaoCaixaR
   return data as ProjecaoCaixaResult;
 }
 
+export async function consultarProgramacoesMensais(pagina: number) {
+  const { empresaAtiva } = await requireErpRouteAccess("contas-pagar");
+  const session = await createClient();
+  const porPagina = 20;
+  const inicio = (Number.isSafeInteger(pagina) && pagina > 0 ? pagina - 1 : 0) * porPagina;
+  const { data, count, error } = await session
+    .from("financeiro_contas_pagar_series")
+    .select(
+      "id,tipo,total_ocorrencias,contas:financeiro_contas_pagar!financeiro_contas_pagar_serie_recorrencia_id_fkey!inner(id,descricao,valor,vencimento,recorrencia_indice)",
+      { count: "exact" },
+    )
+    .eq("empresa_id", empresaAtiva.id)
+    .eq("intervalo_meses", 1)
+    .in("tipo", ["RECORRENTE", "DUPLICACAO"])
+    .eq("contas.empresa_id", empresaAtiva.id)
+    .eq("contas.status", "aberta")
+    .order("vencimento", { referencedTable: "contas" })
+    .order("id", { referencedTable: "contas" })
+    .limit(1, { referencedTable: "contas" })
+    .order("descricao")
+    .order("id")
+    .range(inicio, inicio + porPagina - 1);
+
+  if (error) throw new Error(error.message);
+  return { series: data, totalPaginas: Math.max(1, Math.ceil((count ?? 0) / porPagina)) };
+}
+
 export async function consultarContasPagar(
   input: ConsultaContasPagarInput = {},
 ): Promise<ConsultaContasPagarResult> {

@@ -15,12 +15,28 @@ import { carregarDuplicidadesEmpresa } from "@/lib/financeiro/contas-duplicadas-
 const numero = (valor: unknown) => Number(valor || 0);
 const arredondar = (valor: number) => Math.round(valor * 100) / 100;
 
+async function lerContasFechamento(admin: ReturnType<typeof createAdminClient>, empresaId: string) {
+  const consultar = () => admin.from("financeiro_contas_pagar")
+    .select("id,descricao,fornecedor,valor,status,pago_em,vencimento,pago_pessoalmente,socio_pagador_usuario_id,observacao,retirar_reserva_impostos,centro_custo_id,conta_bancaria_id,caixa_movimento_id,comprovante_url,nota_fiscal_nome")
+    .eq("empresa_id", empresaId).is("excluida_em", null).in("status", ["aberta", "paga"])
+    .order("id");
+  const contas: NonNullable<Awaited<ReturnType<typeof consultar>>["data"]> = [];
+  const lote = 500;
+  for (let inicio = 0; ; inicio += lote) {
+    const { data, error } = await consultar().range(inicio, inicio + lote - 1);
+    if (error) throw new Error(`Não foi possível consultar as contas do fechamento: ${error.message}`);
+    contas.push(...data);
+    if (data.length < lote) return contas;
+  }
+}
+
 export type PainelFechamento = {
   duplicidades?: { contasIds: string[]; grupos: number };
   inicio: string;
   hoje: string;
   despesasPagas: number;
   quantidadePagas: number;
+  contasAbertas: Array<{ id: string; descricao: string; vencimento: string; valor: number }>;
   despesasEmpresaSemSaida: number;
   quantidadeDespesasSemSaida: number;
   saldoAposDespesasPendentes: number;
@@ -49,11 +65,11 @@ export type PainelFechamento = {
 async function lerPainel(): Promise<PainelFechamento> {
   const { empresaAtiva } = await requireErpRouteAccess("conta-corrente-socios");
   const admin = createAdminClient();
-  const [sociosRes, contasRes, centrosRes, pagamentosRes, participantesRes, recebimentosRes,
+  const [sociosRes, contas, centrosRes, pagamentosRes, participantesRes, recebimentosRes,
     movimentosRes, bancosRes, saldosRes, cortesRes, dadosSocios, ledgerRes, recebimentoItensRes,
     previsoesFranquiaRes, previsoesParticipantesRes, vendasRes, metasRes, duplicidades] = await Promise.all([
     admin.from("empresa_socios").select("id,usuario_id,nome,percentual_participacao,ativo").eq("empresa_id", empresaAtiva.id).eq("ativo", true),
-    admin.from("financeiro_contas_pagar").select("id,descricao,fornecedor,valor,status,pago_em,vencimento,pago_pessoalmente,socio_pagador_usuario_id,observacao,retirar_reserva_impostos,centro_custo_id,conta_bancaria_id,caixa_movimento_id,comprovante_url,nota_fiscal_nome,excluida_em").eq("empresa_id", empresaAtiva.id).is("excluida_em", null),
+    lerContasFechamento(admin, empresaAtiva.id),
     admin.from("financeiro_centros_custo").select("id,nome,descontado_comissao,limite_mensal").eq("empresa_id", empresaAtiva.id),
     admin.from("financeiro_pagamentos").select("id,participante_comercial_id,valor_liquido,data_pagamento,status").eq("empresa_id", empresaAtiva.id),
     admin.from("participantes_comerciais").select("id,usuario_id,nome,status,data_entrada,created_at").eq("empresa_id", empresaAtiva.id),
@@ -71,7 +87,7 @@ async function lerPainel(): Promise<PainelFechamento> {
     admin.from("metas_comerciais").select("indicador,valor_meta,data_inicio,data_fim").eq("empresa_id", empresaAtiva.id).eq("alvo_tipo", "empresa"),
     carregarDuplicidadesEmpresa(admin, empresaAtiva.id),
   ]);
-  const erro = [sociosRes, contasRes, centrosRes, pagamentosRes, participantesRes,
+  const erro = [sociosRes, centrosRes, pagamentosRes, participantesRes,
     recebimentosRes, movimentosRes, bancosRes, saldosRes, cortesRes, ledgerRes, recebimentoItensRes,
     previsoesFranquiaRes, previsoesParticipantesRes, vendasRes, metasRes].find((res) => res.error);
   if (erro?.error) throw new Error(`Não foi possível conferir o fechamento: ${erro.error.message}`);
@@ -80,8 +96,9 @@ async function lerPainel(): Promise<PainelFechamento> {
   const hoje = obterHojeCuiaba();
   const cortes = (cortesRes.data || []) as Array<{ id: string; periodo_inicio: string; periodo_fim: string; created_at: string; demonstrativo: FechamentoCalculado }>;
   const ultimo = cortes[0];
+  const contasPagas = contas.filter((c) => c.status === "paga" && c.pago_em);
   const datas = [
-    ...(contasRes.data || []).filter((c) => c.status === "paga" && c.pago_em).map((c) => c.pago_em!),
+    ...contasPagas.map((c) => c.pago_em!),
     ...(recebimentosRes.data || []).map((r) => r.data_recebimento),
     ...pagamentosConfirmados.map((p) => p.data_pagamento),
     ...(movimentosRes.data || []).map((m) => m.data_movimento),
@@ -89,7 +106,7 @@ async function lerPainel(): Promise<PainelFechamento> {
   const inicioProximo = ultimo ? new Date(Date.parse(`${ultimo.periodo_fim}T12:00:00Z`) + 86400000).toISOString().slice(0, 10) : (datas[0] || hoje);
   const centrosFiscal = new Set((centrosRes.data || []).filter((c) => c.descontado_comissao).map((c) => c.id));
   const centros = new Map((centrosRes.data || []).map((c) => [c.id, { nome: c.nome || "Sem categoria", teto: c.limite_mensal === null ? null : numero(c.limite_mensal) }]));
-  const contasPeriodo = (contasRes.data || []).filter((c) => c.status === "paga" && c.pago_em && c.pago_em >= inicioProximo && c.pago_em <= hoje);
+  const contasPeriodo = contasPagas.filter((c) => c.pago_em! >= inicioProximo && c.pago_em! <= hoje);
   const operacionais = contasPeriodo.filter((c) => !c.retirar_reserva_impostos && !centrosFiscal.has(c.centro_custo_id));
   const impostosPagosDetalhes = contasPeriodo.filter((c) => c.retirar_reserva_impostos).map((conta) => ({
     id: conta.id,
@@ -255,8 +272,9 @@ async function lerPainel(): Promise<PainelFechamento> {
     .filter((movimento) => movimento.data_movimento >= inicioProximo && movimento.data_movimento <= hoje)
     .map((movimento) => ({ id: movimento.id, data: movimento.data_movimento, descricao: movimento.descricao || movimento.categoria.replaceAll("_", " "), categoria: movimento.categoria, tipo: movimento.tipo as "ENTRADA" | "SAIDA", valor: arredondar(numero(movimento.valor)) }))
     .sort((a, b) => a.data.localeCompare(b.data));
+  const historicoOperacional = contasPagas.filter((c) => c.pago_em! <= hoje && !c.retirar_reserva_impostos && !centrosFiscal.has(c.centro_custo_id));
   const porMes = new Map<string, Map<string, { centroId: string | null; gasto: number }>>();
-  for (const conta of (contasRes.data || []).filter((c) => c.status === "paga" && c.pago_em && !c.retirar_reserva_impostos && !centrosFiscal.has(c.centro_custo_id))) {
+  for (const conta of historicoOperacional) {
     const mes = conta.pago_em!.slice(0, 7);
     const categorias = porMes.get(mes) || new Map<string, { centroId: string | null; gasto: number }>();
     const centro = centros.get(conta.centro_custo_id)?.nome || "Sem categoria";
@@ -271,7 +289,7 @@ async function lerPainel(): Promise<PainelFechamento> {
       const anteriorGasto = numero(anterior?.get(nome)?.gasto);
       return { centroId: item.centroId, nome, gasto: arredondar(item.gasto), teto: Array.from(centros.values()).find((c) => c.nome === nome)?.teto ?? null, variacao: indice ? arredondar(item.gasto - anteriorGasto) : null };
     }).sort((a, b) => b.gasto - a.gasto);
-    const itens = operacionais.filter((conta) => conta.pago_em?.slice(0, 7) === mes).map((conta) => ({ id: conta.id, descricao: conta.descricao, fornecedor: conta.fornecedor || null, pagoEm: conta.pago_em!, vencimento: conta.vencimento, centroId: conta.centro_custo_id || null, centroNome: centros.get(conta.centro_custo_id)?.nome || "Sem categoria", contaBancariaId: conta.conta_bancaria_id || null, pagoPessoalmente: conta.pago_pessoalmente, socioPagadorUsuarioId: conta.socio_pagador_usuario_id || null, observacao: conta.observacao || null, comprovanteUrl: conta.comprovante_url || null, comprovanteNome: conta.nota_fiscal_nome || null, valor: arredondar(numero(conta.valor)), semSaida: !conta.pago_pessoalmente && !conta.caixa_movimento_id })).sort((a, b) => a.pagoEm.localeCompare(b.pagoEm) || a.descricao.localeCompare(b.descricao));
+    const itens = historicoOperacional.filter((conta) => conta.pago_em?.slice(0, 7) === mes).map((conta) => ({ id: conta.id, descricao: conta.descricao, fornecedor: conta.fornecedor || null, pagoEm: conta.pago_em!, vencimento: conta.vencimento, centroId: conta.centro_custo_id || null, centroNome: centros.get(conta.centro_custo_id)?.nome || "Sem categoria", contaBancariaId: conta.conta_bancaria_id || null, pagoPessoalmente: conta.pago_pessoalmente, socioPagadorUsuarioId: conta.socio_pagador_usuario_id || null, observacao: conta.observacao || null, comprovanteUrl: conta.comprovante_url || null, comprovanteNome: conta.nota_fiscal_nome || null, valor: arredondar(numero(conta.valor)), semSaida: !conta.pago_pessoalmente && !conta.caixa_movimento_id })).sort((a, b) => a.pagoEm.localeCompare(b.pagoEm) || a.descricao.localeCompare(b.descricao));
     return { mes, total: arredondar(categorias.reduce((soma, categoria) => soma + categoria.gasto, 0)), itens, categorias };
   });
   const mesesComercial = new Set<string>();
@@ -295,6 +313,9 @@ async function lerPainel(): Promise<PainelFechamento> {
     inicio: inicioProximo, hoje,
     despesasPagas: arredondar(operacionais.reduce((soma, c) => soma + numero(c.valor), 0)),
     quantidadePagas: operacionais.length,
+    contasAbertas: contas.filter((conta) => conta.status === "aberta")
+      .map(({ id, descricao, vencimento, valor }) => ({ id, descricao, vencimento, valor: numero(valor) }))
+      .sort((a, b) => a.vencimento.localeCompare(b.vencimento) || a.descricao.localeCompare(b.descricao)),
     despesasEmpresaSemSaida: totalSemSaida,
     quantidadeDespesasSemSaida: despesasEmpresaSemSaida.length,
     saldoAposDespesasPendentes: arredondar(saldoSistemaBanco - totalSemSaida),
