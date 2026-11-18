@@ -6,7 +6,8 @@ import { gerarPropostaAction, simularAction } from "@/app/(landing-contempladas)
 import { resumirCombinacao, valorAcrescimo, type Acrescimo, type Combinacao, type Preferencia } from "@/lib/contempladas/motor";
 import type { CotaPortal } from "@/lib/contempladas/repo";
 import { brl, btnOuro, btnSec, Card, inputCls, mascaraTelefone } from "./ui";
-import { Negociar, type ConfigPublica } from "./negociar";
+import { Negociar } from "./negociar";
+import type { ConfigPublica } from "@/lib/contempladas/publico";
 
 const MODOS = [
   ["COMPLETA", "Completa (mensal, semestral e anual)"],
@@ -55,7 +56,7 @@ function Situacao({ c }: { c: CotaPortal }) {
   return <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Disponível</span>;
 }
 
-export function Portal({ cotas, stats, logado, adicional, cfg }: { cotas: CotaPortal[]; stats: Stats; logado: string | null; adicional: Acrescimo | null; cfg: ConfigPublica }) {
+export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: CotaPortal[]; stats: Stats; logado: string | null; adicional: Acrescimo | null; unidades: Record<string, ConfigPublica> }) {
   const router = useRouter();
   const [tipo, setTipo] = useState<Tipo>("todos");
   const [adm, setAdm] = useState("");
@@ -93,6 +94,9 @@ export function Portal({ cotas, stats, logado, adicional, cfg }: { cotas: CotaPo
   const rentDe = (c: Combinacao, d = 0) => c.comissao + extraDe(c.credito) - d;
   const disponiveis = cotas.filter((c) => c.status === "DISPONIVEL" && (tipo === "todos" || c.tipo === tipo));
   const negociando = negociar?.map((id) => porId.get(id)).filter(Boolean) as CotaPortal[] | undefined;
+  const unidadeDe = (c: CotaPortal) => unidades[c.dono_auth_id ?? ""] ?? unidades[""];
+  const nomeUnidade = (c: CotaPortal) => unidadeDe(c)?.unidade || c.dono_nome || "Racon";
+  const misturaUnidades = new Set(escolhidas.map((c) => c.dono_auth_id ?? "")).size > 1;
 
   const simular = () =>
     start(async () => {
@@ -212,6 +216,7 @@ export function Portal({ cotas, stats, logado, adicional, cfg }: { cotas: CotaPo
               <th className="p-4 text-right">Entrada</th>
               <th className="p-4 text-center">Parcela</th>
               <th className="p-4">Administradora</th>
+              <th className="p-4">Unidade</th>
               {logado && <th className="p-4 text-right">Rentab.</th>}
               <th className="p-4">Situação</th>
               <th className="p-4" />
@@ -230,6 +235,7 @@ export function Portal({ cotas, stats, logado, adicional, cfg }: { cotas: CotaPo
                   <td className="p-4 text-right">{brl(c.entrada + extraDe(c.credito))}</td>
                   <td className="p-4 text-center">{c.prazo}x de {brl(c.parcela)}</td>
                   <td className="p-4 capitalize">{c.administradora}</td>
+                  <td className="p-4 text-sm text-slate-600">{nomeUnidade(c)}</td>
                   {logado && <td className="p-4 text-right font-semibold text-emerald-700">{brl(c.comissao_parceiro + extraDe(c.credito))}</td>}
                   <td className="p-4"><Situacao c={c} /></td>
                   <td className="p-4 text-right">
@@ -238,7 +244,7 @@ export function Portal({ cotas, stats, logado, adicional, cfg }: { cotas: CotaPo
                 </tr>
               );
             })}
-            {!visiveis.length && <tr><td colSpan={10} className="p-10 text-center text-slate-500">Nenhuma cota com esses filtros.</td></tr>}
+            {!visiveis.length && <tr><td colSpan={11} className="p-10 text-center text-slate-500">Nenhuma cota com esses filtros.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -258,7 +264,7 @@ export function Portal({ cotas, stats, logado, adicional, cfg }: { cotas: CotaPo
                     <span className="text-[#0a2a66]"><IconeTipo tipo={c.tipo} className="h-6 w-6" /></span>
                   </div>
                   <p className="text-sm text-slate-700">Entrada <b>{brl(c.entrada + extraDe(c.credito))}</b> · {c.prazo}x {brl(c.parcela)}</p>
-                  <p className="text-xs capitalize text-slate-500">{c.codigo} · {c.administradora}{logado ? ` · rentab. ${brl(c.comissao_parceiro + extraDe(c.credito))}` : ""}</p>
+                  <p className="text-xs text-slate-500">{c.codigo} · <span className="capitalize">{c.administradora}</span> · {nomeUnidade(c)}{logado ? ` · rentab. ${brl(c.comissao_parceiro + extraDe(c.credito))}` : ""}</p>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <Situacao c={c} />
                     {livre && <button className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={() => setNegociar([c.id])}>Negociar</button>}
@@ -281,6 +287,7 @@ export function Portal({ cotas, stats, logado, adicional, cfg }: { cotas: CotaPo
               <span>Média <b>{brl(resumo.parcelaMedia)}</b>/mês</span>
               <span className="text-slate-500">Saldo {brl(resumo.saldo)}</span>
               {logado && <span className="font-bold text-emerald-700">Rentabilidade {brl(rentDe(resumo, desc))}</span>}
+              {misturaUnidades && <span className="text-xs font-semibold text-amber-700">Cotas de unidades diferentes: dá para gerar a proposta, mas a reserva é feita com cada unidade.</span>}
             </div>
             <div className="grid gap-2 lg:grid-cols-[1fr_1fr_1fr_auto]">
               <select className={`${inputCls} !py-2 text-sm`} value={modo} onChange={(e) => setModo(e.target.value)}>
@@ -295,7 +302,8 @@ export function Portal({ cotas, stats, logado, adicional, cfg }: { cotas: CotaPo
               ) : <span className="hidden lg:block" />}
               <div className="flex gap-2">
                 <button className={`${btnSec} !py-2`} onClick={() => setSel([])}>Limpar</button>
-                <button className="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white" onClick={() => setNegociar(sel)}>Negociar</button>
+                <button className="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-40" disabled={misturaUnidades}
+                  title={misturaUnidades ? "Cotas de unidades diferentes: negocie cada uma separadamente" : undefined} onClick={() => setNegociar(sel)}>Negociar</button>
                 <button className={`${btnOuro} !py-2`} disabled={pend} onClick={gerar}>Gerar proposta</button>
               </div>
             </div>
@@ -307,7 +315,7 @@ export function Portal({ cotas, stats, logado, adicional, cfg }: { cotas: CotaPo
         <Negociar
           cotas={negociando}
           entrada={negociando.reduce((s, c) => s + c.entrada, 0) + extraDe(negociando.reduce((s, c) => s + c.credito, 0)) - (negociar === sel ? desc : 0)}
-          cfg={cfg}
+          cfg={unidadeDe(negociando[0])}
           onClose={() => setNegociar(null)}
         />
       )}

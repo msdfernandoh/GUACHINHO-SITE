@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import { getAcesso } from "@/lib/contempladas/acesso";
-import { comissaoVisivel, estatisticas, getConfig, listarCotas } from "@/lib/contempladas/repo";
+import { comissaoVisivel, configsPorDono, estatisticas, listarCotas } from "@/lib/contempladas/repo";
+import { configPublica, type ConfigPublica } from "@/lib/contempladas/publico";
 import { Shell } from "@/components/contempladas/ui";
 import { Portal } from "@/components/contempladas/portal";
 
@@ -16,28 +17,26 @@ export const metadata: Metadata = {
 export default async function Page() {
   const tenant = await getResolvedTenant();
   if (!tenant) notFound();
-  const [cotas, stats, cfg, a] = await Promise.all([
+  const [cotas, stats, cfgs, a] = await Promise.all([
     listarCotas(tenant.empresaId),
     estatisticas(tenant.empresaId),
-    getConfig(tenant.empresaId),
+    configsPorDono(tenant.empresaId),
     getAcesso(tenant.empresaId),
   ]);
   // Comissão só vai para o navegador de quem está logado.
-  const lista = cotas.map((c) => ({ ...c, comissao_parceiro: a ? comissaoVisivel(c, cfg) : 0 }));
+  const lista = cotas.map((c) => ({ ...c, comissao_parceiro: a ? comissaoVisivel(c, cfgs.de(c.dono_auth_id)) : 0 }));
+  // WhatsApp, PIX e sinal de cada unidade dona de cota ("" = padrão da empresa).
+  const unidades: Record<string, ConfigPublica> = {};
+  for (const c of cotas) {
+    const k = c.dono_auth_id ?? "";
+    if (!unidades[k]) unidades[k] = configPublica(cfgs.de(c.dono_auth_id), c.dono_nome);
+  }
+  if (!unidades[""]) unidades[""] = configPublica(cfgs.padrao);
   return (
     <Shell titulo="Cotas Contempladas" sub="Racon · imóveis e automóveis" papel={a?.papel ?? null}>
       <Portal cotas={lista} stats={stats} logado={a ? a.nome : null}
         adicional={a?.adicional ?? null}
-        cfg={{
-          whatsapp: cfg.whatsapp,
-          chavePix:
-            cfg.chave_pix_tipo === "CELULAR" && cfg.chave_pix && /^\d{11}$/.test(cfg.chave_pix.replace(/\D/g, ""))
-              ? cfg.chave_pix.replace(/\D/g, "").replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3")
-              : cfg.chave_pix,
-          tipoPix: { CELULAR: "celular", EMAIL: "e-mail", CPF: "CPF", CNPJ: "CNPJ", ALEATORIA: "aleatória" }[cfg.chave_pix_tipo],
-          favorecido: cfg.favorecido_pix,
-          minutos: cfg.pre_reserva_minutos,
-        }}
+        unidades={unidades}
       />
     </Shell>
   );

@@ -16,6 +16,9 @@ export type CotaPortal = CotaMotor & {
   preReservas: number;
   /** Fim da pré-reserva mais recente (relógio de escassez). */
   preReservaAte: string | null;
+  /** Gerente que subiu a cota (null = dono do portal). */
+  dono_auth_id: string | null;
+  dono_nome: string | null;
 };
 
 export type ConfigContempladas = {
@@ -27,9 +30,17 @@ export type ConfigContempladas = {
   comissao_modo: "TABELA" | "PERCENTUAL";
   comissao_percentual: number;
   comissao_repasse_percentual: number;
-  /** Ágio somado à entrada de toda cota que sobe para o portal. */
+  /** Ágio somado à entrada de toda cota de imóvel que sobe. */
   agio_tipo: "PERCENTUAL" | "FIXO";
   agio_valor: number;
+  /** Ágio das cotas de veículo. */
+  agio_auto_tipo: "PERCENTUAL" | "FIXO";
+  agio_auto_valor: number;
+  /** Sinal (PIX) que bloqueia a negociação; 0 = entrada inteira. */
+  sinal_imovel: number;
+  sinal_auto: number;
+  /** Nome da unidade do gerente (vazio no padrão da empresa). */
+  unidade?: string | null;
 };
 
 export const CONFIG_PADRAO: ConfigContempladas = {
@@ -43,32 +54,75 @@ export const CONFIG_PADRAO: ConfigContempladas = {
   comissao_repasse_percentual: 100,
   agio_tipo: "FIXO",
   agio_valor: 0,
+  agio_auto_tipo: "FIXO",
+  agio_auto_valor: 0,
+  sinal_imovel: 0,
+  sinal_auto: 0,
 };
 
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 
-export async function getConfig(empresaId: string): Promise<ConfigContempladas> {
-  const { data } = await db().from("contempladas_config").select("*").eq("empresa_id", empresaId).maybeSingle();
-  if (!data) return CONFIG_PADRAO;
+type Linha = Record<string, unknown>;
+function lerConfig(data: Linha, minutos: number): ConfigContempladas {
   return {
-    pre_reserva_minutos: data.pre_reserva_minutos,
-    whatsapp: data.whatsapp,
-    chave_pix: data.chave_pix,
-    chave_pix_tipo: data.chave_pix_tipo ?? "CELULAR",
-    favorecido_pix: data.favorecido_pix,
-    comissao_modo: data.comissao_modo,
+    pre_reserva_minutos: minutos,
+    whatsapp: (data.whatsapp as string) ?? null,
+    chave_pix: (data.chave_pix as string) ?? null,
+    chave_pix_tipo: ((data.chave_pix_tipo as string) ?? "CELULAR") as ConfigContempladas["chave_pix_tipo"],
+    favorecido_pix: (data.favorecido_pix as string) ?? null,
+    comissao_modo: data.comissao_modo === "PERCENTUAL" ? "PERCENTUAL" : "TABELA",
     comissao_percentual: num(data.comissao_percentual),
-    comissao_repasse_percentual: num(data.comissao_repasse_percentual),
+    comissao_repasse_percentual: data.comissao_repasse_percentual == null ? 100 : num(data.comissao_repasse_percentual),
     agio_tipo: data.agio_tipo === "PERCENTUAL" ? "PERCENTUAL" : "FIXO",
     agio_valor: num(data.agio_valor),
+    agio_auto_tipo: data.agio_auto_tipo === "PERCENTUAL" ? "PERCENTUAL" : "FIXO",
+    agio_auto_valor: num(data.agio_auto_valor),
+    sinal_imovel: num(data.sinal_imovel),
+    sinal_auto: num(data.sinal_auto),
+    unidade: (data.unidade as string) ?? null,
   };
 }
 
+/** Padrão da empresa (dono do portal e cotas sem gerente). */
+export async function getConfig(empresaId: string): Promise<ConfigContempladas> {
+  const { data } = await db().from("contempladas_config").select("*").eq("empresa_id", empresaId).maybeSingle();
+  if (!data) return CONFIG_PADRAO;
+  return lerConfig(data, data.pre_reserva_minutos);
+}
+
 export async function salvarConfig(empresaId: string, c: ConfigContempladas) {
+  const { unidade: _u, ...resto } = c;
+  void _u;
   const { error } = await db()
     .from("contempladas_config")
-    .upsert({ empresa_id: empresaId, ...c, updated_at: new Date().toISOString() });
+    .upsert({ empresa_id: empresaId, ...resto, updated_at: new Date().toISOString() });
   if (error) throw new Error(`Não foi possível salvar: ${error.message}`);
+}
+
+/** Configuração da unidade de um gerente; sem cadastro próprio, usa o padrão da empresa. */
+export async function getConfigGerente(empresaId: string, authUserId: string | null): Promise<ConfigContempladas> {
+  const padrao = await getConfig(empresaId);
+  if (!authUserId) return padrao;
+  const { data } = await db().from("contempladas_gerente_config").select("*").eq("empresa_id", empresaId).eq("auth_user_id", authUserId).maybeSingle();
+  return data ? lerConfig(data, padrao.pre_reserva_minutos) : { ...padrao, unidade: null };
+}
+
+export async function salvarConfigGerente(empresaId: string, authUserId: string, c: ConfigContempladas) {
+  const { pre_reserva_minutos: _m, ...resto } = c;
+  void _m;
+  const { error } = await db()
+    .from("contempladas_gerente_config")
+    .upsert({ empresa_id: empresaId, auth_user_id: authUserId, ...resto, updated_at: new Date().toISOString() });
+  if (error) throw new Error(`Não foi possível salvar: ${error.message}`);
+}
+
+/** Todas as configurações por dono da cota ("" = padrão da empresa). */
+export async function configsPorDono(empresaId: string) {
+  const padrao = await getConfig(empresaId);
+  const { data } = await db().from("contempladas_gerente_config").select("*").eq("empresa_id", empresaId);
+  const mapa = new Map<string, ConfigContempladas>([["", padrao]]);
+  for (const l of data ?? []) mapa.set(l.auth_user_id as string, lerConfig(l, padrao.pre_reserva_minutos));
+  return { padrao, de: (dono: string | null) => (dono && mapa.get(dono)) || padrao };
 }
 
 /** Comissão que o usuário logado enxerga, conforme a regra do dono do portal. */
@@ -88,7 +142,10 @@ async function expirarPreReservas(empresaId: string) {
     .lt("expira_em", new Date().toISOString());
 }
 
-export async function listarCotas(empresaId: string, opts: { incluirVendidas?: boolean } = {}): Promise<CotaPortal[]> {
+/** Escopo de gerência: undefined = todas (dono do portal); string = só as cotas desse gerente. */
+export type Escopo = string | undefined;
+
+export async function listarCotas(empresaId: string, opts: { incluirVendidas?: boolean; dono?: Escopo } = {}): Promise<CotaPortal[]> {
   await expirarPreReservas(empresaId);
   let q = db()
     .from("contempladas_cotas")
@@ -96,6 +153,7 @@ export async function listarCotas(empresaId: string, opts: { incluirVendidas?: b
     .eq("empresa_id", empresaId)
     .order("credito", { ascending: true });
   q = opts.incluirVendidas ? q.neq("status", "INATIVA") : q.in("status", ["DISPONIVEL", "RESERVADA"]);
+  if (opts.dono) q = q.eq("dono_auth_id", opts.dono);
   const [{ data: cotas }, { data: pres }] = await Promise.all([
     q,
     db().from("contempladas_reservas").select("cota_ids,expira_em").eq("empresa_id", empresaId).eq("tipo", "PRE").eq("status", "ATIVA"),
@@ -124,6 +182,8 @@ export async function listarCotas(empresaId: string, opts: { incluirVendidas?: b
     status: c.status,
     preReservas: contagem.get(c.id) ?? 0,
     preReservaAte: ate.get(c.id) ?? null,
+    dono_auth_id: c.dono_auth_id ?? null,
+    dono_nome: c.dono_nome ?? null,
   }));
 }
 
@@ -149,6 +209,10 @@ export async function importarCotas(params: {
   acrescimo: Acrescimo;
   substituir: boolean;
   texto: string;
+  donoAuthId: string;
+  donoNome: string;
+  /** Dono do portal também substitui as cotas antigas sem gerente. */
+  incluirSemDono: boolean;
 }) {
   const { data: lote, error: loteErr } = await db()
     .from("contempladas_lotes")
@@ -167,11 +231,25 @@ export async function importarCotas(params: {
 
   let anteriores: string[] = [];
   if (params.substituir) {
-    const { data } = await db().from("contempladas_cotas").select("id").eq("empresa_id", params.empresaId).eq("status", "DISPONIVEL");
+    // Substitui só as cotas do próprio gerente.
+    const { data } = await db()
+      .from("contempladas_cotas")
+      .select("id")
+      .eq("empresa_id", params.empresaId)
+      .eq("status", "DISPONIVEL")
+      .or(`dono_auth_id.eq.${params.donoAuthId}${params.incluirSemDono ? ",dono_auth_id.is.null" : ""}`);
     anteriores = (data ?? []).map((c) => c.id);
   }
 
-  const linhas = params.cotas.map((c) => ({ ...c, empresa_id: params.empresaId, lote_id: lote.id, codigo: codigoCota(), status: "DISPONIVEL" }));
+  const linhas = params.cotas.map((c) => ({
+    ...c,
+    empresa_id: params.empresaId,
+    lote_id: lote.id,
+    codigo: codigoCota(),
+    status: "DISPONIVEL",
+    dono_auth_id: params.donoAuthId,
+    dono_nome: params.donoNome,
+  }));
   const { data: ins, error } = await db().from("contempladas_cotas").insert(linhas).select("id");
   if (error) throw new Error(`Não foi possível gravar as cotas: ${error.message}`);
 
@@ -271,11 +349,16 @@ export async function criarReserva(r: {
   propostaId: string | null;
   cotaIds: string[];
   tipo: "PRE" | "PIX";
+  valorPix?: number | null;
   nome: string;
   telefone: string;
   comprovante?: File | null;
   minutos: number;
 }) {
+  const { data: donos } = await db().from("contempladas_cotas").select("dono_auth_id").eq("empresa_id", r.empresaId).in("id", r.cotaIds);
+  const setDonos = new Set((donos ?? []).map((d) => d.dono_auth_id ?? ""));
+  if (setDonos.size > 1) throw new Error("Essas cotas são de unidades diferentes. Negocie cada unidade separadamente.");
+  const donoAuthId = [...setDonos][0] || null;
   if (r.tipo === "PIX") {
     // Bloqueia só se todas ainda estiverem disponíveis.
     const { data: livres } = await db()
@@ -305,6 +388,8 @@ export async function criarReserva(r: {
     telefone: r.telefone,
     comprovante_path: path,
     expira_em: expira,
+    dono_auth_id: donoAuthId,
+    valor_pix: r.tipo === "PIX" ? (r.valorPix ?? null) : null,
   });
   if (error) throw new Error(`Não foi possível reservar: ${error.message}`);
   if (r.tipo === "PIX") {
@@ -318,15 +403,17 @@ export async function criarReserva(r: {
   return { expira };
 }
 
-export async function listarReservas(empresaId: string) {
+export async function listarReservas(empresaId: string, dono?: Escopo) {
   await expirarPreReservas(empresaId);
-  const { data } = await db()
+  let q = db()
     .from("contempladas_reservas")
     .select("*")
     .eq("empresa_id", empresaId)
     .eq("status", "ATIVA")
     .order("created_at", { ascending: false })
     .limit(200);
+  if (dono) q = q.eq("dono_auth_id", dono);
+  const { data } = await q;
   const linhas = data ?? [];
   return Promise.all(
     linhas.map(async (r) => {
@@ -343,26 +430,30 @@ export async function listarReservas(empresaId: string) {
         cotaIds: r.cota_ids as string[],
         expiraEm: r.expira_em as string | null,
         criadaEm: r.created_at as string,
+        valorPix: r.valor_pix == null ? null : num(r.valor_pix),
         comprovanteUrl,
       };
     }),
   );
 }
 
-export async function decidirReserva(empresaId: string, reservaId: string, acao: "VENDIDA" | "CANCELAR") {
+export async function decidirReserva(empresaId: string, reservaId: string, acao: "VENDIDA" | "CANCELAR", dono?: Escopo) {
   const { data: r } = await db().from("contempladas_reservas").select("*").eq("empresa_id", empresaId).eq("id", reservaId).maybeSingle();
   if (!r) throw new Error("Reserva não encontrada.");
+  if (dono && r.dono_auth_id !== dono) throw new Error("Essa reserva é de outra unidade.");
   await db().from("contempladas_reservas").update({ status: acao === "VENDIDA" ? "CONFIRMADA" : "CANCELADA" }).eq("id", reservaId);
   if (acao === "VENDIDA") await mudarStatusCotas(empresaId, r.cota_ids, "VENDIDA");
   else if (r.tipo === "PIX") await mudarStatusCotas(empresaId, r.cota_ids, "DISPONIVEL");
 }
 
-export async function mudarStatusCotas(empresaId: string, ids: string[], status: CotaPortal["status"]) {
-  const { error } = await db()
+export async function mudarStatusCotas(empresaId: string, ids: string[], status: CotaPortal["status"], dono?: Escopo) {
+  let q = db()
     .from("contempladas_cotas")
     .update({ status, updated_at: new Date().toISOString() })
     .eq("empresa_id", empresaId)
     .in("id", ids);
+  if (dono) q = q.eq("dono_auth_id", dono);
+  const { error } = await q;
   if (error) throw new Error(error.message);
 }
 

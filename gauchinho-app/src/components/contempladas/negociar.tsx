@@ -6,14 +6,9 @@ import { reservarAction } from "@/app/(landing-contempladas)/contempladas/action
 import type { CotaPortal } from "@/lib/contempladas/repo";
 import { Relogio } from "./acoes-proposta";
 import { brl, btnOuro, btnSec, TelInput } from "./ui";
+import type { ConfigPublica } from "@/lib/contempladas/publico";
 
-export type ConfigPublica = {
-  whatsapp: string | null;
-  chavePix: string | null;
-  tipoPix: string | null;
-  favorecido: string | null;
-  minutos: number;
-};
+export type { ConfigPublica };
 
 /**
  * Janela de negociação: pré-reserva (só cria escassez, com relógio),
@@ -29,6 +24,10 @@ export function Negociar({ cotas, entrada, cfg, onClose }: { cotas: CotaPortal[]
   const [copiado, setCopiado] = useState(false);
   const [pend, start] = useTransition();
   const credito = cotas.reduce((s, c) => s + c.credito, 0);
+  // Sinal de bloqueio da unidade (por tipo de bem); sem sinal, o PIX é a entrada inteira.
+  const sinal = cotas.reduce((s, c) => s + (c.tipo === "automovel" ? cfg.sinalAuto : cfg.sinalImovel), 0);
+  const usaSinal = cotas.every((c) => (c.tipo === "automovel" ? cfg.sinalAuto : cfg.sinalImovel) > 0);
+  const valorPix = usaSinal ? sinal : entrada;
   const resumo = `${cotas.length} cota(s) ${cotas.map((c) => c.codigo).join(", ")} · crédito ${brl(credito)} · entrada ${brl(entrada)}`;
   const wa = cfg.whatsapp ? `https://wa.me/55${cfg.whatsapp}?text=${encodeURIComponent(`Olá! Quero negociar: ${resumo}`)}` : null;
 
@@ -40,6 +39,7 @@ export function Negociar({ cotas, entrada, cfg, onClose }: { cotas: CotaPortal[]
             <p className="text-xs font-bold uppercase tracking-wide text-[#0047bb]">Negociar</p>
             <p className="text-2xl font-black text-[#0a2a66]">{brl(credito)}</p>
             <p className="text-sm text-slate-500">Entrada {brl(entrada)} · {cotas.map((c) => c.codigo).join(" + ")}</p>
+            {cfg.unidade && <p className="mt-1 inline-block rounded-full bg-[#0047bb]/10 px-2.5 py-0.5 text-xs font-bold text-[#0047bb]">Cota da unidade {cfg.unidade}</p>}
           </div>
           <button className="rounded-full px-3 py-1 text-2xl text-slate-400 hover:bg-slate-100" onClick={onClose} aria-label="Fechar">×</button>
         </div>
@@ -48,7 +48,7 @@ export function Negociar({ cotas, entrada, cfg, onClose }: { cotas: CotaPortal[]
           <div className="rounded-2xl bg-amber-50 p-5 text-center">
             <p className="text-3xl">⏳</p>
             <p className="text-lg font-bold text-amber-800">Comprovante em análise</p>
-            <p className="text-sm text-amber-800/80">A cota ficou bloqueada para você até a confirmação. Avisaremos pelo WhatsApp.</p>
+            <p className="text-sm text-amber-800/80">A cota ficou bloqueada para você até a confirmação{cfg.unidade ? ` da unidade ${cfg.unidade}` : ""}. Avisaremos pelo WhatsApp.</p>
           </div>
         ) : expira ? (
           <div className="rounded-2xl bg-[#0047bb]/5 p-5 text-center">
@@ -82,8 +82,9 @@ export function Negociar({ cotas, entrada, cfg, onClose }: { cotas: CotaPortal[]
             >
               {aba === "PIX" ? (
                 <div className="space-y-2 rounded-2xl border border-slate-200 p-4 text-sm">
-                  <p className="text-slate-500">Valor da entrada</p>
-                  <p className="text-2xl font-black text-[#0a2a66]">{brl(entrada)}</p>
+                  <p className="text-slate-500">{usaSinal ? "Sinal para bloquear a cota" : "Valor da entrada"}</p>
+                  <p className="text-2xl font-black text-[#0a2a66]">{brl(valorPix)}</p>
+                  {usaSinal && <p className="text-xs text-slate-500">O restante da entrada ({brl(Math.max(0, entrada - valorPix))}) é pago no fechamento.</p>}
                   {cfg.chavePix ? (
                     <>
                       <p className="pt-1 text-slate-500">Chave PIX{cfg.tipoPix ? ` (${cfg.tipoPix})` : ""}</p>
@@ -116,7 +117,7 @@ export function Negociar({ cotas, entrada, cfg, onClose }: { cotas: CotaPortal[]
           </>
         )}
 
-        {wa && <a className={`${btnSec} mt-3 block text-center !text-emerald-700`} href={wa} target="_blank" rel="noreferrer">💬 Falar no WhatsApp</a>}
+        {wa && <a className={`${btnSec} mt-3 block text-center !text-emerald-700`} href={wa} target="_blank" rel="noreferrer">💬 Falar no WhatsApp{cfg.unidade ? ` com ${cfg.unidade}` : ""}</a>}
       </div>
     </div>
   );

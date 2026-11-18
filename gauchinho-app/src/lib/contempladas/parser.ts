@@ -79,7 +79,8 @@ function lerBlocoWhatsApp(bloco: string): Omit<CotaLida, "entrada_acrescimo" | "
  * Lê o texto colado (linhas da planilha ou mensagens do WhatsApp) e aplica o
  * acréscimo de entrada (percentual do crédito ou valor fixo) em cada cota.
  */
-export function lerCotasTexto(texto: string, acrescimo: Acrescimo): LinhaLida[] {
+export function lerCotasTexto(texto: string, acrescimo: Acrescimo | ((tipo: "imovel" | "automovel") => Acrescimo)): LinhaLida[] {
+  const agioDe = typeof acrescimo === "function" ? acrescimo : () => acrescimo;
   const linhas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const tabela = linhas.map((l) => ({ l, c: lerLinhaTabela(l) }));
   const pareceTabela = tabela.filter((x) => x.c).length >= Math.max(1, Math.ceil(linhas.length / 3));
@@ -95,7 +96,7 @@ export function lerCotasTexto(texto: string, acrescimo: Acrescimo): LinhaLida[] 
 
   return brutas.map((x) => {
     if (!x.cota) return x;
-    const extra = valorAcrescimo(x.cota.credito, acrescimo);
+    const extra = valorAcrescimo(x.cota.credito, agioDe(x.cota.tipo));
     return {
       ...x,
       cota: { ...x.cota, entrada_acrescimo: extra, entrada: Math.round((x.cota.entrada_original + extra) * 100) / 100 },

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
-import { getConfig, obterProposta } from "@/lib/contempladas/repo";
+import { configsPorDono, obterProposta } from "@/lib/contempladas/repo";
 import { agruparPeriodos, cronogramaMensal, faixasMensais, resumirCombinacao, rotuloMes } from "@/lib/contempladas/motor";
 import { AcoesProposta } from "@/components/contempladas/acoes-proposta";
 
@@ -32,8 +32,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   if (!tenant) notFound();
   const { numero } = await params;
   const { modo: modoQuery } = await searchParams;
-  const [p, cfg] = await Promise.all([obterProposta(tenant.empresaId, Number(numero)), getConfig(tenant.empresaId)]);
+  const [p, cfgs] = await Promise.all([obterProposta(tenant.empresaId, Number(numero)), configsPorDono(tenant.empresaId)]);
   if (!p) notFound();
+  // PIX e WhatsApp da unidade dona da cota.
+  const cfg = cfgs.de(p.cotas[0]?.dono_auth_id ?? null);
 
   const modo = modoQuery && MODOS.includes(modoQuery.toUpperCase()) ? modoQuery.toUpperCase() : p.modo;
   const r = resumirCombinacao(p.cotas);

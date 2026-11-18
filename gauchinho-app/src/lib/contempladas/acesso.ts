@@ -145,3 +145,23 @@ export async function lerConvite(empresaId: string, token: string) {
 export async function usarConvite(token: string, usos: number) {
   await db().from("contempladas_convites").update({ usos: usos + 1 }).eq("token", token);
 }
+
+/** Gerentes que podem ser donos de cotas (portal e ERP com autorização), com o nome da unidade. */
+export async function listarGerentes(empresaId: string) {
+  const [{ data: portal }, { data: vinc }, { data: cfgs }] = await Promise.all([
+    db().from("contempladas_usuarios").select("auth_user_id,nome").eq("empresa_id", empresaId).eq("papel", "GERENTE").eq("ativo", true),
+    db().from("empresa_usuarios").select("usuario_id").eq("empresa_id", empresaId),
+    db().from("contempladas_gerente_config").select("auth_user_id,unidade").eq("empresa_id", empresaId),
+  ]);
+  const ids = (vinc ?? []).map((v) => v.usuario_id as string);
+  const { data: erp } = ids.length
+    ? await db().from("usuarios").select("auth_user_id,nome").in("id", ids).eq("ativo", true).eq("contempladas_pode_enviar", true).neq("perfil", "master")
+    : { data: [] };
+  const unidade = new Map((cfgs ?? []).map((c) => [c.auth_user_id as string, c.unidade as string | null]));
+  const mapa = new Map<string, { authUserId: string; nome: string; unidade: string | null }>();
+  for (const g of [...(portal ?? []), ...(erp ?? [])]) {
+    if (!g.auth_user_id) continue;
+    mapa.set(g.auth_user_id, { authUserId: g.auth_user_id, nome: g.nome, unidade: unidade.get(g.auth_user_id) ?? null });
+  }
+  return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+}

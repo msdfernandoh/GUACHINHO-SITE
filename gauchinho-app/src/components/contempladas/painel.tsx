@@ -16,7 +16,7 @@ import type { ConfigContempladas, CotaPortal } from "@/lib/contempladas/repo";
 import type { Acrescimo } from "@/lib/contempladas/motor";
 import { brl, btnOuro, btnSec, Card, inputCls, PixInput, Sair, TelInput, mascaraTelefone, type TipoPix } from "./ui";
 
-type Reserva = { id: string; tipo: "PRE" | "PIX"; nome: string; telefone: string; cotaIds: string[]; expiraEm: string | null; criadaEm: string; comprovanteUrl: string | null };
+type Reserva = { id: string; tipo: "PRE" | "PIX"; nome: string; telefone: string; cotaIds: string[]; expiraEm: string | null; criadaEm: string; valorPix: number | null; comprovanteUrl: string | null };
 type Proposta = { numero: number; cliente: string | null; vendedor: string | null; credito: number; entrada: number; desconto: number; rentabilidade: number; vendida: boolean; criadaEm: string };
 type Membro = { id: string; nome: string; email: string; telefone: string | null; papel: "GERENTE" | "VENDEDOR"; ativo: boolean };
 type UsuarioErp = { id: string; nome: string; email: string; perfil: string; contempladas_pode_enviar: boolean };
@@ -53,6 +53,9 @@ export function Painel(props: {
   const [busca, setBusca] = useState("");
   const [pend, start] = useTransition();
   const [cfg, setCfg] = useState(props.config);
+  const [mesmoAgio, setMesmoAgio] = useState(
+    !props.config || (props.config.agio_tipo === props.config.agio_auto_tipo && props.config.agio_valor === props.config.agio_auto_valor),
+  );
   const [adicional, setAdicional] = useState(props.adicional);
   const [tel, setTel] = useState(mascaraTelefone(props.telefone ?? ""));
   const [aviso, setAviso] = useState<string | null>(null);
@@ -75,7 +78,7 @@ export function Painel(props: {
   const somaAberta = props.propostas.filter((p) => !p.vendida).reduce((s, p) => s + p.rentabilidade, 0);
 
   const abas: [Aba, string][] = gerencia
-    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["equipe", "Equipe"], ["config", "Configurar"], ["meu", "Meu perfil"]]
+    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["equipe", "Equipe"], [ "config", props.papel === "DONO" ? "Configurar" : "Minha unidade"], ["meu", "Meu perfil"]]
     : [["propostas", "Minhas propostas"], ["meu", "Meu perfil"]];
 
   return (
@@ -118,6 +121,7 @@ export function Painel(props: {
                   {r.expiraEm && <p className="text-right text-xs text-slate-500">expira<br />{new Date(r.expiraEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>}
                 </div>
                 <p className="mt-2 text-sm">{cs.map((c) => `${c.codigo} ${brl(c.credito)}`).join(" + ")}</p>
+                {r.valorPix != null && <p className="text-sm">PIX esperado: <b>{brl(r.valorPix)}</b></p>}
                 {r.comprovanteUrl && <a className="mt-1 inline-block text-sm text-[#0047bb] underline" href={r.comprovanteUrl} target="_blank" rel="noreferrer">Ver comprovante</a>}
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <button disabled={pend} className="rounded-xl bg-emerald-500 py-3 font-bold text-white" onClick={() => agir(() => decidirReservaAction(r.id, "VENDIDA"))}>✔ Vendida</button>
@@ -211,13 +215,42 @@ export function Painel(props: {
       )}
 
       {aba === "config" && gerencia && cfg && (
-        <Card className="space-y-3">
+        <Card className="space-y-4">
+          <p className="text-sm text-slate-500">
+            {props.papel === "DONO"
+              ? "Padrão da empresa: vale para as suas cotas e para gerentes que ainda não configuraram a unidade."
+              : "Configuração da sua unidade: vale só para as cotas que você sobe."}
+          </p>
+          <label className="block text-sm font-semibold">Nome da unidade (aparece para o cliente)
+            <input className={inputCls} value={cfg.unidade ?? ""} onChange={(e) => setCfg({ ...cfg, unidade: e.target.value })} placeholder="Ex.: Racon Sorriso" />
+          </label>
+
           <div>
-            <p className="text-sm font-semibold">Ágio padrão na subida das cotas</p>
-            <p className="mb-1 text-xs text-slate-500">Somado à entrada de toda cota enviada (pode ser trocado no envio).</p>
-            <SeletorValor valor={{ tipo: cfg.agio_tipo, valor: cfg.agio_valor }} onChange={(v) => setCfg({ ...cfg, agio_tipo: v.tipo, agio_valor: v.valor })} />
+            <p className="text-sm font-semibold">Ágio na subida das cotas</p>
+            <label className="my-1 flex items-center gap-2 text-xs text-slate-600">
+              <input type="checkbox" className="h-4 w-4 accent-[#0047bb]" checked={mesmoAgio}
+                onChange={(e) => { setMesmoAgio(e.target.checked); if (e.target.checked) setCfg({ ...cfg, agio_auto_tipo: cfg.agio_tipo, agio_auto_valor: cfg.agio_valor }); }} />
+              Mesmo ágio para imóvel e veículo
+            </label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div><p className="mb-1 text-xs text-slate-500">{mesmoAgio ? "Imóvel e veículo" : "Imóvel"}</p>
+                <SeletorValor valor={{ tipo: cfg.agio_tipo, valor: cfg.agio_valor }}
+                  onChange={(v) => setCfg({ ...cfg, agio_tipo: v.tipo, agio_valor: v.valor, ...(mesmoAgio ? { agio_auto_tipo: v.tipo, agio_auto_valor: v.valor } : {}) })} /></div>
+              {!mesmoAgio && <div><p className="mb-1 text-xs text-slate-500">Veículo</p>
+                <SeletorValor valor={{ tipo: cfg.agio_auto_tipo, valor: cfg.agio_auto_valor }} onChange={(v) => setCfg({ ...cfg, agio_auto_tipo: v.tipo, agio_auto_valor: v.valor })} /></div>}
+            </div>
           </div>
-          <label className="block text-sm">Comissão paga ao vendedor
+
+          <div>
+            <p className="text-sm font-semibold">Sinal para bloquear a negociação (opcional)</p>
+            <p className="mb-1 text-xs text-slate-500">PIX que o cliente paga para travar a cota. Em branco ou zero: o PIX é a entrada inteira.</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="text-xs text-slate-500">Imóvel (R$)<input className={inputCls} type="number" min={0} step="0.01" value={cfg.sinal_imovel || ""} onChange={(e) => setCfg({ ...cfg, sinal_imovel: Number(e.target.value) })} /></label>
+              <label className="text-xs text-slate-500">Veículo (R$)<input className={inputCls} type="number" min={0} step="0.01" value={cfg.sinal_auto || ""} onChange={(e) => setCfg({ ...cfg, sinal_auto: Number(e.target.value) })} /></label>
+            </div>
+          </div>
+
+          <label className="block text-sm font-semibold">Comissão paga ao vendedor
             <select className={inputCls} value={cfg.comissao_modo} onChange={(e) => setCfg({ ...cfg, comissao_modo: e.target.value as ConfigContempladas["comissao_modo"] })}>
               <option value="TABELA">A comissão de cada cota (tabela)</option>
               <option value="PERCENTUAL">Percentual sobre o crédito</option>
@@ -229,16 +262,18 @@ export function Painel(props: {
             )}
             <label className="block text-sm">Repasse ao vendedor (%)<input className={inputCls} type="number" value={cfg.comissao_repasse_percentual} onChange={(e) => setCfg({ ...cfg, comissao_repasse_percentual: Number(e.target.value) })} /></label>
           </div>
-          <label className="block text-sm">WhatsApp de reservas
+          <label className="block text-sm font-semibold">WhatsApp de reservas da unidade
             <TelInput value={mascaraTelefone(cfg.whatsapp ?? "")} onChange={(v) => setCfg({ ...cfg, whatsapp: v })} />
           </label>
-          <div className="block text-sm">Chave PIX
+          <div className="block text-sm font-semibold">Chave PIX da unidade
             <PixInput tipo={cfg.chave_pix_tipo as TipoPix} valor={cfg.chave_pix ?? ""} onChange={(t, v) => setCfg({ ...cfg, chave_pix_tipo: t, chave_pix: v })} />
           </div>
-          <label className="block text-sm">Favorecido (nome que aparece no PIX)<input className={inputCls} value={cfg.favorecido_pix ?? ""} onChange={(e) => setCfg({ ...cfg, favorecido_pix: e.target.value })} /></label>
-          <label className="block text-sm">Tempo da pré-reserva (minutos)
-            <input className={inputCls} type="number" min={5} value={cfg.pre_reserva_minutos} onChange={(e) => setCfg({ ...cfg, pre_reserva_minutos: Number(e.target.value) })} />
-          </label>
+          <label className="block text-sm font-semibold">Favorecido (nome que aparece no PIX)<input className={inputCls} value={cfg.favorecido_pix ?? ""} onChange={(e) => setCfg({ ...cfg, favorecido_pix: e.target.value })} /></label>
+          {props.papel === "DONO" && (
+            <label className="block text-sm font-semibold">Tempo da pré-reserva (minutos, vale para todas as unidades)
+              <input className={inputCls} type="number" min={5} value={cfg.pre_reserva_minutos} onChange={(e) => setCfg({ ...cfg, pre_reserva_minutos: Number(e.target.value) })} />
+            </label>
+          )}
           <button className={`${btnOuro} w-full`} disabled={pend} onClick={() => agir(async () => { const r = await salvarConfigAction(cfg); if (!r.ok) throw new Error(r.erro); }, "✅ Configuração salva.")}>Salvar</button>
         </Card>
       )}

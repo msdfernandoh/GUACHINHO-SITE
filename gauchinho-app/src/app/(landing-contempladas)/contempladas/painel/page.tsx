@@ -21,10 +21,12 @@ export default async function Page() {
     );
   const gerencia = podeGerenciar(a);
   const empresaId = tenant.empresaId;
+  // Gerente vê só as cotas e reservas da unidade dele; o dono vê todas.
+  const meuEscopo = a.papel === "DONO" ? undefined : a.authUserId;
   const [reservas, cotas, cfg, stats, propostas, equipe, usuariosErp] = await Promise.all([
-    gerencia ? repo.listarReservas(empresaId) : Promise.resolve([]),
-    gerencia ? repo.listarCotas(empresaId, { incluirVendidas: true }) : Promise.resolve([]),
-    repo.getConfig(empresaId),
+    gerencia ? repo.listarReservas(empresaId, meuEscopo) : Promise.resolve([]),
+    gerencia ? repo.listarCotas(empresaId, { incluirVendidas: true, dono: meuEscopo }) : Promise.resolve([]),
+    a.papel === "DONO" ? repo.getConfig(empresaId) : repo.getConfigGerente(empresaId, a.authUserId),
     repo.estatisticas(empresaId),
     repo.listarPropostasVendedor(empresaId, gerencia ? null : a.authUserId),
     gerencia ? listarUsuariosPortal(empresaId) : Promise.resolve([]),
