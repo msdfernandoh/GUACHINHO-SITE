@@ -25,7 +25,8 @@ export function mensagemWhatsApp(c: Combinacao, o: OpcoesMensagem, hoje: Date = 
   const venc = mesVenc ? `${String(o.diaVencimento).padStart(2, "0")}/${String(mesVenc).padStart(2, "0")}` : "a combinar";
   const juncao = cotas.length > 1 ? `\n🧩 Junção de ${cotas.length} cartas` : "";
   const prazo = `${c.prazoMaximo} × ${brl0(c.parcelaMedia)}`;
-  const linhas: string[] = [];
+  // Códigos das cotas no topo: o cliente responde e você já sabe quais são.
+  const linhas: string[] = [`🔖 ${cotas.length > 1 ? "Cotas" : "Cota"}: ${cotas.map((x) => x.codigo).join(" + ")}`, ""];
 
   if (veiculo) {
     linhas.push(`Contemplada ${adm} Veículo 🚘🚘🚘${juncao}`, "");

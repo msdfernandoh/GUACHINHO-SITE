@@ -476,3 +476,34 @@ export async function salvarMeusDadosAction(d: {
     return {};
   });
 }
+
+export async function editarMembroAction(
+  id: string,
+  d: { nome: string; email: string; telefone: string; administradora: string; cidade: string; empresa: string; cnpj: string; cpf: string; papel: "GERENTE" | "VENDEDOR"; senha: string },
+) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirGerencia();
+    if (a.papel !== "DONO") throw new Error("Somente o dono do portal edita a equipe.");
+    if (so(d.nome).length < 3) throw new Error("Informe o nome.");
+    if (!/^\S+@\S+\.\S+$/.test(so(d.email))) throw new Error("E-mail inválido.");
+    if (d.senha && d.senha.length < 8) throw new Error("A senha nova precisa ter ao menos 8 caracteres.");
+    const cpf = digitos(d.cpf);
+    const cnpj = digitos(d.cnpj);
+    if (cpf && cpf.length !== 11) throw new Error("CPF inválido.");
+    if (cnpj && cnpj.length !== 14) throw new Error("CNPJ inválido.");
+    await acesso.editarMembro(empresaId, id, {
+      nome: so(d.nome),
+      email: so(d.email),
+      telefone: digitos(d.telefone) || null,
+      administradora: so(d.administradora) || null,
+      cidade: so(d.cidade) || null,
+      empresa: so(d.empresa) || null,
+      cnpj: cnpj || null,
+      cpf: cpf || null,
+      papel: d.papel === "GERENTE" ? "GERENTE" : "VENDEDOR",
+      senha: d.senha || null,
+    });
+    revalidatePath("/contempladas/painel");
+    return {};
+  });
+}

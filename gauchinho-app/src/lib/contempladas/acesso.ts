@@ -260,3 +260,28 @@ export async function atualizarMeusDados(
     );
   if (error) throw new Error(error.message);
 }
+
+/** Dono do portal edita os dados de um membro da equipe (e pode definir nova senha). */
+export async function editarMembro(
+  empresaId: string,
+  id: string,
+  d: { nome: string; email: string; telefone: string | null; administradora: string | null; cidade: string | null; empresa: string | null; cnpj: string | null; cpf: string | null; papel: "GERENTE" | "VENDEDOR"; senha: string | null },
+) {
+  const { data: m } = await db().from("contempladas_usuarios").select("auth_user_id,email").eq("empresa_id", empresaId).eq("id", id).maybeSingle();
+  if (!m) throw new Error("Usuário não encontrado.");
+  const email = d.email.trim().toLowerCase();
+  const mudarEmail = email && email !== String(m.email).toLowerCase();
+  if (mudarEmail || d.senha) {
+    const { error } = await db().auth.admin.updateUserById(m.auth_user_id as string, {
+      ...(mudarEmail ? { email, email_confirm: true } : {}),
+      ...(d.senha ? { password: d.senha } : {}),
+    });
+    if (error) throw new Error(/already|registered|exists/i.test(error.message) ? "Esse e-mail já está em uso." : error.message);
+  }
+  const { error } = await db()
+    .from("contempladas_usuarios")
+    .update({ nome: d.nome.trim(), email, telefone: d.telefone, administradora: d.administradora, cidade: d.cidade, empresa: d.empresa, cnpj: d.cnpj, cpf: d.cpf, papel: d.papel })
+    .eq("empresa_id", empresaId)
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}

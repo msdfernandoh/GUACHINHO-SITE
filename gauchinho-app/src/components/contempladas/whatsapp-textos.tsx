@@ -90,8 +90,9 @@ export function Oportunidades({ cotas, onSelecionar, ...b }: Base & { cotas: Cot
   const [qtd, setQtd] = useState(6);
   const [lista, setLista] = useState<Combinacao[] | null>(null);
   const [pend, start] = useTransition();
-  const gerar = () => start(() => setLista(gerarOportunidades(cotas, criterio, qtd, b.entradaDe)));
-  const todos = lista?.map((c) => textoDe(c, b)).join("\n\n") ?? "";
+  const [copiouTodas, setCopiouTodas] = useState(false);
+  const gerar = () => start(() => { setCopiouTodas(false); setLista(gerarOportunidades(cotas, criterio, qtd, b.entradaDe)); });
+  const todos = lista?.map((c) => textoDe(c, b)).join("\n\n━━━━━━━━━━━━━━\n\n") ?? "";
   return (
     <Janela titulo="Gerar oportunidades" onClose={b.onClose}>
       <p className="mb-3 text-sm text-slate-500">O sistema junta cartas disponíveis e sorteia entre as melhores combinações. Clique de novo para outras opções.</p>
@@ -109,7 +110,10 @@ export function Oportunidades({ cotas, onSelecionar, ...b }: Base & { cotas: Cot
       {lista && (
         <div className="mt-4 space-y-3">
           {lista.length > 1 && (
-            <button className="w-full rounded-xl bg-slate-100 py-2 text-sm font-bold text-slate-700" onClick={() => navigator.clipboard.writeText(todos)}>Copiar todas as mensagens</button>
+            <div className="sticky top-0 z-10 grid grid-cols-2 gap-2 bg-white pb-2">
+              <button className="rounded-xl bg-[#0047bb] py-2.5 text-sm font-bold text-white" onClick={() => { navigator.clipboard.writeText(todos); setCopiouTodas(true); }}>{copiouTodas ? "Todas copiadas ✓" : `Copiar todas (${lista.length})`}</button>
+              <a className="rounded-xl bg-emerald-600 py-2.5 text-center text-sm font-bold text-white" href={`https://wa.me/?text=${encodeURIComponent(todos)}`} target="_blank" rel="noreferrer">Enviar todas no WhatsApp</a>
+            </div>
           )}
           {lista.map((c, i) => (
             <Mensagem key={i + c.cotas.map((x) => x.id).join()} texto={textoDe(c, b)} onSelecionar={() => { onSelecionar(c.cotas.map((x) => x.id)); b.onClose(); }} />

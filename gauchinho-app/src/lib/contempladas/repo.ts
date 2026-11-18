@@ -124,7 +124,10 @@ export async function getConfigGerente(empresaId: string, authUserId: string | n
   const padrao = await getConfig(empresaId);
   if (!authUserId) return padrao;
   const { data } = await db().from("contempladas_gerente_config").select("*").eq("empresa_id", empresaId).eq("auth_user_id", authUserId).maybeSingle();
-  return data ? lerConfig(data, padrao.pre_reserva_minutos) : { ...padrao, unidade: null };
+  // Sem configuração própria: usa contatos/PIX do padrão, mas sem ágio (ágio é opcional e de cada administrador).
+  return data
+    ? lerConfig(data, padrao.pre_reserva_minutos)
+    : { ...padrao, unidade: null, agio_tipo: "FIXO", agio_valor: 0, agio_auto_tipo: "FIXO", agio_auto_valor: 0 };
 }
 
 export async function salvarConfigGerente(empresaId: string, authUserId: string, c: ConfigContempladas) {
