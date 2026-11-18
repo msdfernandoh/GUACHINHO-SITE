@@ -122,6 +122,10 @@ export type ImobiliariaSpl = {
   created_at: string;
 };
 
+export function podeDefinirModeloParceria(status: ImobiliariaSpl["status"], modelo: ModeloParceria | null | undefined) {
+  return status === "PENDENTE" || status === "RECUSADA" || (status === "APROVADA" && !modelo);
+}
+
 export type VendedorSpl = {
   id: string;
   imobiliaria_id: string;

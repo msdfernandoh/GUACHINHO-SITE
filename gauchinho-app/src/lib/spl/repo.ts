@@ -13,6 +13,7 @@ import {
   type EmpreendimentoSpl,
   type ImobiliariaSpl,
   modeloPadraoVendedor,
+  podeDefinirModeloParceria,
   type ModeloVendedor,
   type VendedorSpl,
 } from "./types";
@@ -184,8 +185,8 @@ export async function imobiliariaPorConvite(empresaId: string, segmento: string)
 }
 
 /**
- * Edição pelo painel. O modelo de parceria só muda enquanto o cadastro está em
- * aprovação; depois disso a mudança é feita pela equipe (mexe em comissão).
+ * O painel permite escolher o modelo antes da aprovação e preencher cadastros
+ * aprovados que ainda não têm um modelo registrado.
  */
 export async function atualizarImobiliaria(
   imob: ImobiliariaSpl,
@@ -193,7 +194,7 @@ export async function atualizarImobiliaria(
   logo: File | null,
 ): Promise<ImobiliariaSpl> {
   const dados: Partial<CadastroImobiliariaInput> & { logo_url?: string } = { ...input };
-  if (imob.status !== "PENDENTE") dados.modelo_parceria = imob.modelo_parceria;
+  if (!podeDefinirModeloParceria(imob.status, imob.modelo_parceria)) delete dados.modelo_parceria;
   if (input.telefone !== imob.telefone) {
     const { data: outro } = await db()
       .from("spl_imobiliarias")
@@ -209,14 +210,18 @@ export async function atualizarImobiliaria(
     if (!/^image\/(png|jpe?g|webp|gif)$/.test(logo.type)) throw new Error("Envie a logo em PNG, JPG ou WEBP.");
     dados.logo_url = await uploadImagemPublica("imobiliarias", `spl/${imob.empresa_id}/${imob.id}-${Date.now()}`, logo);
   }
-  const { data, error } = await db()
+  const consulta = db()
     .from("spl_imobiliarias")
     .update(dados)
     .eq("id", imob.id)
     .eq("empresa_id", imob.empresa_id)
-    .select(IMOB_COLS)
-    .single();
-  if (error || !data) throw new Error("Não foi possível salvar as alterações agora.");
+    .eq("status", imob.status);
+  const modeloAtual = imob.modelo_parceria
+    ? consulta.eq("modelo_parceria", imob.modelo_parceria)
+    : consulta.is("modelo_parceria", null);
+  const { data, error } = await modeloAtual.select(IMOB_COLS).maybeSingle();
+  if (error) throw new Error("Não foi possível salvar as alterações agora.");
+  if (!data) throw new Error("O cadastro mudou enquanto você editava. Reabra o painel e tente novamente.");
   return data as ImobiliariaSpl;
 }
 

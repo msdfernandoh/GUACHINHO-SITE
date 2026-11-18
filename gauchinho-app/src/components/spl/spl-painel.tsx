@@ -11,6 +11,7 @@ import {
   opcoesRemuneracaoVendedor,
   POR_VENDEDOR_OPCAO,
   pct,
+  podeDefinirModeloParceria,
   SOLUCOES,
   STATUS_CLIENTE,
   type ClienteSpl,
@@ -341,7 +342,7 @@ function FormEditar({
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
-  const podeMudarModelo = imob.status === "PENDENTE";
+  const podeMudarModelo = podeDefinirModeloParceria(imob.status, imob.modelo_parceria);
   const soLibera = f.modelo_parceria === "SOMENTE_LIBERAR_CARTEIRA";
   const opcoes = opcoesRemuneracaoVendedor(f.modelo_parceria);
 
@@ -405,13 +406,26 @@ function FormEditar({
       />
       <div>
         <p className="text-base font-bold text-slate-800">Modelo de parceria</p>
+        {podeMudarModelo && !imob.modelo_parceria && (
+          <p className="mt-1 text-sm text-slate-600">Selecione o modelo de parceria para completar o cadastro.</p>
+        )}
         {podeMudarModelo ? (
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {MODELOS_PARCERIA.map((m) => (
               <button
                 key={m.value}
                 type="button"
-                onClick={() => set("modelo_parceria", m.value)}
+                aria-pressed={f.modelo_parceria === m.value}
+                onClick={() => {
+                  setF((atual) => ({
+                    ...atual,
+                    modelo_parceria: m.value,
+                    modelo_vendedores: m.value === "SOMENTE_LIBERAR_CARTEIRA" ||
+                      opcoesRemuneracaoVendedor(m.value).some((opcao) => opcao.value === atual.modelo_vendedores && !opcao.permitido)
+                      ? "PROPRIO"
+                      : atual.modelo_vendedores,
+                  }));
+                }}
                 className={`rounded-2xl border-2 px-3 py-3 text-left text-base font-bold ${f.modelo_parceria === m.value ? "border-[#153E90] bg-[#153E90] text-white" : "border-slate-200 bg-white"}`}
               >
                 {m.label} {m.percentual !== "—" ? `· ${m.percentual}` : ""}

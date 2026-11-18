@@ -36,6 +36,11 @@ API: `POST /api/public/spl/evento`. Relatório:
 
 ### Portfólio SPL para imobiliárias e subdomínio spl.* (15/11/2026)
 
+A edição permite selecionar o modelo antes da aprovação e preencher
+cadastros aprovados que ainda não têm modelo. Após a primeira definição,
+o modelo aprovado é protegido na API. Relatório em
+`docs/relatorios-fases/SPL-ESCOLHA-MODELO-PARCERIA-2026-11-18.md`.
+
 O Dashboard SPL tem retorno destacado e permite simular a tabela de recebimento
 do Seja Parceiro mesmo sem modelo de parceria cadastrado. A seleção da simulação
 vale apenas para a consulta. Relatório em
