@@ -15,6 +15,10 @@ export const LANDING_SUBDOMINIOS = {
     rotas: { "/": "/filhos", "/evento": "/filhos/evento", "/qr": "/filhos/qr", "/checkin": "/filhos/checkin", "/qr-checkin": "/filhos/qr-checkin" },
   },
   spl: { base: "/spl", rotas: { "/": "/spl", "/cadastro": "/spl/cadastro", "/evento": "/spl/evento" } },
+  contempladas: {
+    base: "/contempladas",
+    rotas: { "/": "/contempladas", "/importar": "/contempladas/importar", "/painel": "/contempladas/painel" },
+  },
 } as const satisfies Record<string, { base: string; rotas: Record<string, string> }>;
 
 export type LandingSubdominio = keyof typeof LANDING_SUBDOMINIOS;
