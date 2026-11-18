@@ -20,6 +20,7 @@ describe("buildLeadIndicacaoSorteioRow", () => {
     expect(row.nome).toBe("Maria Indicada");
     expect(row.whatsapp).toBe("(66) 99999-1111");
     expect(row.parceiro_indicador_nome).toBe("João Indicador");
+    expect(row.dados_simulacao.indicador_nome).toBe("João Indicador");
     expect(row.parceiro_indicador_telefone).toBe("(66) 98888-2222");
     expect(row.indicador_lead_id).toBe("lead-indicador");
     expect(row.origem).toBe("indicacao");

@@ -3,6 +3,7 @@ import { isDbMissingColumnError } from "@/lib/comercial-eventos/db-ready";
 import type { CrmFunilEtapaRow, LeadFilters, LeadListRow } from "./types";
 import { CRM_12_ETAPAS } from "./constants";
 import { GAUCHINHO_SLUG } from "@/lib/tenant/constants";
+import { incluirIndicadoresDosLeads } from "./lead-indicador";
 
 type LeadTenant = { id: string; slug: string };
 
@@ -174,7 +175,7 @@ export async function fetchCrmFunilEtapas(empresaId?: string): Promise<CrmFunilE
 
 export async function queryLeadsList(filters: LeadFilters, tenant: LeadTenant, limit = 200): Promise<LeadListRow[]> {
   const supabase = await createClient();
-  return selectLeads(async (select, skipOptional) => {
+  const leads = await selectLeads(async (select, skipOptional) => {
     let base = supabase.from("leads").select(select);
     base = tenant.slug === GAUCHINHO_SLUG
       ? base.or(`empresa_id.eq.${tenant.id},empresa_id.is.null`)
@@ -186,6 +187,7 @@ export async function queryLeadsList(filters: LeadFilters, tenant: LeadTenant, l
     );
     return query;
   });
+  return incluirIndicadoresDosLeads(supabase, leads);
 }
 
 export async function queryLeadsForKanban(

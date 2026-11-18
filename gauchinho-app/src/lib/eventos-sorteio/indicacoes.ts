@@ -68,6 +68,7 @@ export function buildLeadIndicacaoSorteioRow(input: LeadIndicacaoSorteioInput) {
     observacoes: observacao,
     dados_simulacao: {
       origem: "evento_nps_sorteio_indicacao",
+      indicador_nome: input.indicadorNome,
       sorteio_id: input.sorteioId,
       evento_id: input.eventoId,
       indicador_participante_id: input.indicadorParticipanteId,

@@ -14,6 +14,7 @@ import {
   loadLeadAccessScope,
 } from "@/lib/crm/lead-access";
 import { enrichLeadsWithTipoSonho } from "@/lib/crm/lead-tipo-sonho";
+import { incluirIndicadoresDosLeads } from "@/lib/crm/lead-indicador";
 import type { IndicacaoRapidaItem, LeadFilters } from "@/lib/crm/types";
 import { buildLeadTimeline } from "@/lib/crm/timeline";
 
@@ -882,8 +883,9 @@ export async function fetchLeadDetail(leadId: string) {
 
   const qualificacoesSafe = qualifErr ? [] : qualificacoesEventos ?? [];
 
+  const [leadComIndicador] = await incluirIndicadoresDosLeads(supabase, [lead]);
   return {
-    lead,
+    lead: leadComIndicador,
     historico: historicoRows ?? [],
     propostas: propostas ?? [],
     contratacaoOnline: contratacaoOnline ?? null,

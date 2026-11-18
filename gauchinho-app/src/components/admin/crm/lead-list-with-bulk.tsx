@@ -285,11 +285,9 @@ export function LeadListWithBulk({ leads, consultores, etapas = [], canDelete = 
                   </td>
                   <td className={cn(adminTableCellClass, "text-zinc-300")}>
                     <div>{labelOrigem(l.origem)}</div>
-                    {String(l.origem ?? "")
-                      .trim()
-                      .toLowerCase() === "indicacao" && l.parceiro_indicador_nome?.trim() ? (
-                      <p className="mt-0.5 text-[11px] font-medium text-amber-200/90" title="Quem indicou">
-                        {l.parceiro_indicador_nome.trim()}
+                    {l.indicador_nome ? (
+                      <p className="mt-0.5 text-[11px] font-medium text-amber-200/90">
+                        Indicado por {l.indicador_nome}
                       </p>
                     ) : null}
                   </td>

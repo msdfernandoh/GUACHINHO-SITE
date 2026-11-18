@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Quem indicou o lead no check-in (18/11/2026)
+
+O CRM administrativo e o ERP exibem “Indicado por” na lista e no detalhe
+do lead. A leitura usa o nome gravado no lead, os dados da indicação SPL
+ou o vínculo com o participante em `eventos_sorteio_indicacoes.lead_id`.
+Novas indicações do check-in padrão registram o nome em `dados_simulacao`.
+O vínculo histórico é consultado com a sessão autenticada e as políticas
+vigentes de acesso. Relatório em
+`docs/relatorios-fases/LEADS-INDICADOR-CHECKIN-2026-11-18.md`.
+
 ### Consulta de despesas por mês e histórico de pagamentos (18/11/2026)
 
 O Fechamento dos Sócios exibe contas em aberto por mês de vencimento e usa

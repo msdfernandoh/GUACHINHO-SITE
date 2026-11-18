@@ -61,6 +61,7 @@ export type LeadListRow = {
   evento_id?: string | null;
   evento_nome?: string | null;
   parceiro_indicador_nome?: string | null;
+  indicador_nome?: string;
   parceiro_indicador_empresa?: string | null;
   parceiro_indicador_telefone?: string | null;
   parentesco_indicacao?: string | null;

@@ -785,6 +785,11 @@ export function ErpLeadsView({ initialLeads, consultores, currentFilters, canDel
                           >
                             <span>{origBadge.icon}</span> {origBadge.label}
                           </span>
+                          {lead.indicador_nome && (
+                            <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                              Indicado por {lead.indicador_nome}
+                            </p>
+                          )}
                         </td>
 
                         {/* Produto / Interesse */}
@@ -959,6 +964,11 @@ export function ErpLeadsView({ initialLeads, consultores, currentFilters, canDel
                               {origBadge.icon}
                             </span>
                           </div>
+                          {lead.indicador_nome && (
+                            <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                              Indicado por {lead.indicador_nome}
+                            </p>
+                          )}
 
                           {lead.whatsapp && (
                             <div className="mt-1">
@@ -1078,6 +1088,11 @@ export function ErpLeadsView({ initialLeads, consultores, currentFilters, canDel
                   <p className="font-semibold text-slate-800 dark:text-slate-200">
                     {getOrigemBadge(activeLead.origem).label}
                   </p>
+                  {activeLead.indicador_nome && (
+                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                      Indicado por {activeLead.indicador_nome}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <span className="text-slate-500">Produto / Interesse:</span>

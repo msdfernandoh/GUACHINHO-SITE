@@ -84,8 +84,8 @@ export default async function LeadDetailPage({
     parentesco_indicacao?: string | null;
     indicador_lead_id?: string | null;
   };
-  const ehIndicacao = leadEvento.origem === "indicacao";
-  const indicadorNome = leadEvento.parceiro_indicador_nome?.trim() || null;
+  const indicadorNome = leadEvento.indicador_nome;
+  const ehIndicacao = leadEvento.origem === "indicacao" || Boolean(indicadorNome);
   const parentesco = leadEvento.parentesco_indicacao?.trim() || null;
 
   const updateWithId = updateLeadAction.bind(null, id);
@@ -510,7 +510,7 @@ export default async function LeadDetailPage({
       {ehIndicacao ? (
         <section className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-zinc-200">
           <p>
-            <span className="font-semibold text-amber-300">Origem:</span> Indicação
+            <span className="font-semibold text-amber-300">Indicação</span>
           </p>
           {indicadorNome ? (
             <p className="mt-1">
