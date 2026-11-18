@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { gerarPropostaAction, marcarVendidaAction, simularAction } from "@/app/(landing-contempladas)/contempladas/actions";
 import { resumirCombinacao, valorAcrescimo, type Acrescimo, type Combinacao, type Preferencia } from "@/lib/contempladas/motor";
 import type { CotaPortal } from "@/lib/contempladas/repo";
-import { brl, btnOuro, btnSec, Card, inputCls, mascaraTelefone } from "./ui";
+import { brl, btnOuro, btnSec, Card, inputCls, mascaraTelefone, MoneyInput } from "./ui";
 import { Negociar } from "./negociar";
 import type { ConfigPublica } from "@/lib/contempladas/publico";
 
@@ -17,11 +17,6 @@ const MODOS = [
   ["RESUMO", "Média resumida"],
 ] as const;
 
-const numBr = (s: string) => Number(s.replace(/\./g, "").replace(",", ".")) || 0;
-const fmtDigitado = (s: string) => {
-  const d = s.replace(/\D/g, "");
-  return d ? Number(d).toLocaleString("pt-BR") : "";
-};
 
 const MES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -75,8 +70,8 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
   const [verDisp, setVerDisp] = useState(true);
   const [verAnalise, setVerAnalise] = useState(false);
   const [verVendidas, setVerVendidas] = useState(false);
-  const [credito, setCredito] = useState("");
-  const [entrada, setEntrada] = useState("");
+  const [credito, setCredito] = useState(0);
+  const [entrada, setEntrada] = useState(0);
   const [pref, setPref] = useState<Preferencia>("MENOR_PARCELA");
   const [maxCotas, setMaxCotas] = useState(0);
   // Olho discreto: esconde a rentabilidade quando o vendedor está na frente do cliente.
@@ -90,7 +85,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
   const [sel, setSel] = useState<string[]>([]);
   const [negociar, setNegociar] = useState<string[] | null>(null);
   const [modo, setModo] = useState("COMPLETA");
-  const [desconto, setDesconto] = useState("");
+  const [desconto, setDesconto] = useState(0);
   const [cliente, setCliente] = useState("");
   const [clienteTel, setClienteTel] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -109,7 +104,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
   // Adicional fixo do vendedor entra sozinho na entrada; desconto aparece na proposta.
   const extraDe = (cr: number) => (logado ? valorAcrescimo(cr, adicional) : 0);
   const extra = resumo ? extraDe(resumo.credito) : 0;
-  const desc = logado ? numBr(desconto) : 0;
+  const desc = logado ? desconto : 0;
   const rentDe = (c: Combinacao, d = 0) => c.comissao + extraDe(c.credito) - d;
   const verRent = Boolean(logado) && !ocultar;
   const disponiveis = cotas.filter((c) => c.status === "DISPONIVEL" && (tipo === "todos" || c.tipo === tipo));
@@ -132,7 +127,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
     start(async () => {
       setErro(null);
       setAviso(null);
-      const r = await simularAction({ credito: numBr(credito), entradaMax: entrada ? numBr(entrada) : null, preferencia: pref, maxCotas, tipo: tipo === "todos" ? null : tipo });
+      const r = await simularAction({ credito, entradaMax: entrada || null, preferencia: pref, maxCotas, tipo: tipo === "todos" ? null : tipo });
       const lista: { rotulo: string; c: Combinacao }[] = [];
       if (r.abaixo) lista.push({ rotulo: "Mais próxima abaixo", c: r.abaixo });
       if (r.acima) lista.push({ rotulo: "Mais próxima acima", c: r.acima });
@@ -145,7 +140,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
       if (!lista.length) setErro("Nenhuma cota disponível nesse tipo de bem.");
       else {
         setSel(lista[0].c.cotas.map((x) => x.id));
-        if (r.entradaExcedida) setAviso(`Nenhuma combinação cabe em ${brl(numBr(entrada))} de entrada. Mostrando as mais próximas do crédito pedido.`);
+        if (r.entradaExcedida) setAviso(`Nenhuma combinação cabe em ${brl(entrada)} de entrada. Mostrando as mais próximas do crédito pedido.`);
       }
     });
 
@@ -196,10 +191,10 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_160px_auto]">
           <label className="text-xs font-semibold text-slate-600">Crédito desejado
-            <input className={inputCls} inputMode="numeric" placeholder="700.000" value={credito} onChange={(e) => setCredito(fmtDigitado(e.target.value))} />
+            <MoneyInput value={credito} onChange={setCredito} placeholder="3.000.000,00" />
           </label>
           <label className="text-xs font-semibold text-slate-600">Entrada máxima
-            <input className={inputCls} inputMode="numeric" placeholder="200.000" value={entrada} onChange={(e) => setEntrada(fmtDigitado(e.target.value))} />
+            <MoneyInput value={entrada} onChange={setEntrada} placeholder="0,00 (opcional)" />
           </label>
           <label className="text-xs font-semibold text-slate-600">Prioridade
             <select className={inputCls} value={pref} onChange={(e) => setPref(e.target.value as Preferencia)}>
@@ -213,7 +208,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
               {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n} {n === 1 ? "cota" : "cotas"}</option>)}
             </select>
           </label>
-          <button className={`${btnOuro} self-end`} disabled={!numBr(credito) || pend} onClick={simular}>{pend ? "Calculando…" : "Encontrar cotas"}</button>
+          <button className={`${btnOuro} self-end`} disabled={!credito || pend} onClick={simular}>{pend ? "Calculando…" : "Encontrar cotas"}</button>
         </div>
         {erro && <p className="mt-3 text-sm text-red-600">{erro}</p>}
         {aviso && <p className="mt-3 rounded-lg bg-amber-50 p-2 text-sm text-amber-900">{aviso}</p>}
@@ -361,7 +356,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: 
                 <input className={`${inputCls} !py-2 text-sm`} type="tel" inputMode="tel" placeholder="(66) 99999-9999" value={clienteTel} onChange={(e) => setClienteTel(mascaraTelefone(e.target.value))} />
               </div>
               {logado ? (
-                <input className={`${inputCls} !py-2 text-sm`} inputMode="numeric" placeholder="Desconto na entrada R$" value={desconto} onChange={(e) => setDesconto(fmtDigitado(e.target.value))} />
+                <MoneyInput value={desconto} onChange={setDesconto} placeholder="Desconto na entrada" className="[&_input]:!py-2 [&_input]:text-sm" />
               ) : <span className="hidden lg:block" />}
               <div className="flex gap-2">
                 <button className={`${btnSec} !py-2`} onClick={() => setSel([])}>Limpar</button>

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { agioGerenteAction, enviarCotasAction, preverEnvioAction } from "@/app/(landing-contempladas)/contempladas/actions";
 import type { LinhaLida } from "@/lib/contempladas/parser";
 import type { Acrescimo } from "@/lib/contempladas/motor";
-import { brl, btnOuro, btnSec, Card, inputCls, Sair } from "./ui";
+import { brl, btnOuro, btnSec, Card, inputCls, MoneyInput, Sair } from "./ui";
 
 const descreve = (a: Acrescimo) => (a.valor > 0 ? (a.tipo === "PERCENTUAL" ? `${a.valor}% do crédito` : brl(a.valor)) : "sem ágio");
 
@@ -15,12 +15,12 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
   const [texto, setTexto] = useState("");
   const [usarPadrao, setUsarPadrao] = useState(true);
   const [tipo, setTipo] = useState<"PERCENTUAL" | "FIXO">(agioPadrao.tipo);
-  const [valor, setValor] = useState(String(agioPadrao.valor));
+  const [valor, setValor] = useState(agioPadrao.valor);
   const [substituir, setSubstituir] = useState(true);
   const [previa, setPrevia] = useState<LinhaLida[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [pend, start] = useTransition();
-  const personalizado: Acrescimo | null = usarPadrao ? null : { tipo, valor: Number(valor.replace(",", ".")) || 0 };
+  const personalizado: Acrescimo | null = usarPadrao ? null : { tipo, valor };
   const validas = previa?.filter((l) => l.cota) ?? [];
   const mudou = () => setPrevia(null);
 
@@ -73,8 +73,13 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
                 </button>
               ))}
             </div>
-            <input className={`${inputCls} mt-2`} inputMode="decimal" value={valor} onChange={(e) => { setValor(e.target.value); mudou(); }}
-              placeholder={tipo === "PERCENTUAL" ? "Ex.: 2 (2% do crédito)" : "Ex.: 5000"} />
+            <div className="mt-2">
+              {tipo === "FIXO" ? (
+                <MoneyInput value={valor} onChange={(v) => { setValor(v); mudou(); }} />
+              ) : (
+                <input className={inputCls} type="number" step="0.01" min={0} value={valor || ""} placeholder="Ex.: 2 (% do crédito)" onChange={(e) => { setValor(Number(e.target.value)); mudou(); }} />
+              )}
+            </div>
             <p className="mt-1 text-xs text-slate-500">Vale só para este envio, para imóvel e veículo.</p>
           </>
         )}

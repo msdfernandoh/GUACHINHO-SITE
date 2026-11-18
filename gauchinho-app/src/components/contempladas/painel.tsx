@@ -16,7 +16,7 @@ import {
 } from "@/app/(landing-contempladas)/contempladas/actions";
 import type { ConfigContempladas, CotaPortal } from "@/lib/contempladas/repo";
 import type { Acrescimo } from "@/lib/contempladas/motor";
-import { brl, btnOuro, btnSec, Card, inputCls, PixInput, Sair, TelInput, mascaraTelefone, type TipoPix } from "./ui";
+import { brl, btnOuro, btnSec, Card, inputCls, MoneyInput, PixInput, Sair, TelInput, mascaraTelefone, type TipoPix } from "./ui";
 
 type Reserva = { id: string; tipo: "PRE" | "PIX"; nome: string; telefone: string; cotaIds: string[]; expiraEm: string | null; criadaEm: string; valorPix: number | null; comprovanteUrl: string | null };
 type Proposta = { numero: number; cliente: string | null; vendedor: string | null; credito: number; entrada: number; desconto: number; rentabilidade: number; vendida: boolean; criadaEm: string };
@@ -32,10 +32,17 @@ function SeletorValor({ valor, onChange, rotuloPct = "% do crédito" }: { valor:
   return (
     <div className="grid grid-cols-[auto_1fr] gap-2">
       <select className={`${inputCls} !w-36`} value={valor.tipo} onChange={(e) => onChange({ ...valor, tipo: e.target.value as Acrescimo["tipo"] })}>
-        <option value="FIXO">Valor fixo R$</option>
+        <option value="FIXO">R$ fixo</option>
         <option value="PERCENTUAL">{rotuloPct}</option>
       </select>
-      <input className={inputCls} type="number" step="0.01" min={0} value={valor.valor} onChange={(e) => onChange({ ...valor, valor: Number(e.target.value) })} />
+      {valor.tipo === "FIXO" ? (
+        <MoneyInput value={valor.valor} onChange={(v) => onChange({ ...valor, valor: v })} />
+      ) : (
+        <div className="flex items-center rounded-xl border border-slate-300 bg-white">
+          <input className="w-full rounded-xl bg-transparent px-3 py-2.5 text-right outline-none" type="number" step="0.01" min={0} value={valor.valor || ""} placeholder="0,00" onChange={(e) => onChange({ ...valor, valor: Number(e.target.value) })} />
+          <span className="pr-3 text-sm font-semibold text-slate-500">%</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -314,8 +321,8 @@ export function Painel(props: {
             <p className="text-sm font-semibold">Sinal para bloquear a negociação (opcional)</p>
             <p className="mb-1 text-xs text-slate-500">PIX que o cliente paga para travar a cota. Em branco ou zero: o PIX é a entrada inteira.</p>
             <div className="grid gap-2 sm:grid-cols-2">
-              <label className="text-xs text-slate-500">Imóvel (R$)<input className={inputCls} type="number" min={0} step="0.01" value={cfg.sinal_imovel || ""} onChange={(e) => setCfg({ ...cfg, sinal_imovel: Number(e.target.value) })} /></label>
-              <label className="text-xs text-slate-500">Veículo (R$)<input className={inputCls} type="number" min={0} step="0.01" value={cfg.sinal_auto || ""} onChange={(e) => setCfg({ ...cfg, sinal_auto: Number(e.target.value) })} /></label>
+              <label className="text-xs text-slate-500">Imóvel<MoneyInput value={cfg.sinal_imovel} onChange={(v) => setCfg({ ...cfg, sinal_imovel: v })} /></label>
+              <label className="text-xs text-slate-500">Veículo<MoneyInput value={cfg.sinal_auto} onChange={(v) => setCfg({ ...cfg, sinal_auto: v })} /></label>
             </div>
           </div>
 

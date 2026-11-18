@@ -144,3 +144,28 @@ export function PixInput({ tipo, valor, onChange }: { tipo: TipoPix; valor: stri
     </div>
   );
 }
+
+/** Máscara de dinheiro: digita só números e vira 3.000.000,00 (centavos à direita). */
+export function mascaraReais(raw: string) {
+  const d = raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  if (!d) return "";
+  const n = Number(d) / 100;
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+export const reaisParaNumero = (s: string) => Number(s.replace(/\./g, "").replace(",", ".")) || 0;
+export const numeroParaReais = (n: number) => (n ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
+
+/** Campo de valor com "R$" fixo e máscara 0.000,00. */
+export function MoneyInput({ value, onChange, placeholder = "0,00", className = "" }: { value: number; onChange: (v: number) => void; placeholder?: string; className?: string }) {
+  const [txt, setTxt] = useState(numeroParaReais(value));
+  // Valor mudou por fora (ex.: limpar): reflete no campo. Compara em centavos para não entrar em laço.
+  const alvo = Math.round((value || 0) * 100);
+  if (Math.round(reaisParaNumero(txt) * 100) !== alvo) setTxt(numeroParaReais(alvo / 100));
+  return (
+    <div className={`flex items-center rounded-xl border border-slate-300 bg-white focus-within:border-[#0047bb] focus-within:ring-2 focus-within:ring-[#0047bb]/15 ${className}`}>
+      <span className="pl-3 text-sm font-semibold text-slate-500">R$</span>
+      <input className="w-full rounded-xl bg-transparent px-2 py-2.5 text-right text-base text-slate-900 outline-none placeholder:text-slate-400" inputMode="numeric" placeholder={placeholder}
+        value={txt} onChange={(e) => { const m = mascaraReais(e.target.value); setTxt(m); onChange(reaisParaNumero(m)); }} />
+    </div>
+  );
+}
