@@ -60,6 +60,13 @@ export function SplPainel({ imob, token, convites, termos, vendedores, dashboard
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+      {aba === "dashboard" && (
+        <div className="sticky top-2 z-10">
+          <BotaoGrande onClick={() => { setAba("inicio"); window.scrollTo(0, 0); }} className="shadow-md">
+            ← Voltar ao painel
+          </BotaoGrande>
+        </div>
+      )}
       <Cartao className="flex flex-wrap items-center gap-4">
         {imob.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -102,7 +109,7 @@ export function SplPainel({ imob, token, convites, termos, vendedores, dashboard
 
       {aba === "inicio" ? (
         <>
-          <BotaoGrande onClick={() => setAba("dashboard")} className="w-full">Dashboard</BotaoGrande>
+          <BotaoGrande onClick={() => { setAba("dashboard"); window.scrollTo(0, 0); }} className="w-full">Dashboard</BotaoGrande>
           <SplInstalarApp texto="Coloque este painel na tela inicial do celular" />
           <div className="grid gap-3 sm:grid-cols-2">
             <BotaoGrande tipo="ouro" onClick={() => setAba("cliente")}>
@@ -217,10 +224,7 @@ export function SplPainel({ imob, token, convites, termos, vendedores, dashboard
       ) : null}
 
       {aba === "dashboard" ? (
-        <>
-          <Voltar onClick={() => setAba("inicio")} />
-          <SplDashboardImobiliaria clientes={clientes} vendedores={vendedores} modelo={imob.modelo_parceria} links={dashboardsVendedores} origem={origem} />
-        </>
+        <SplDashboardImobiliaria clientes={clientes} vendedores={vendedores} modelo={imob.modelo_parceria} links={dashboardsVendedores} origem={origem} />
       ) : null}
       {aba === "cliente" ? <FormCliente token={token} empreendimentos={empreendimentos} onFim={voltar} /> : null}
       {aba === "planilha" ? <FormPlanilha token={token} empreendimentos={empreendimentos} onFim={voltar} /> : null}

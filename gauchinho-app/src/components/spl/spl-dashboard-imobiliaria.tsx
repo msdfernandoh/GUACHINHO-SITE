@@ -1,7 +1,7 @@
-import { CalculadoraComissao } from "@/app/app-indicador/simulacao/calculadora";
-import { MODELO_RECEBIMENTO_SPL, resumirDashboardSpl } from "@/lib/spl/dashboard";
+import { resumirDashboardSpl } from "@/lib/spl/dashboard";
 import { STATUS_CLIENTE, labelDe, type ClienteSpl, type ModeloParceria, type VendedorSpl } from "@/lib/spl/types";
 import { BotaoCopiar, brl, Cartao } from "./spl-ui";
+import { PlanoRecebimentoSpl } from "./spl-plano-recebimento";
 
 const valorFormatado = (valor: number | null) => valor === null ? "—" : brl(valor);
 
@@ -14,8 +14,6 @@ export function SplDashboardImobiliaria({ clientes, vendedores, modelo, individu
   origem?: string;
 }) {
   const dados = resumirDashboardSpl(clientes, vendedores, modelo);
-  const modeloPlano = individual ? individual.modelo === "PROPRIO" ? null : individual.modelo : modelo;
-  const modeloRecebimento = modeloPlano ? MODELO_RECEBIMENTO_SPL[modeloPlano] : null;
   const indicadores = [
     ["Clientes indicados", String(dados.indicacoes.length)],
     ["Volume de negócio previsto", valorFormatado(dados.previsto)],
@@ -49,6 +47,7 @@ export function SplDashboardImobiliaria({ clientes, vendedores, modelo, individu
           Pagamentos do ERP ainda não estão disponíveis aqui. Em modelo próprio, o vendedor recebe diretamente da imobiliária.
         </p>}
       </Cartao>
+      {individual?.modelo !== "PROPRIO" && <PlanoRecebimentoSpl modelo={individual?.modelo ?? modelo} />}
       <Cartao>
         <h3 className="text-xl font-black text-[#0A1931]">Clientes indicados</h3>
         {dados.indicacoes.length ? (
@@ -100,16 +99,6 @@ export function SplDashboardImobiliaria({ clientes, vendedores, modelo, individu
           </div>
         ) : <p className="mt-3 text-sm text-slate-600">Nenhum vendedor cadastrado.</p>}
       </Cartao>}
-      {modeloRecebimento ? (
-        <div className="text-white">
-          <CalculadoraComissao modelo={modeloRecebimento} oportunidades={modeloPlano === "GERADOR_OPORTUNIDADES"} />
-        </div>
-      ) : !individual && (
-        <Cartao>
-          <h3 className="text-xl font-black text-[#0A1931]">Plano de recebimento</h3>
-          <p className="mt-2 text-sm text-slate-700">{modelo ? "A liberação de carteira não tem plano de remuneração." : "O plano aparece quando a imobiliária tem um modelo de parceria definido."}</p>
-        </Cartao>
-      )}
     </>
   );
 }

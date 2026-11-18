@@ -36,6 +36,11 @@ API: `POST /api/public/spl/evento`. Relatório:
 
 ### Portfólio SPL para imobiliárias e subdomínio spl.* (15/11/2026)
 
+O Dashboard SPL tem retorno destacado e permite simular a tabela de recebimento
+do Seja Parceiro mesmo sem modelo de parceria cadastrado. A seleção da simulação
+vale apenas para a consulta. Relatório em
+`docs/relatorios-fases/SPL-RETORNO-PLANO-RECEBIMENTO-2026-11-18.md`.
+
 O painel da imobiliária oferece Dashboard de indicações, volumes e estimativas
 por vendedor. O link individual de cada vendedor valida a assinatura e limita a
 consulta à sua carteira. O cronograma reaproveita a calculadora do Seja Parceiro.
