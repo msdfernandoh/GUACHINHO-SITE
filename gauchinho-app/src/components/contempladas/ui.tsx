@@ -22,6 +22,7 @@ export function Shell({ children, titulo, sub, papel = null }: { children: React
           </a>
           <nav className="flex gap-1 text-sm font-semibold">
             <a className="rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100" href="/contempladas">Cotas</a>
+            <a className="hidden rounded-lg px-3 py-2 text-[#0047bb] hover:bg-slate-100 sm:inline" href="/contempladas/seja-parceiro" target="_blank" rel="noreferrer">Seja parceiro ↗</a>
             {papel && <a className="rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100" href="/contempladas/painel">Painel</a>}
             {(papel === "DONO" || papel === "GERENTE") && (
               <a className="rounded-lg bg-[#0047bb] px-3 py-2 text-white hover:bg-[#003a99]" href="/contempladas/importar">Enviar cotas</a>
