@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { gerarPropostaAction, simularAction } from "@/app/(landing-contempladas)/contempladas/actions";
+import { gerarPropostaAction, marcarVendidaAction, simularAction } from "@/app/(landing-contempladas)/contempladas/actions";
 import { resumirCombinacao, valorAcrescimo, type Acrescimo, type Combinacao, type Preferencia } from "@/lib/contempladas/motor";
 import type { CotaPortal } from "@/lib/contempladas/repo";
 import { brl, btnOuro, btnSec, Card, inputCls, mascaraTelefone } from "./ui";
@@ -55,6 +55,7 @@ function Contador({ ate }: { ate: string }) {
 }
 
 function Situacao({ c }: { c: CotaPortal }) {
+  if (c.status === "VENDIDA") return <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700">✔ Vendida</span>;
   if (c.status === "RESERVADA") return <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">⏳ Em análise</span>;
   if (c.preReservas > 0)
     return (
@@ -65,12 +66,13 @@ function Situacao({ c }: { c: CotaPortal }) {
   return <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Disponível</span>;
 }
 
-export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: CotaPortal[]; stats: Stats; logado: string | null; adicional: Acrescimo | null; unidades: Record<string, ConfigPublica> }) {
+export function Portal({ cotas, stats, logado, adicional, unidades, gerencia }: { cotas: CotaPortal[]; stats: Stats; logado: string | null; adicional: Acrescimo | null; unidades: Record<string, ConfigPublica>; gerencia: { dono: boolean; authUserId: string } | null }) {
   const router = useRouter();
   const [tipo, setTipo] = useState<Tipo>("todos");
   const [adm, setAdm] = useState("");
   const [verDisp, setVerDisp] = useState(true);
   const [verAnalise, setVerAnalise] = useState(false);
+  const [verVendidas, setVerVendidas] = useState(false);
   const [credito, setCredito] = useState("");
   const [entrada, setEntrada] = useState("");
   const [pref, setPref] = useState<Preferencia>("MENOR_PARCELA");
@@ -98,7 +100,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
     (c) =>
       (tipo === "todos" || c.tipo === tipo) &&
       (!adm || c.administradora === adm) &&
-      ((verDisp && c.status === "DISPONIVEL") || (verAnalise && c.status === "RESERVADA")),
+      ((verDisp && c.status === "DISPONIVEL") || (verAnalise && c.status === "RESERVADA") || (verVendidas && c.status === "VENDIDA")),
   );
   const escolhidas = sel.map((id) => porId.get(id)).filter(Boolean) as CotaPortal[];
   const resumo = escolhidas.length ? resumirCombinacao(escolhidas) : null;
@@ -112,6 +114,16 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
   const negociando = negociar?.map((id) => porId.get(id)).filter(Boolean) as CotaPortal[] | undefined;
   const unidadeDe = (c: CotaPortal) => unidades[c.dono_auth_id ?? ""] ?? unidades[""];
   const nomeUnidade = (c: CotaPortal) => unidadeDe(c)?.unidade || c.dono_nome || "Racon";
+  const podeVender = (c: CotaPortal) => Boolean(gerencia) && c.status !== "VENDIDA" && (gerencia!.dono || c.dono_auth_id === gerencia!.authUserId);
+  const vender = (c: CotaPortal) => {
+    if (!confirm(`Marcar ${c.codigo} (${brl(c.credito)}) como VENDIDA?`)) return;
+    start(async () => {
+      const r = await marcarVendidaAction(c.id);
+      if (!r.ok) setErro(r.erro);
+      setSel((s) => s.filter((x) => x !== c.id));
+      router.refresh();
+    });
+  };
   const misturaUnidades = new Set(escolhidas.map((c) => c.dono_auth_id ?? "")).size > 1;
 
   const simular = () =>
@@ -169,6 +181,7 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
             <div className="mt-2 flex gap-4 font-normal text-slate-800">
               <label className="flex items-center gap-2"><input type="checkbox" className="h-5 w-5 accent-[#0047bb]" checked={verDisp} onChange={(e) => setVerDisp(e.target.checked)} />Disponíveis</label>
               <label className="flex items-center gap-2"><input type="checkbox" className="h-5 w-5 accent-[#0047bb]" checked={verAnalise} onChange={(e) => setVerAnalise(e.target.checked)} />Em análise</label>
+              <label className="flex items-center gap-2"><input type="checkbox" className="h-5 w-5 accent-[#0047bb]" checked={verVendidas} onChange={(e) => setVerVendidas(e.target.checked)} />Vendidas</label>
             </div>
           </div>
         </div>
@@ -262,7 +275,10 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
                   {logado && <td className="p-4 text-right font-semibold text-emerald-700">{ocultar ? <span className="text-slate-300">•••</span> : brl(c.comissao_parceiro + extraDe(c.credito))}</td>}
                   <td className="p-4"><Situacao c={c} /></td>
                   <td className="p-4 text-right">
-                    {livre && <button className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700" onClick={() => setNegociar([c.id])}>Negociar</button>}
+                    <div className="flex items-center justify-end gap-2">
+                      {podeVender(c) && <button className="rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-bold text-slate-700 hover:border-emerald-600 hover:text-emerald-700" disabled={pend} onClick={() => vender(c)}>✔ Vendida</button>}
+                      {livre && <button className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700" onClick={() => setNegociar([c.id])}>Negociar</button>}
+                    </div>
                   </td>
                 </tr>
               );
@@ -297,7 +313,10 @@ export function Portal({ cotas, stats, logado, adicional, unidades }: { cotas: C
                   <p className="text-xs text-slate-500">{c.codigo} · <span className="capitalize">{c.administradora}</span> · {nomeUnidade(c)}{verRent ? ` · rentab. ${brl(c.comissao_parceiro + extraDe(c.credito))}` : ""}</p>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <Situacao c={c} />
-                    {livre && <button className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={() => setNegociar([c.id])}>Negociar</button>}
+                    <div className="flex gap-2">
+                      {podeVender(c) && <button className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700" disabled={pend} onClick={() => vender(c)}>✔ Vendida</button>}
+                      {livre && <button className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={() => setNegociar([c.id])}>Negociar</button>}
+                    </div>
                   </div>
                 </div>
               </div>

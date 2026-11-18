@@ -46,6 +46,7 @@ export function Painel(props: {
   propostas: Proposta[];
   equipe: Membro[];
   usuariosErp: UsuarioErp[];
+  vendas: { total: number; noMes: number; creditoTotal: number } | null;
 }) {
   const router = useRouter();
   const gerencia = props.papel !== "VENDEDOR";
@@ -85,7 +86,7 @@ export function Painel(props: {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {(gerencia
-          ? [["Simulações", props.stats.simulacoes], ["Pré-reservas", props.stats.preReservas], ["PIX a conferir", props.stats.reservasPix], ["Vendidas", props.stats.vendidas]]
+          ? [["Simulações", props.stats.simulacoes], ["Pré-reservas", props.stats.preReservas], ["PIX a conferir", props.stats.reservasPix], ["Vendidas no mês", `${props.vendas?.noMes ?? 0} de ${props.vendas?.total ?? 0}`]]
           : [["Propostas", props.propostas.length], ["Vendidas", vendidas.length], ["Comissões recebidas", brl(somaVendida)], ["Em aberto", brl(somaAberta)]]
         ).map(([l, v]) => (
           <Card key={l as string} className="!p-3"><p className="text-xl font-black text-[#0047bb]">{v}</p><p className="text-[11px] uppercase text-slate-500">{l}</p></Card>

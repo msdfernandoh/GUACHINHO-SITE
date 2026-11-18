@@ -145,14 +145,18 @@ async function expirarPreReservas(empresaId: string) {
 /** Escopo de gerência: undefined = todas (dono do portal); string = só as cotas desse gerente. */
 export type Escopo = string | undefined;
 
-export async function listarCotas(empresaId: string, opts: { incluirVendidas?: boolean; dono?: Escopo } = {}): Promise<CotaPortal[]> {
+export async function listarCotas(empresaId: string, opts: { incluirVendidas?: boolean; dono?: Escopo; vendidasRecentesDias?: number } = {}): Promise<CotaPortal[]> {
   await expirarPreReservas(empresaId);
   let q = db()
     .from("contempladas_cotas")
     .select("*")
     .eq("empresa_id", empresaId)
     .order("credito", { ascending: true });
-  q = opts.incluirVendidas ? q.neq("status", "INATIVA") : q.in("status", ["DISPONIVEL", "RESERVADA"]);
+  if (opts.vendidasRecentesDias) {
+    // Portal público: disponíveis, em análise e vendidas dos últimos dias.
+    const desde = new Date(Date.now() - opts.vendidasRecentesDias * 86400000).toISOString();
+    q = q.or(`status.in.(DISPONIVEL,RESERVADA),and(status.eq.VENDIDA,vendida_em.gte.${desde})`);
+  } else q = opts.incluirVendidas ? q.neq("status", "INATIVA") : q.in("status", ["DISPONIVEL", "RESERVADA"]);
   if (opts.dono) q = q.eq("dono_auth_id", opts.dono);
   const [{ data: cotas }, { data: pres }] = await Promise.all([
     q,
@@ -437,19 +441,20 @@ export async function listarReservas(empresaId: string, dono?: Escopo) {
   );
 }
 
-export async function decidirReserva(empresaId: string, reservaId: string, acao: "VENDIDA" | "CANCELAR", dono?: Escopo) {
+export async function decidirReserva(empresaId: string, reservaId: string, acao: "VENDIDA" | "CANCELAR", dono?: Escopo, porAuthId?: string) {
   const { data: r } = await db().from("contempladas_reservas").select("*").eq("empresa_id", empresaId).eq("id", reservaId).maybeSingle();
   if (!r) throw new Error("Reserva não encontrada.");
   if (dono && r.dono_auth_id !== dono) throw new Error("Essa reserva é de outra unidade.");
   await db().from("contempladas_reservas").update({ status: acao === "VENDIDA" ? "CONFIRMADA" : "CANCELADA" }).eq("id", reservaId);
-  if (acao === "VENDIDA") await mudarStatusCotas(empresaId, r.cota_ids, "VENDIDA");
+  if (acao === "VENDIDA") await mudarStatusCotas(empresaId, r.cota_ids, "VENDIDA", undefined, porAuthId);
   else if (r.tipo === "PIX") await mudarStatusCotas(empresaId, r.cota_ids, "DISPONIVEL");
 }
 
-export async function mudarStatusCotas(empresaId: string, ids: string[], status: CotaPortal["status"], dono?: Escopo) {
+export async function mudarStatusCotas(empresaId: string, ids: string[], status: CotaPortal["status"], dono?: Escopo, porAuthId?: string) {
+  // O banco grava a venda em contempladas_vendas (trigger) com quem marcou.
   let q = db()
     .from("contempladas_cotas")
-    .update({ status, updated_at: new Date().toISOString() })
+    .update({ status, updated_at: new Date().toISOString(), ...(status === "VENDIDA" ? { vendida_por: porAuthId ?? null } : {}) })
     .eq("empresa_id", empresaId)
     .in("id", ids);
   if (dono) q = q.eq("dono_auth_id", dono);
@@ -510,4 +515,20 @@ export async function listarPropostasVendedor(empresaId: string, vendedorAuthId:
       criadaEm: l.created_at as string,
     };
   });
+}
+
+/** Cartas vendidas registradas (base da taxa por carta). */
+export async function resumoVendas(empresaId: string, dono?: Escopo) {
+  let q = db().from("contempladas_vendas").select("credito,created_at").eq("empresa_id", empresaId).is("estornada_em", null);
+  if (dono) q = q.eq("dono_auth_id", dono);
+  const { data } = await q;
+  const inicioMes = new Date();
+  inicioMes.setDate(1);
+  inicioMes.setHours(0, 0, 0, 0);
+  const linhas = data ?? [];
+  return {
+    total: linhas.length,
+    noMes: linhas.filter((l) => new Date(l.created_at as string) >= inicioMes).length,
+    creditoTotal: linhas.reduce((s, l) => s + num(l.credito), 0),
+  };
 }

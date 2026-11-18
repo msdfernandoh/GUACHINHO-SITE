@@ -18,7 +18,7 @@ export default async function Page() {
   const tenant = await getResolvedTenant();
   if (!tenant) notFound();
   const [cotas, stats, cfgs, a] = await Promise.all([
-    listarCotas(tenant.empresaId),
+    listarCotas(tenant.empresaId, { vendidasRecentesDias: 60 }),
     estatisticas(tenant.empresaId),
     configsPorDono(tenant.empresaId),
     getAcesso(tenant.empresaId),
@@ -37,6 +37,7 @@ export default async function Page() {
       <Portal cotas={lista} stats={stats} logado={a ? a.nome : null}
         adicional={a?.adicional ?? null}
         unidades={unidades}
+        gerencia={a && (a.papel === "DONO" || a.papel === "GERENTE") ? { dono: a.papel === "DONO", authUserId: a.authUserId } : null}
       />
     </Shell>
   );

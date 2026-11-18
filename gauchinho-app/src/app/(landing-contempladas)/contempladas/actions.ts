@@ -195,13 +195,14 @@ export async function reservarAction(fd: FormData) {
 
 export async function decidirReservaAction(reservaId: string, acao: "VENDIDA" | "CANCELAR") {
   const { empresaId, a } = await exigirGerencia();
-  await repo.decidirReserva(empresaId, reservaId, acao, escopo(a));
+  await repo.decidirReserva(empresaId, reservaId, acao, escopo(a), a.authUserId);
   revalidatePath("/contempladas/painel");
 }
 
 export async function statusCotaAction(cotaId: string, status: "DISPONIVEL" | "VENDIDA" | "INATIVA") {
   const { empresaId, a } = await exigirGerencia();
-  await repo.mudarStatusCotas(empresaId, [cotaId], status, escopo(a));
+  await repo.mudarStatusCotas(empresaId, [cotaId], status, escopo(a), a.authUserId);
+  revalidatePath("/contempladas");
   revalidatePath("/contempladas/painel");
 }
 
@@ -339,4 +340,18 @@ export async function agioGerenteAction(gerenteId: string | null) {
   const { empresaId, a } = await exigirGerencia();
   const { cfg } = await donoDoEnvio(empresaId, a, gerenteId);
   return { imovel: { tipo: cfg.agio_tipo, valor: cfg.agio_valor } as Acrescimo, auto: { tipo: cfg.agio_auto_tipo, valor: cfg.agio_auto_valor } as Acrescimo };
+}
+
+/** Gerência marca vendida direto da lista (gerente só as da unidade dele). */
+export async function marcarVendidaAction(cotaId: string) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirGerencia();
+    const [c] = await repo.cotasPorIds(empresaId, [cotaId]);
+    if (!c) throw new Error("Cota não encontrada.");
+    if (a.papel !== "DONO" && c.dono_auth_id !== a.authUserId) throw new Error("Essa cota é de outra unidade.");
+    await repo.mudarStatusCotas(empresaId, [cotaId], "VENDIDA", escopo(a), a.authUserId);
+    revalidatePath("/contempladas");
+    revalidatePath("/contempladas/painel");
+    return {};
+  });
 }
