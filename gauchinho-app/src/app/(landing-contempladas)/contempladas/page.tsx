@@ -30,7 +30,10 @@ export default async function Page() {
         adicional={a?.adicional ?? null}
         cfg={{
           whatsapp: cfg.whatsapp,
-          chavePix: cfg.chave_pix,
+          chavePix:
+            cfg.chave_pix_tipo === "CELULAR" && cfg.chave_pix && /^\d{11}$/.test(cfg.chave_pix.replace(/\D/g, ""))
+              ? cfg.chave_pix.replace(/\D/g, "").replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3")
+              : cfg.chave_pix,
           tipoPix: { CELULAR: "celular", EMAIL: "e-mail", CPF: "CPF", CNPJ: "CNPJ", ALEATORIA: "aleatória" }[cfg.chave_pix_tipo],
           favorecido: cfg.favorecido_pix,
           minutos: cfg.pre_reserva_minutos,
