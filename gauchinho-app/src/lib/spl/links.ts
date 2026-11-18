@@ -11,12 +11,14 @@ export function slugNome(nome: string): string {
   );
 }
 
-/** O token do painel tem 32 caracteres e fica no fim do link (ele pode conter "-"). */
-export const TOKEN_PAINEL_TAMANHO = 32;
-
+// Os pré-cadastros do evento usam 64 caracteres hexadecimais; o cadastro usa base64url de 32.
 export function extrairToken(segmento: string): string {
-  const s = decodeURIComponent(segmento ?? "");
-  return s.length > TOKEN_PAINEL_TAMANHO ? s.slice(-TOKEN_PAINEL_TAMANHO) : s;
+  try {
+    const valor = decodeURIComponent(segmento);
+    return /^(?:[a-z0-9-]+-)?([a-fA-F0-9]{64}|[A-Za-z0-9_-]{32})$/.exec(valor)?.[1] ?? "";
+  } catch {
+    return "";
+  }
 }
 
 /** Códigos de convite e de vendedor não têm "-": vale o que vem depois do último. */

@@ -25,6 +25,12 @@ API: `POST /api/public/spl/evento`. Relatório:
 `docs/relatorios-fases/CHECKIN-SPL-PESQUISA-SORTEIO-DESAFIO-2026-11-16.md`.
 
 ### Portfólio SPL para imobiliárias e subdomínio spl.* (15/11/2026)
+
+O painel e a edição aceitam os códigos de acesso de 32 caracteres do cadastro
+e os hexadecimais de 64 caracteres do pré-cadastro de evento, com ou sem o nome
+da imobiliária no endereço. Relatório em
+`docs/relatorios-fases/SPL-ACESSO-EDICAO-IMOBILIARIAS-2026-11-18.md`.
+
 - 2026-11-16: termos de parceria SPL por modelo (Indicador/Negócio/Microfranquia), preenchidos com o cadastro e a empresa contratante; migration 344 (endereço).
 `spl.<domínio>` herda o tenant do domínio pai (`lib/landings/subdominios.ts`) e
 serve `/spl`: cadastro de imobiliárias (modelos 12,5%/25%/50% ou só liberar a

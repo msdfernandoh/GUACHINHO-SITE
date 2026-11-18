@@ -69,7 +69,7 @@ export default async function SplPainelPage({ params }: { params: Promise<{ toke
     <SplShell>
       <SplPainel
         imob={publica}
-        token={token}
+        token={imob.token_painel}
         convites={convites}
         termos={termoPreenchido} vendedores={vendedores} clientes={clientes} empreendimentos={empreendimentos} />
     </SplShell>
