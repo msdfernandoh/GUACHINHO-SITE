@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMetaApps } from "@/lib/whatsapp/cloud-api/config";
 import { verifyWebhookSignature } from "@/lib/whatsapp/cloud-api/signature";
+import { ehPedidoDeDescadastro } from "@/lib/whatsapp/cloud-api/templates-shared";
+import { aplicarStatusTemplate } from "@/lib/whatsapp/cloud-api/templates";
+import { gravarContatosDoApp, gravarHistorico, type ContatoSync, type HistoricoBloco } from "@/lib/whatsapp/cloud-api/coexistencia";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) { try {
@@ -32,6 +35,13 @@ type Valor = {
             name?: string;
         };
     }[];
+    history?: HistoricoBloco[];
+    state_sync?: ContatoSync[];
+    event?: string;
+    message_template_id?: number | string;
+    message_template_name?: string;
+    message_template_language?: string;
+    reason?: string | null;
     statuses?: {
         id?: string;
         status?: string;
@@ -57,6 +67,7 @@ export async function POST(request: NextRequest) {
     let body: {
         object?: string;
         entry?: {
+            id?: string;
             changes?: {
                 field?: string;
                 value?: Valor;
@@ -76,6 +87,18 @@ export async function POST(request: NextRequest) {
         for (const entry of body.entry || []) {
             for (const change of entry.changes || []) {
                 const v = change.value;
+                // Status de template chega pela WABA (sem número): aprovado, rejeitado, pausado…
+                if (change.field === "message_template_status_update") {
+                    if (!v || !entry.id)
+                        continue;
+                    const dono = await db.from("whatsapp_instancias").select("id,empresa_id,app_meta_id").eq("waba_id", entry.id).limit(1).maybeSingle();
+                    if (dono.error)
+                        throw new Error("lookup");
+                    const d = dono.data;
+                    if (d && apps.some(a => d.app_meta_id ? a.id === d.app_meta_id : (a.id === null || a.appId === process.env.WHATSAPP_APP_ID)))
+                        await aplicarStatusTemplate(entry.id, v);
+                    continue;
+                }
                 const phone = v?.metadata?.phone_number_id;
                 if (!v || !phone)
                     continue;
@@ -92,8 +115,19 @@ export async function POST(request: NextRequest) {
                         const { error } = await db.from("whatsapp_mensagens").upsert({ empresa_id: i.empresa_id, instancia_id: i.id, direcao, wa_message_id: m.id, contato_numero: contato, contato_nome: v.contacts?.find(c => c.wa_id === contato)?.profile?.name || null, tipo: m.type || "text", conteudo: m.text?.body || null, status: direcao === "recebida" ? "received" : "sent" }, { onConflict: "wa_message_id", ignoreDuplicates: true });
                         if (error)
                             throw new Error("persist");
+                        // "SAIR"/"PARAR": a pessoa sai de todos os envios automáticos da empresa.
+                        if (direcao === "recebida" && ehPedidoDeDescadastro(m.text?.body)) {
+                            const sair = await db.from("whatsapp_descadastros").upsert({ empresa_id: i.empresa_id, numero: contato, motivo: "Pediu para sair pelo WhatsApp" }, { onConflict: "empresa_id,numero", ignoreDuplicates: true });
+                            if (sair.error)
+                                throw new Error("descadastro");
+                        }
                     }
                 }
+                // Coexistência: histórico e contatos do WhatsApp Business do celular.
+                if (v.history?.length)
+                    await gravarHistorico(i, v.history);
+                if (v.state_sync?.length)
+                    await gravarContatosDoApp(i, v.state_sync);
                 for (const s of v.statuses || []) {
                     if (!s.id || !s.status || !["sent", "delivered", "read", "failed"].includes(s.status))
                         continue;

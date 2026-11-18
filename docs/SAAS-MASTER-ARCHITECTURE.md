@@ -1,6 +1,7 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
 ### Check-in SPL "Pesquisa, Sorteio e Desafio" (16/11/2026)
+- 2026-11-18: WhatsApp templates e envios automáticos (campanhas, automação de novo lead, fila por cron, descadastro); migration 349. Relatório WHATSAPP-TEMPLATES-ENVIOS-2026-11-18.md.
 `eventos.checkin_fluxo` (`padrao` | `spl_imobiliarias`, migration 345) troca o
 check-in público de um evento pelo fluxo de corretores (`components/spl/spl-evento-checkin.tsx`):
 corretor + imobiliária pré-cadastrada + função (proprietário completa os dados

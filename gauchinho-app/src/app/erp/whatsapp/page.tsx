@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { uuid } from "@/lib/whatsapp/cloud-api/validation";
 import type { MensagemView } from "@/lib/whatsapp/cloud-api/types";
 import WhatsappClient from "./ui";
+import WhatsappNav from "./nav";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export default async function ErpWhatsappPage({ searchParams }: {
@@ -25,5 +26,5 @@ export default async function ErpWhatsappPage({ searchParams }: {
         else
             mensagens = r.data as MensagemView[];
     }
-    return <WhatsappClient instancias={instancias} selecionadaId={selecionada?.id || ""} mensagens={mensagens} erroHistorico={erro}/>;
+    return <><WhatsappNav atual="conversas" instanciaId={selecionada?.id}/><WhatsappClient instancias={instancias} selecionadaId={selecionada?.id || ""} mensagens={mensagens} erroHistorico={erro}/></>;
 }

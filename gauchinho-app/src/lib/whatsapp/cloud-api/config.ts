@@ -17,7 +17,7 @@ let cache: {
     apps: MetaAppConfig[];
 } | null = null;
 export function invalidarConfigWhatsapp() { cache = null; }
-function envConfig(): MetaAppConfig { return { id: null, appId: process.env.WHATSAPP_APP_ID || "", appSecret: process.env.WHATSAPP_APP_SECRET || "", configId: process.env.WHATSAPP_CONFIG_ID || "", graphVersion: WHATSAPP_GRAPH_VERSION, verifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || "", origem: origemConexao(process.env.WHATSAPP_DOMINIO_CONEXAO || "admin.gauchinhoconsorcios.com.br") }; }
+function envConfig(): MetaAppConfig { return { id: null, appId: process.env.WHATSAPP_APP_ID || process.env.META_APP_ID || "", appSecret: process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET || "", configId: process.env.WHATSAPP_CONFIG_ID || process.env.META_CONFIG_ID || "", graphVersion: WHATSAPP_GRAPH_VERSION, verifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || "", origem: origemConexao(process.env.WHATSAPP_DOMINIO_CONEXAO || "admin.gauchinhoconsorcios.com.br") }; }
 export async function getMetaApps(): Promise<MetaAppConfig[]> {
     if (cache && cache.ate > Date.now())
         return cache.apps;
