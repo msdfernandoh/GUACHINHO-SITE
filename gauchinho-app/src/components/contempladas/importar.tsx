@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { agioGerenteAction, enviarCotasAction, preverEnvioAction } from "@/app/(landing-contempladas)/contempladas/actions";
+import { useEffect, useState, useTransition } from "react";
+import { agioGerenteAction, desfazerLoteAction, enviarCotasAction, listarLotesAction, preverEnvioAction } from "@/app/(landing-contempladas)/contempladas/actions";
 import type { LinhaPrevia } from "@/app/(landing-contempladas)/contempladas/actions";
 import type { Acrescimo } from "@/lib/contempladas/motor";
 import { brl, btnOuro, btnSec, Card, inputCls, MoneyInput, Sair } from "./ui";
@@ -23,6 +23,10 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
   const [previa, setPrevia] = useState<LinhaPrevia[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [pend, start] = useTransition();
+  type Lote = Awaited<ReturnType<typeof listarLotesAction>>[number];
+  const [lotes, setLotes] = useState<Lote[]>([]);
+  const recarregarLotes = () => listarLotesAction().then(setLotes).catch(() => {});
+  useEffect(() => { recarregarLotes(); }, []);
   const personalizado: Acrescimo | null = usarPadrao ? null : { tipo, valor };
   // Duplicadas começam desmarcadas; o usuário decide incluir ou não.
   const [fora, setFora] = useState<Set<number>>(new Set());
@@ -114,7 +118,7 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
             onClick={() => start(async () => {
               const r = await enviarCotasAction(texto, personalizado, gerente || null, comissaoLote, [...fora]);
               setMsg(r.ok ? `✅ ${r.incluidas} cotas incluídas.` : `⚠️ ${r.erro}`);
-              if (r.ok) { setTexto(""); setPrevia(null); }
+              if (r.ok) { setTexto(""); setPrevia(null); recarregarLotes(); }
             })}>
             {pend ? "Enviando…" : `Enviar ${validas.length || ""}`}
           </button>
@@ -154,6 +158,35 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
             </tbody>
           </table>
         )}
+      </Card>
+      <Card className="lg:col-span-2">
+        <p className="mb-1 text-sm font-semibold">Últimos envios</p>
+        <p className="mb-2 text-xs text-slate-500">Errou uma inclusão? Desfazer tira do ar as cotas daquele envio que ainda estão disponíveis. Reservadas e vendidas ficam.</p>
+        {!lotes.length && <p className="text-sm text-slate-400">Nenhum envio ainda.</p>}
+        <div className="divide-y divide-slate-100">
+          {lotes.map((l, i) => (
+            <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+              <span>
+                <b>{new Date(l.criadoEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</b> · {l.quantidade} cota(s) {l.tipos && `de ${l.tipos}`}{l.dono ? ` · ${l.dono}` : ""}
+                {i === 0 && !l.desfeitoEm && <span className="ml-2 rounded bg-[#0047bb]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#0047bb]">ÚLTIMO</span>}
+                <span className="block text-xs text-slate-500">
+                  {l.desfeitoEm ? `Desfeito em ${new Date(l.desfeitoEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}` : `${l.disponiveis} disponível(is)${l.travadas ? ` · ${l.travadas} reservada(s)/vendida(s) ficam` : ""}`}
+                </span>
+              </span>
+              {!l.desfeitoEm && l.disponiveis > 0 && (
+                <button className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 ring-1 ring-red-200" disabled={pend}
+                  onClick={() => {
+                    if (!confirm(`Desfazer este envio? ${l.disponiveis} cota(s) disponível(is) saem do portal.`)) return;
+                    start(async () => {
+                      const r = await desfazerLoteAction(l.id);
+                      setMsg(r.ok ? `↩ Envio desfeito: ${r.retiradas} cota(s) retiradas.` : `⚠️ ${r.erro}`);
+                      recarregarLotes();
+                    });
+                  }}>↩ Desfazer</button>
+              )}
+            </div>
+          ))}
+        </div>
       </Card>
     </div>
   );

@@ -263,6 +263,8 @@ export async function importarCotas(params: {
       substituiu: params.substituir,
       quantidade: params.cotas.length,
       texto_original: params.texto.slice(0, 50000),
+      dono_auth_id: params.donoAuthId,
+      dono_nome: params.donoNome,
     })
     .select("id")
     .single();
@@ -661,4 +663,51 @@ export async function acharDuplicadas(empresaId: string, cotas: { administradora
   const mapa = new Map<string, { codigo: string; status: string; dono: string | null }>();
   for (const c of data ?? []) mapa.set(chave(c as never), { codigo: c.codigo, status: c.status, dono: c.dono_nome });
   return cotas.map((c) => mapa.get(chave(c)) ?? null);
+}
+
+/** Últimos envios (para desfazer). Gerente vê só os da unidade dele. */
+export async function listarLotes(empresaId: string, dono?: Escopo) {
+  let q = db()
+    .from("contempladas_lotes")
+    .select("id,created_at,quantidade,dono_nome,desfeito_em")
+    .eq("empresa_id", empresaId)
+    .order("created_at", { ascending: false })
+    .limit(8);
+  if (dono) q = q.eq("dono_auth_id", dono);
+  const { data } = await q;
+  const lotes = data ?? [];
+  const ids = lotes.map((l) => l.id as string);
+  const { data: cs } = ids.length ? await db().from("contempladas_cotas").select("lote_id,status,tipo").in("lote_id", ids) : { data: [] };
+  return lotes.map((l) => {
+    const minhas = (cs ?? []).filter((c) => c.lote_id === l.id);
+    return {
+      id: l.id as string,
+      criadoEm: l.created_at as string,
+      quantidade: Number(l.quantidade),
+      dono: (l.dono_nome as string) ?? null,
+      desfeitoEm: (l.desfeito_em as string) ?? null,
+      disponiveis: minhas.filter((c) => c.status === "DISPONIVEL").length,
+      travadas: minhas.filter((c) => c.status === "RESERVADA" || c.status === "VENDIDA").length,
+      tipos: [...new Set(minhas.map((c) => (c.tipo === "automovel" ? "veículos" : "imóveis")))].join(" e "),
+    };
+  });
+}
+
+/** Desfaz um envio: tira do ar as cotas dele que ainda estão disponíveis (reservadas e vendidas ficam). */
+export async function desfazerLote(empresaId: string, loteId: string, dono?: Escopo) {
+  let q = db().from("contempladas_lotes").select("id,dono_auth_id,desfeito_em").eq("empresa_id", empresaId).eq("id", loteId);
+  if (dono) q = q.eq("dono_auth_id", dono);
+  const { data: lote } = await q.maybeSingle();
+  if (!lote) throw new Error("Envio não encontrado.");
+  if (lote.desfeito_em) throw new Error("Esse envio já foi desfeito.");
+  const { data: tiradas, error } = await db()
+    .from("contempladas_cotas")
+    .update({ status: "INATIVA", updated_at: new Date().toISOString() })
+    .eq("empresa_id", empresaId)
+    .eq("lote_id", loteId)
+    .eq("status", "DISPONIVEL")
+    .select("id");
+  if (error) throw new Error(error.message);
+  await db().from("contempladas_lotes").update({ desfeito_em: new Date().toISOString() }).eq("id", loteId);
+  return tiradas?.length ?? 0;
 }

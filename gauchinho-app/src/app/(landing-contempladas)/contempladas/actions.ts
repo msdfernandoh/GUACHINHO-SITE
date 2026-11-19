@@ -530,3 +530,18 @@ export async function editarMembroAction(
     return {};
   });
 }
+
+export async function listarLotesAction() {
+  const { empresaId, a } = await exigirGerencia();
+  return repo.listarLotes(empresaId, escopo(a));
+}
+
+export async function desfazerLoteAction(loteId: string) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirGerencia();
+    const retiradas = await repo.desfazerLote(empresaId, loteId, escopo(a));
+    revalidatePath("/contempladas");
+    revalidatePath("/contempladas/painel");
+    return { retiradas };
+  });
+}
