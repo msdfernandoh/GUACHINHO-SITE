@@ -29,6 +29,23 @@ const REVENDA = [
   ["Reserve e receba", "Pré-reserva de 30 minutos e sinal no PIX. Vendida, sua comissão aparece para receber com comprovante."],
 ];
 
+const PERGUNTAS = [
+  ["Quanto custa para participar?", "O cadastro é gratuito. Você pede o acesso, ele é aprovado e já pode usar o portal."],
+  ["Quem pode se cadastrar?", "Quem tem cartas contempladas para vender (administrador de cotas), quem vai revender e quem faz as duas coisas."],
+  ["Tenho acesso aos sistemas internos?", "Não. O acesso é só ao portal de cotas contempladas."],
+  ["Como subo minhas cartas?", "Em Enviar cotas: cole a mensagem do WhatsApp ou copie da planilha com a linha de títulos. Clique em Conferir e depois em Enviar."],
+  ["E se eu subir uma carta repetida ou errar o envio?", "Cartas idênticas às que já estão no ar vêm desmarcadas com aviso. Um envio errado pode ser desfeito em Últimos envios."],
+  ["Como funciona o ágio?", "O administrador define um valor ou % do crédito (imóvel e veículo). Ele entra na entrada de cada carta e é o ganho dele."],
+  ["Como a revenda ganha?", "Com a comissão que o administrador paga por carta, mais o adicional que ela pode somar na entrada das propostas dela."],
+  ["O cliente vê a comissão?", "Não. Comissão e rentabilidade aparecem só para quem está logado e nunca saem na proposta."],
+  ["Como é calculada a taxa mensal?", "O cliente recebe o crédito menos a entrada e paga as parcelas. A taxa é o custo desse fluxo ao mês; a anual é a mensal composta em 12 meses."],
+  ["A pré-reserva segura a carta?", "Não. Ela liga um relógio de 30 minutos e mostra interesse. Quem segura a carta é o sinal pago no PIX do administrador."],
+  ["Para quem vai o PIX do cliente?", "Para a chave do administrador dono da carta. Ele confere o comprovante e marca a carta como vendida."],
+  ["Quando recebo minha comissão?", "Quando a carta é vendida a comissão aparece pendente. O administrador paga com comprovante e você confirma o recebimento no painel."],
+  ["Posso juntar cartas de administradores diferentes?", "Na proposta, sim. A reserva e o sinal são feitos com cada administrador separadamente."],
+  ["Funciona no celular?", "Sim. Simular, gerar proposta, reservar, enviar comprovante e marcar vendida funcionam no celular."],
+];
+
 function Bloco({ titulo, sub, itens, cta, href }: { titulo: string; sub: string; itens: string[][]; cta: string; href: string }) {
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -89,6 +106,21 @@ export default function Page() {
             ))}
           </ol>
           <p className="mt-5 text-sm text-slate-500">Acesso só ao portal de cotas, sem acesso a sistemas internos. Cada administrador vê e cuida só das cartas dele.</p>
+        </section>
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <h2 className="text-2xl font-black text-[#0a2a66] sm:text-3xl">Perguntas frequentes</h2>
+          <div className="mt-4 divide-y divide-slate-100">
+            {PERGUNTAS.map(([p, r]) => (
+              <details key={p} className="group py-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-bold text-[#0a2a66]">
+                  {p}
+                  <span className="text-xl text-[#0047bb] transition group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-2 text-sm text-slate-600">{r}</p>
+              </details>
+            ))}
+          </div>
         </section>
 
         <section className="rounded-3xl bg-[#0a2a66] p-6 text-white sm:p-8">
