@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { agioGerenteAction, enviarCotasAction, preverEnvioAction } from "@/app/(landing-contempladas)/contempladas/actions";
-import type { LinhaLida } from "@/lib/contempladas/parser";
+import type { LinhaPrevia } from "@/app/(landing-contempladas)/contempladas/actions";
 import type { Acrescimo } from "@/lib/contempladas/motor";
 import { brl, btnOuro, btnSec, Card, inputCls, MoneyInput, Sair } from "./ui";
 
@@ -20,11 +20,14 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
   const [comTipo, setComTipo] = useState<"PERCENTUAL" | "FIXO">("PERCENTUAL");
   const [comValor, setComValor] = useState(0);
   const comissaoLote: Acrescimo | null = comPadrao ? null : { tipo: comTipo, valor: comValor };
-  const [previa, setPrevia] = useState<LinhaLida[] | null>(null);
+  const [previa, setPrevia] = useState<LinhaPrevia[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [pend, start] = useTransition();
   const personalizado: Acrescimo | null = usarPadrao ? null : { tipo, valor };
-  const validas = previa?.filter((l) => l.cota) ?? [];
+  // Duplicadas começam desmarcadas; o usuário decide incluir ou não.
+  const [fora, setFora] = useState<Set<number>>(new Set());
+  const validas = previa?.filter((l, i) => l.cota && !fora.has(i)) ?? [];
+  const duplicadas = previa?.filter((l) => l.duplicada).length ?? 0;
   const mudou = () => setPrevia(null);
 
   return (
@@ -36,7 +39,7 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
         </div>
         <textarea
           className={`${inputCls} h-64 font-mono text-xs`}
-          placeholder={"Cole aqui a mensagem do WhatsApp ou as linhas da tabela\nracon IMÓVEL R$ 311.000,00 R$ 195.300,00 113 R$ 2.002,26 R$ 226.255,38 dezembro R$ 5.000,00"}
+          placeholder={"Cole aqui a mensagem do WhatsApp ou copie e cole da planilha (com a linha de títulos)\nracon IMÓVEL R$ 311.000,00 R$ 195.300,00 113 R$ 2.002,26 R$ 226.255,38 dezembro R$ 5.000,00"}
           value={texto}
           onChange={(e) => { setTexto(e.target.value); mudou(); }}
         />
@@ -106,10 +109,10 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
         )}
         <p className="mt-3 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">As cotas novas entram junto com as que já estão no portal. Uma cota só sai quando é marcada como vendida ou excluída.</p>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button className={btnSec} disabled={!texto.trim() || pend} onClick={() => start(async () => setPrevia(await preverEnvioAction(texto, personalizado, gerente || null)))}>Conferir</button>
+          <button className={btnSec} disabled={!texto.trim() || pend} onClick={() => start(async () => { const r = await preverEnvioAction(texto, personalizado, gerente || null); setPrevia(r); setFora(new Set(r.flatMap((l, i) => (l.duplicada ? [i] : [])))); })}>Conferir</button>
           <button className={btnOuro} disabled={!validas.length || pend}
             onClick={() => start(async () => {
-              const r = await enviarCotasAction(texto, personalizado, gerente || null, comissaoLote);
+              const r = await enviarCotasAction(texto, personalizado, gerente || null, comissaoLote, [...fora]);
               setMsg(r.ok ? `✅ ${r.incluidas} cotas incluídas.` : `⚠️ ${r.erro}`);
               if (r.ok) { setTexto(""); setPrevia(null); }
             })}>
@@ -120,26 +123,33 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
       </Card>
 
       <Card className="overflow-x-auto">
-        <p className="mb-2 text-sm font-semibold">Prévia {previa ? `· ${validas.length} válidas de ${previa.length}` : ""}</p>
+        <p className="mb-2 text-sm font-semibold">Prévia {previa ? `· ${validas.length} para incluir de ${previa.length}` : ""}</p>
+        {duplicadas > 0 && (
+          <p className="mb-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
+            ⚠ {duplicadas} cota(s) idêntica(s) a uma que já está no portal (mesma administradora, crédito, prazo e entrada). Ficaram desmarcadas: marque só se quiser incluir mesmo assim.
+          </p>
+        )}
         {!previa ? (
           <p className="text-sm text-slate-500">Clique em Conferir para ver cota por cota antes de enviar.</p>
         ) : (
           <table className="w-full text-xs">
             <thead className="text-slate-500">
-              <tr><th className="p-1 text-left">Crédito</th><th className="p-1 text-right">Entrada</th><th className="p-1 text-right">Prazo</th><th className="p-1 text-right">Parcela</th><th className="p-1 text-right">Saldo</th><th className="p-1 text-right">Comissão</th></tr>
+              <tr><th className="p-1" /><th className="p-1 text-left">Crédito</th><th className="p-1 text-right">Entrada</th><th className="p-1 text-right">Prazo</th><th className="p-1 text-right">Parcela</th><th className="p-1 text-right">Saldo</th><th className="p-1 text-right">Comissão</th></tr>
             </thead>
             <tbody>
               {previa.map((l, i) => l.cota ? (
-                <tr key={i} className="border-t border-slate-100">
-                  <td className="p-1">{brl(l.cota.credito)}</td>
+                <tr key={i} className={`border-t border-slate-100 ${l.duplicada ? "bg-amber-50" : ""} ${fora.has(i) ? "opacity-50" : ""}`}>
+                  <td className="p-1"><input type="checkbox" className="h-4 w-4 accent-[#0047bb]" checked={!fora.has(i)} onChange={() => setFora((f) => { const n = new Set(f); if (n.has(i)) n.delete(i); else n.add(i); return n; })} /></td>
+                  <td className="p-1">{brl(l.cota.credito)}<span className="block text-[10px] capitalize text-slate-500">{l.cota.administradora} · {l.cota.tipo === "automovel" ? "veículo" : "imóvel"}</span>
+                    {l.duplicada && <span className="block text-[10px] font-bold text-amber-800">⚠ Idêntica a {l.duplicada.noTexto ? "outra linha deste texto" : `${l.duplicada.codigo}${l.duplicada.dono ? ` (${l.duplicada.dono})` : ""}`}</span>}</td>
                   <td className="p-1 text-right">{brl(l.cota.entrada)}{l.cota.entrada_acrescimo > 0 && <span className="block text-[10px] text-[#0047bb]">ágio +{brl(l.cota.entrada_acrescimo)}</span>}</td>
                   <td className="p-1 text-right">{l.cota.prazo}</td>
                   <td className="p-1 text-right">{brl(l.cota.parcela)}</td>
                   <td className="p-1 text-right">{brl(l.cota.saldo_devedor)}</td>
-                  <td className="p-1 text-right">{brl(l.cota.comissao_parceiro)}</td>
+                  <td className="p-1 text-right">{brl(l.cota.comissao_parceiro)}{l.cota.comissao_fixada && <span className="block text-[10px] text-slate-500">fixa da lista</span>}</td>
                 </tr>
               ) : (
-                <tr key={i} className="border-t border-slate-100 text-red-600"><td colSpan={6} className="p-1">{l.erro} — {l.texto.slice(0, 60)}</td></tr>
+                <tr key={i} className="border-t border-slate-100 text-red-600"><td colSpan={7} className="p-1">{l.erro} — {l.texto.slice(0, 60)}</td></tr>
               ))}
             </tbody>
           </table>

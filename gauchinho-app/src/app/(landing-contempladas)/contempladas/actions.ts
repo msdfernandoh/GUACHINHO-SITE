@@ -74,18 +74,41 @@ async function agioDoEnvio(empresaId: string, a: acesso.Acesso, personalizado: A
     tipo === "automovel" ? { tipo: cfg.agio_auto_tipo, valor: cfg.agio_auto_valor } : { tipo: cfg.agio_tipo, valor: cfg.agio_valor };
 }
 
-export async function preverEnvioAction(texto: string, personalizado: Acrescimo | null = null, gerenteId: string | null = null): Promise<LinhaLida[]> {
+export type LinhaPrevia = LinhaLida & { duplicada: { codigo: string; status: string; dono: string | null; noTexto?: boolean } | null };
+
+/** Prévia do envio com aviso de cota idêntica (já no portal ou repetida no próprio texto). */
+export async function preverEnvioAction(texto: string, personalizado: Acrescimo | null = null, gerenteId: string | null = null): Promise<LinhaPrevia[]> {
   const { empresaId, a } = await exigirGerencia();
-  return lerCotasTexto(String(texto ?? ""), await agioDoEnvio(empresaId, a, personalizado, gerenteId));
+  const linhas = lerCotasTexto(String(texto ?? ""), await agioDoEnvio(empresaId, a, personalizado, gerenteId));
+  const validas = linhas.flatMap((l) => (l.cota ? [l.cota] : []));
+  const existentes = await repo.acharDuplicadas(empresaId, validas);
+  const vistas = new Set<string>();
+  let k = 0;
+  return linhas.map((l) => {
+    if (!l.cota) return { ...l, duplicada: null };
+    const ja = existentes[k++];
+    const chave = `${l.cota.administradora}|${l.cota.credito}|${l.cota.prazo}|${l.cota.entrada_original}`;
+    const repetida = vistas.has(chave);
+    vistas.add(chave);
+    return { ...l, duplicada: ja ?? (repetida ? { codigo: "repetida no texto", status: "", dono: null, noTexto: true } : null) };
+  });
 }
 
 /** Sobe as cotas com o ágio do gerente na entrada; as cotas ficam no nome dele. */
-export async function enviarCotasAction(texto: string, personalizado: Acrescimo | null = null, gerenteId: string | null = null, comissaoLote: Acrescimo | null = null) {
+export async function enviarCotasAction(
+  texto: string,
+  personalizado: Acrescimo | null = null,
+  gerenteId: string | null = null,
+  comissaoLote: Acrescimo | null = null,
+  /** Índices (da prévia) que não devem entrar, ex.: duplicadas desmarcadas. */
+  ignorar: number[] = [],
+) {
   return resultado(async () => {
     const { empresaId, a } = await exigirGerencia();
     const dono = await donoDoEnvio(empresaId, a, gerenteId);
     const agio = await agioDoEnvio(empresaId, a, personalizado, gerenteId);
-    const cotas = lerCotasTexto(String(texto ?? ""), agio).flatMap((l) => (l.cota ? [l.cota] : []));
+    const fora = new Set(ignorar);
+    const cotas = lerCotasTexto(String(texto ?? ""), agio).flatMap((l, i) => (l.cota && !fora.has(i) ? [l.cota] : []));
     if (!cotas.length) throw new Error("Nenhuma cota válida no texto.");
     const { data: erp } = await createAdminClient({ noStore: true }).from("usuarios").select("id").eq("auth_user_id", a.authUserId).maybeSingle();
     const r = await repo.importarCotas({

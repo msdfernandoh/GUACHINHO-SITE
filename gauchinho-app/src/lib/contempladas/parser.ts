@@ -16,6 +16,8 @@ export type CotaLida = {
   vencimento_mes: number | null;
   comissao_parceiro: number;
   transferencia?: number | null;
+  /** Comissão veio na própria lista: vale como está, por cota. */
+  comissao_fixada?: boolean;
   texto_original: string;
 };
 
@@ -112,6 +114,7 @@ function lerBlocosRotulados(texto: string): LinhaLida[] | null {
         saldo_devedor: campo(b, "saldo") ?? 0,
         vencimento_mes: mesDoTexto(linhaVenc),
         comissao_parceiro: campo(b, "comiss") ?? 0,
+        comissao_fixada: (campo(b, "comiss") ?? 0) > 0,
         transferencia: campo(b, "transfer"),
         texto_original: b.trim(),
       } as CotaLida,
@@ -121,13 +124,90 @@ function lerBlocosRotulados(texto: string): LinhaLida[] | null {
   });
 }
 
+/** Mês do vencimento: "dezembro", "dez", "10/12", "10.01", "19.11". */
+function mesVencimento(v: string): number | null {
+  const m = v.match(/(\d{1,2})\s*[./-]\s*(\d{1,2})/);
+  if (m) {
+    const mes = Number(m[2]);
+    return mes >= 1 && mes <= 12 ? mes : null;
+  }
+  return mesDoTexto(v);
+}
+
+/**
+ * Planilha copiada (Excel/Google Sheets) com linha de títulos:
+ * ADMINISTRADORA | TIPO | CRÉDITO | ENTRADA | PRAZO | PARCELA | SALDO DEVEDOR | VENCIMENTO | COMISSÃO.
+ * As colunas são achadas pelo título, em qualquer ordem.
+ */
+function lerPlanilhaComTitulos(texto: string): LinhaLida[] | null {
+  const linhas = texto.split(/\r?\n/).filter((l) => l.trim());
+  const iTitulo = linhas.findIndex((l) => {
+    const n = sem(l);
+    return n.includes("credito") && n.includes("entrada") && n.includes("prazo");
+  });
+  if (iTitulo < 0) return null;
+  const separar = (l: string) => (l.includes("\t") ? l.split("\t") : l.split(/\s{2,}|;/)).map((c) => c.trim());
+  const titulos = separar(linhas[iTitulo]).map(sem);
+  const col = (...chaves: string[]) => titulos.findIndex((t) => chaves.some((k) => t.includes(k)));
+  const c = {
+    adm: col("administradora", "adm"),
+    tipo: col("tipo"),
+    credito: col("credito"),
+    entrada: col("entrada"),
+    prazo: col("prazo"),
+    parcela: col("parcela"),
+    saldo: col("saldo"),
+    venc: col("venc"),
+    comissao: col("comiss"),
+    transf: col("transf"),
+  };
+  // "Vencimento parcela" contém "parcela": a coluna de parcela é a que não é o vencimento.
+  if (c.parcela === c.venc) c.parcela = titulos.findIndex((t, i) => t.includes("parcela") && i !== c.venc);
+  const cabecalho = linhas.slice(0, iTitulo).join(" ");
+  const tipoGeral = TIPO_AUTO.test(cabecalho) || /ve[ií]culo/i.test(cabecalho) ? "automovel" : "imovel";
+  const num = (cel: string | undefined) => {
+    const m = (cel ?? "").match(/\d[\d.]*(?:,\d{1,2})?/);
+    return m ? parseBrazilianNumber(m[0]) : null;
+  };
+  return linhas.slice(iTitulo + 1).flatMap((l): LinhaLida[] => {
+    const cel = separar(l);
+    const credito = num(cel[c.credito]);
+    if (!credito) return [];
+    const entrada = num(cel[c.entrada]);
+    const prazo = num(cel[c.prazo]);
+    if (entrada == null || !prazo) return [{ cota: null, erro: "Entrada ou prazo não encontrado.", texto: l.trim() }];
+    const tipoCel = c.tipo >= 0 ? cel[c.tipo] ?? "" : "";
+    const comissao = c.comissao >= 0 ? num(cel[c.comissao]) : null;
+    return [
+      {
+        cota: {
+          administradora: (c.adm >= 0 && cel[c.adm] ? cel[c.adm] : "racon").toLowerCase(),
+          tipo: tipoCel ? (/ve[ií]c|auto|moto|caminh|pesad/i.test(tipoCel) ? "automovel" : "imovel") : tipoGeral,
+          credito,
+          entrada_original: entrada,
+          prazo: Math.round(prazo),
+          parcela: num(cel[c.parcela]) ?? 0,
+          saldo_devedor: num(cel[c.saldo]) ?? 0,
+          vencimento_mes: c.venc >= 0 ? mesVencimento(cel[c.venc] ?? "") : null,
+          comissao_parceiro: comissao ?? 0,
+          comissao_fixada: comissao != null && comissao > 0,
+          transferencia: c.transf >= 0 ? num(cel[c.transf]) : null,
+          texto_original: l.trim(),
+        } as CotaLida,
+        erro: null,
+        texto: l.trim(),
+      },
+    ];
+  });
+}
+
 /**
  * Lê o texto colado (linhas da planilha ou mensagens do WhatsApp) e aplica o
  * acréscimo de entrada (percentual do crédito ou valor fixo) em cada cota.
  */
 export function lerCotasTexto(texto: string, acrescimo: Acrescimo | ((tipo: "imovel" | "automovel") => Acrescimo)): LinhaLida[] {
   const agioDe = typeof acrescimo === "function" ? acrescimo : () => acrescimo;
-  const rotulados = lerBlocosRotulados(texto);
+  const rotulados = lerPlanilhaComTitulos(texto) ?? lerBlocosRotulados(texto);
   const linhas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const tabela = linhas.map((l) => ({ l, c: lerLinhaTabela(l) }));
   const pareceTabela = tabela.filter((x) => x.c).length >= Math.max(1, Math.ceil(linhas.length / 3));

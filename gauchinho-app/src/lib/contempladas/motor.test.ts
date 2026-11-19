@@ -91,6 +91,19 @@ describe("contempladas motor", () => {
     expect(ops.length).toBeGreaterThan(0);
   });
 
+  it("lê planilha colada com títulos (prazo em R$, vencimento 10.01, comissão fixa)", () => {
+    const t = [
+      "CONTEMPLADAS VEÍCULOS RACON E RANDON   🚘🚘🚘\t\t\t",
+      "ADMINISTRADORA\tTIPO\tCRÉDITO\tENTRADA \tPRAZO\tPARCELA\tSALDO DEVEDOR\tVENCIMENTO PARCELA\tCOMISSÃO PARCEIRO",
+      "racon\tveiculo\tR$ 74.500,00\tR$ 29.900,00\tR$ 75,00\tR$ 1.152,00\tR$ 86.400,00\t10.01\tR$ 2.500,00",
+      "Randon\tveiculo\tR$ 503.400,00\tR$ 220.000,00\tR$ 116,00\tR$ 4.789,00\tR$ 555.524,00\t19.11\tR$ 10.000,00",
+    ].join("\n");
+    const r = lerCotasTexto(t, { tipo: "FIXO", valor: 0 });
+    expect(r.length).toBe(2);
+    expect(r[0].cota).toMatchObject({ administradora: "racon", tipo: "automovel", credito: 74500, entrada: 29900, prazo: 75, parcela: 1152, saldo_devedor: 86400, vencimento_mes: 1, comissao_parceiro: 2500, comissao_fixada: true });
+    expect(r[1].cota).toMatchObject({ administradora: "randon", prazo: 116, vencimento_mes: 11 });
+  });
+
   it("lê linhas da planilha e aplica acréscimo", () => {
     const t = "racon\tIMÓVEL\tR$ 311.000,00\tR$ 195.300,00\t113\tR$ 2.002,26\tR$ 226.255,38\tdezembro\tR$ 5.000,00";
     const [l] = lerCotasTexto(t, { tipo: "PERCENTUAL", valor: 1 });

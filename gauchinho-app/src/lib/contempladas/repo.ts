@@ -648,3 +648,17 @@ export async function reaplicarAgio(empresaId: string, dono: string | null, incl
   }
   return n;
 }
+
+/** Cotas já no portal com as mesmas características (administradora, crédito, prazo e entrada da administradora). */
+export async function acharDuplicadas(empresaId: string, cotas: { administradora: string; credito: number; prazo: number; entrada_original: number }[]) {
+  const { data } = await db()
+    .from("contempladas_cotas")
+    .select("codigo,status,administradora,credito,prazo,entrada_original,dono_nome")
+    .eq("empresa_id", empresaId)
+    .neq("status", "INATIVA");
+  const chave = (c: { administradora: string; credito: number; prazo: number; entrada_original: number }) =>
+    `${String(c.administradora).toLowerCase()}|${Math.round(num(c.credito) * 100)}|${c.prazo}|${Math.round(num(c.entrada_original) * 100)}`;
+  const mapa = new Map<string, { codigo: string; status: string; dono: string | null }>();
+  for (const c of data ?? []) mapa.set(chave(c as never), { codigo: c.codigo, status: c.status, dono: c.dono_nome });
+  return cotas.map((c) => mapa.get(chave(c)) ?? null);
+}
