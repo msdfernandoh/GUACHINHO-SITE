@@ -428,17 +428,21 @@ export async function solicitarAcessoAction(p: {
   empresa: string;
   cnpj: string;
   cpf: string;
+  pixTipo?: string;
+  pixChave?: string;
+  pixFavorecido?: string;
 }) {
   return resultado(async () => {
     const empresaId = await empresa();
     const tipo = p.tipo in TIPOS_CADASTRO ? p.tipo : "REVENDE";
+    const pix = so(p.pixChave) ? validarPix(p.pixTipo ?? "CELULAR", so(p.pixChave)) : null;
     validarCadastro(p);
     const cpf = digitos(p.cpf);
     const cnpj = digitos(p.cnpj);
     if (cpf.length !== 11) throw new Error("CPF inválido.");
     if (cnpj && cnpj.length !== 14) throw new Error("CNPJ inválido.");
     if (digitos(p.telefone).length < 10) throw new Error("Informe o WhatsApp com DDD.");
-    await acesso.criarUsuarioPortal({
+    const authId = await acesso.criarUsuarioPortal({
       empresaId,
       nome: p.nome,
       email: p.email,
@@ -449,6 +453,7 @@ export async function solicitarAcessoAction(p: {
       pendente: true,
       extras: { administradora: so(p.administradora) || null, cidade: so(p.cidade) || null, empresa: so(p.empresa) || null, cnpj: cnpj || null, cpf, tipo_cadastro: tipo },
     });
+    if (pix) await acesso.salvarPixMembro(empresaId, authId, { tipo: pix.chave_pix_tipo, chave: pix.chave_pix, favorecido: so(p.pixFavorecido) || p.nome });
     return {};
   });
 }
@@ -502,7 +507,7 @@ export async function salvarMeusDadosAction(d: {
 
 export async function editarMembroAction(
   id: string,
-  d: { nome: string; email: string; telefone: string; administradora: string; cidade: string; empresa: string; cnpj: string; cpf: string; papel: "GERENTE" | "VENDEDOR"; senha: string },
+  d: { nome: string; email: string; telefone: string; administradora: string; cidade: string; empresa: string; cnpj: string; cpf: string; papel: "GERENTE" | "VENDEDOR"; senha: string; pixTipo?: string; pixChave?: string; pixFavorecido?: string },
 ) {
   return resultado(async () => {
     const { empresaId, a } = await exigirGerencia();
@@ -526,6 +531,13 @@ export async function editarMembroAction(
       papel: d.papel === "GERENTE" ? "GERENTE" : "VENDEDOR",
       senha: d.senha || null,
     });
+    // PIX que aparece no Negociar das cotas deste administrador.
+    if (d.pixChave !== undefined) {
+      const auth = await acesso.authDoMembro(empresaId, id);
+      const pix = validarPix(d.pixTipo ?? "CELULAR", d.pixChave ?? "");
+      if (auth) await acesso.salvarPixMembro(empresaId, auth, { tipo: pix.chave_pix_tipo, chave: pix.chave_pix, favorecido: so(d.pixFavorecido) || null });
+    }
+    revalidatePath("/contempladas");
     revalidatePath("/contempladas/painel");
     return {};
   });

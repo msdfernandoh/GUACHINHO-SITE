@@ -116,10 +116,13 @@ export async function criarUsuarioPortal(p: {
     await db().auth.admin.deleteUser(criado.user.id);
     throw new Error(e2.message);
   }
+  return criado.user.id;
 }
 
 export type MembroPortal = {
   id: string;
+  auth_user_id: string;
+  pix?: { tipo: string; chave: string; favorecido: string } | null;
   nome: string;
   email: string;
   telefone: string | null;
@@ -138,10 +141,11 @@ export type MembroPortal = {
 export async function listarUsuariosPortal(empresaId: string) {
   const { data } = await db()
     .from("contempladas_usuarios")
-    .select("id,nome,email,telefone,papel,ativo,status,administradora,cidade,empresa,cnpj,cpf,tipo_cadastro,created_at")
+    .select("id,auth_user_id,nome,email,telefone,papel,ativo,status,administradora,cidade,empresa,cnpj,cpf,tipo_cadastro,created_at")
     .eq("empresa_id", empresaId)
     .order("nome");
-  return (data ?? []) as MembroPortal[];
+  const pix = await pixDosMembros(empresaId);
+  return ((data ?? []) as MembroPortal[]).map((m) => ({ ...m, pix: pix.get(m.auth_user_id) ?? null }));
 }
 
 export async function atualizarUsuarioPortal(empresaId: string, id: string, campos: { ativo?: boolean; papel?: "GERENTE" | "VENDEDOR"; status?: "ATIVO" | "PENDENTE" | "RECUSADO" }) {
@@ -262,6 +266,11 @@ export async function atualizarMeusDados(
 }
 
 /** Dono do portal edita os dados de um membro da equipe (e pode definir nova senha). */
+export async function authDoMembro(empresaId: string, id: string) {
+  const { data } = await db().from("contempladas_usuarios").select("auth_user_id").eq("empresa_id", empresaId).eq("id", id).maybeSingle();
+  return (data?.auth_user_id as string) ?? null;
+}
+
 export async function editarMembro(
   empresaId: string,
   id: string,
@@ -284,4 +293,20 @@ export async function editarMembro(
     .eq("empresa_id", empresaId)
     .eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+/** PIX da unidade de um administrador de cotas (usado no Negociar das cotas dele). */
+export async function salvarPixMembro(empresaId: string, authUserId: string, pix: { tipo: string; chave: string | null; favorecido: string | null }) {
+  const { error } = await db()
+    .from("contempladas_gerente_config")
+    .upsert(
+      { empresa_id: empresaId, auth_user_id: authUserId, chave_pix_tipo: pix.tipo, chave_pix: pix.chave, favorecido_pix: pix.favorecido, updated_at: new Date().toISOString() },
+      { onConflict: "empresa_id,auth_user_id" },
+    );
+  if (error) throw new Error(error.message);
+}
+
+export async function pixDosMembros(empresaId: string) {
+  const { data } = await db().from("contempladas_gerente_config").select("auth_user_id,chave_pix,chave_pix_tipo,favorecido_pix").eq("empresa_id", empresaId);
+  return new Map((data ?? []).map((r) => [r.auth_user_id as string, { tipo: (r.chave_pix_tipo as string) ?? "CELULAR", chave: (r.chave_pix as string) ?? "", favorecido: (r.favorecido_pix as string) ?? "" }]));
 }

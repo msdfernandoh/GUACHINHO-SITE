@@ -144,7 +144,13 @@ export async function configsPorDono(empresaId: string) {
   const padrao = await getConfig(empresaId);
   const { data } = await db().from("contempladas_gerente_config").select("*").eq("empresa_id", empresaId);
   const mapa = new Map<string, ConfigContempladas>([["", padrao]]);
-  for (const l of data ?? []) mapa.set(l.auth_user_id as string, lerConfig(l, padrao.pre_reserva_minutos));
+  for (const l of data ?? []) {
+    const c = lerConfig(l, padrao.pre_reserva_minutos);
+    // Unidade sem WhatsApp/PIX próprio usa os do padrão da empresa.
+    if (!c.whatsapp) c.whatsapp = padrao.whatsapp;
+    if (!c.chave_pix) Object.assign(c, { chave_pix: padrao.chave_pix, chave_pix_tipo: padrao.chave_pix_tipo, favorecido_pix: padrao.favorecido_pix });
+    mapa.set(l.auth_user_id as string, c);
+  }
   return { padrao, de: (dono: string | null) => (dono && mapa.get(dono)) || padrao };
 }
 

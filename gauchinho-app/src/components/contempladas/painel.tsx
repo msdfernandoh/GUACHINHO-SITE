@@ -82,6 +82,7 @@ export function Painel(props: {
   const [editando, setEditando] = useState<{
     id: string; nome: string; email: string; telefone: string; senha: string; papel: "GERENTE" | "VENDEDOR";
     administradora: string; cidade: string; empresa: string; cnpj: string; cpf: string;
+    pixTipo: string; pixChave: string; pixFavorecido: string;
   } | null>(null);
   const [dados, setDados] = useState({
     nome: props.dados.nome,
@@ -505,6 +506,7 @@ export function Painel(props: {
                       id: m.id, nome: m.nome, email: m.email, telefone: mascaraTelefone(m.telefone ?? ""), senha: "", papel: m.papel,
                       administradora: m.administradora ?? "", cidade: m.cidade ?? "", empresa: m.empresa ?? "",
                       cnpj: mascaraPix("CNPJ", m.cnpj ?? ""), cpf: mascaraPix("CPF", m.cpf ?? ""),
+                      pixTipo: m.pix?.tipo ?? "CELULAR", pixChave: m.pix?.chave ?? "", pixFavorecido: m.pix?.favorecido ?? "",
                     })}>{editando?.id === m.id ? "Fechar" : "Editar"}</button>
                   )}
                   {props.papel === "DONO" && (
@@ -541,6 +543,10 @@ export function Painel(props: {
                   <label className="text-xs font-semibold text-slate-600">CNPJ<input className={inputCls} value={editando.cnpj} onChange={(e) => setEditando({ ...editando, cnpj: mascaraPix("CNPJ", e.target.value) })} /></label>
                   <label className="text-xs font-semibold text-slate-600">Administradora<input className={inputCls} value={editando.administradora} onChange={(e) => setEditando({ ...editando, administradora: e.target.value })} /></label>
                   <label className="text-xs font-semibold text-slate-600">Cidade<input className={inputCls} value={editando.cidade} onChange={(e) => setEditando({ ...editando, cidade: e.target.value })} /></label>
+                  <div className="text-xs font-semibold text-slate-600 sm:col-span-2">Chave PIX (aparece no Negociar das cotas dele)
+                    <PixInput tipo={editando.pixTipo as TipoPix} valor={editando.pixChave} onChange={(t, v) => setEditando({ ...editando, pixTipo: t, pixChave: v })} />
+                  </div>
+                  <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Favorecido do PIX<input className={inputCls} value={editando.pixFavorecido} onChange={(e) => setEditando({ ...editando, pixFavorecido: e.target.value })} /></label>
                   <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Nova senha (deixe em branco para manter)<input className={inputCls} type="password" minLength={8} value={editando.senha} onChange={(e) => setEditando({ ...editando, senha: e.target.value })} /></label>
                   <button className={`${btnOuro} sm:col-span-2`} disabled={pend}>Salvar alterações</button>
                 </form>
