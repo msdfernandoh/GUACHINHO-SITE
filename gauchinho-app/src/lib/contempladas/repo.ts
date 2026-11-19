@@ -525,24 +525,24 @@ export async function mudarStatusCotas(
     if (dono) q = q.eq("dono_auth_id", dono);
     const { error } = await q;
     if (error) throw new Error(error.message);
+    // Venda desfeita: comissão ainda não paga é cancelada.
+    await db().from("contempladas_comissoes").update({ status: "CANCELADO" }).eq("empresa_id", empresaId).in("cota_id", ids).eq("status", "PENDENTE");
     return;
   }
   // Venda: grava vendedor (da proposta mais recente com a cota) e quem marcou.
   // O banco registra a linha em contempladas_vendas (trigger).
+  const cfgs = await configsPorDono(empresaId);
   for (const id of ids) {
-    let vendedor = por?.vendedor ?? null;
-    if (!vendedor) {
-      const { data: prop } = await db()
-        .from("contempladas_propostas")
-        .select("vendedor_nome")
-        .eq("empresa_id", empresaId)
-        .contains("cota_ids", [id])
-        .not("vendedor_nome", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      vendedor = (prop?.vendedor_nome as string) ?? por?.nome ?? null;
-    }
+    const { data: prop } = await db()
+      .from("contempladas_propostas")
+      .select("id,numero,vendedor_nome,vendedor_auth_id,adicional_valor,desconto_valor,credito_total")
+      .eq("empresa_id", empresaId)
+      .contains("cota_ids", [id])
+      .not("vendedor_nome", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const vendedor = por?.vendedor ?? (prop?.vendedor_nome as string) ?? por?.nome ?? null;
     let q = db()
       .from("contempladas_cotas")
       .update({ status, updated_at: agora, vendida_por: por?.authId ?? null, vendida_por_nome: por?.nome ?? null, vendedor_nome: vendedor })
@@ -551,7 +551,128 @@ export async function mudarStatusCotas(
     if (dono) q = q.eq("dono_auth_id", dono);
     const { error } = await q;
     if (error) throw new Error(error.message);
+    if (prop?.vendedor_auth_id) await gerarComissao(empresaId, id, prop, cfgs.de);
   }
+}
+
+/**
+ * Comissão da revenda na venda: o que o administrador paga pela cota (configuração dele ou
+ * a da lista) + o adicional que a revenda pôs na entrada − o desconto que ela deu
+ * (adicional e desconto rateados pelo crédito quando a proposta junta várias cotas).
+ */
+async function gerarComissao(
+  empresaId: string,
+  cotaId: string,
+  prop: Record<string, unknown>,
+  cfgDe: (dono: string | null) => ConfigContempladas,
+) {
+  const { data: c } = await db()
+    .from("contempladas_cotas")
+    .select("id,codigo,credito,comissao_parceiro,comissao_fixada,dono_auth_id,dono_nome")
+    .eq("id", cotaId)
+    .maybeSingle();
+  if (!c || c.dono_auth_id === prop.vendedor_auth_id) return; // venda do próprio administrador
+  const credito = num(c.credito);
+  const parte = num(prop.credito_total) ? credito / num(prop.credito_total) : 1;
+  const base = comissaoVisivel({ credito, comissao_parceiro: num(c.comissao_parceiro), comissao_fixada: Boolean(c.comissao_fixada) }, cfgDe(c.dono_auth_id));
+  const adicional = Math.round(num(prop.adicional_valor) * parte * 100) / 100;
+  const desconto = Math.round(num(prop.desconto_valor) * parte * 100) / 100;
+  await db()
+    .from("contempladas_comissoes")
+    .insert({
+      empresa_id: empresaId,
+      cota_id: cotaId,
+      codigo: c.codigo,
+      credito,
+      proposta_id: prop.id,
+      proposta_numero: prop.numero,
+      revenda_auth_id: prop.vendedor_auth_id,
+      revenda_nome: prop.vendedor_nome,
+      dono_auth_id: c.dono_auth_id,
+      dono_nome: c.dono_nome,
+      valor_comissao: base,
+      valor_adicional: adicional,
+      valor_desconto: desconto,
+      valor: Math.max(0, Math.round((base + adicional - desconto) * 100) / 100),
+    });
+}
+
+export type Comissao = {
+  id: string;
+  codigo: string;
+  credito: number;
+  propostaNumero: number | null;
+  revenda: string | null;
+  revendaAuthId: string | null;
+  dono: string | null;
+  donoAuthId: string | null;
+  valorComissao: number;
+  valorAdicional: number;
+  valorDesconto: number;
+  valor: number;
+  status: "PENDENTE" | "PAGO" | "RECEBIDO";
+  comprovanteUrl: string | null;
+  pagoEm: string | null;
+  recebidoEm: string | null;
+  criadaEm: string;
+};
+
+/** Comissões a pagar (administrador; dono do portal vê todas) e a receber (revenda). */
+export async function listarComissoes(empresaId: string, authId: string, verTodas: boolean) {
+  let q = db().from("contempladas_comissoes").select("*").eq("empresa_id", empresaId).neq("status", "CANCELADO").order("created_at", { ascending: false }).limit(300);
+  if (!verTodas) q = q.or(`dono_auth_id.eq.${authId},revenda_auth_id.eq.${authId}`);
+  const { data } = await q;
+  return Promise.all(
+    (data ?? []).map(async (r): Promise<Comissao> => {
+      let comprovanteUrl: string | null = null;
+      if (r.comprovante_path) {
+        const { data: s } = await db().storage.from(BUCKET_COMPROVANTES).createSignedUrl(r.comprovante_path, 3600);
+        comprovanteUrl = s?.signedUrl ?? null;
+      }
+      return {
+        id: r.id,
+        codigo: r.codigo,
+        credito: num(r.credito),
+        propostaNumero: r.proposta_numero ? Number(r.proposta_numero) : null,
+        revenda: r.revenda_nome,
+        revendaAuthId: r.revenda_auth_id,
+        dono: r.dono_nome,
+        donoAuthId: r.dono_auth_id,
+        valorComissao: num(r.valor_comissao),
+        valorAdicional: num(r.valor_adicional),
+        valorDesconto: num(r.valor_desconto),
+        valor: num(r.valor),
+        status: r.status,
+        comprovanteUrl,
+        pagoEm: r.pago_em,
+        recebidoEm: r.recebido_em,
+        criadaEm: r.created_at,
+      };
+    }),
+  );
+}
+
+export async function pagarComissao(empresaId: string, id: string, authId: string, verTodas: boolean, comprovante: File | null) {
+  const { data: r } = await db().from("contempladas_comissoes").select("dono_auth_id,status").eq("empresa_id", empresaId).eq("id", id).maybeSingle();
+  if (!r) throw new Error("Comissão não encontrada.");
+  if (!verTodas && r.dono_auth_id !== authId) throw new Error("Essa comissão é de outro administrador.");
+  if (r.status !== "PENDENTE") throw new Error("Essa comissão já foi paga.");
+  let path: string | null = null;
+  if (comprovante && comprovante.size) {
+    if (comprovante.size > 8 * 1024 * 1024) throw new Error("Comprovante acima de 8 MB.");
+    const ext = (comprovante.name.split(".").pop() ?? "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
+    path = `${empresaId}/comissoes/${id}-${Date.now()}.${ext}`;
+    const { error } = await db().storage.from(BUCKET_COMPROVANTES).upload(path, comprovante, { contentType: comprovante.type });
+    if (error) throw new Error(`Falha ao enviar comprovante: ${error.message}`);
+  }
+  await db().from("contempladas_comissoes").update({ status: "PAGO", pago_em: new Date().toISOString(), comprovante_path: path }).eq("id", id);
+}
+
+export async function confirmarRecebimento(empresaId: string, id: string, authId: string) {
+  const { data: r } = await db().from("contempladas_comissoes").select("revenda_auth_id,status").eq("empresa_id", empresaId).eq("id", id).maybeSingle();
+  if (!r || r.revenda_auth_id !== authId) throw new Error("Comissão não encontrada.");
+  if (r.status !== "PAGO") throw new Error("O administrador ainda não marcou como pago.");
+  await db().from("contempladas_comissoes").update({ status: "RECEBIDO", recebido_em: new Date().toISOString() }).eq("id", id);
 }
 
 export async function solicitarExclusao(empresaId: string, cotaId: string, dono: string, nome: string, motivo: string) {

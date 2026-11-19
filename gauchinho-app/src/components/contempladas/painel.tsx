@@ -19,6 +19,8 @@ import {
 import type { ConfigContempladas, CotaPortal } from "@/lib/contempladas/repo";
 import type { Acrescimo } from "@/lib/contempladas/motor";
 import { ConfigEditor } from "./config-editor";
+import { Comissoes } from "./comissoes";
+import type { Comissao } from "@/lib/contempladas/repo";
 import { brl, btnOuro, btnSec, Card, inputCls, MoneyInput, PixInput, Sair, TelInput, mascaraPix, mascaraTelefone, type TipoPix } from "./ui";
 
 type Reserva = { id: string; tipo: "PRE" | "PIX"; nome: string; telefone: string; cotaIds: string[]; expiraEm: string | null; criadaEm: string; valorPix: number | null; comprovanteUrl: string | null };
@@ -35,7 +37,7 @@ const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julh
 const dataHora = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
-type Aba = "reservas" | "cotas" | "propostas" | "equipe" | "config" | "meu";
+type Aba = "comissoes" | "reservas" | "cotas" | "propostas" | "equipe" | "config" | "meu";
 
 function SeletorValor({ valor, onChange, rotuloPct = "% do crédito" }: { valor: Acrescimo; onChange: (v: Acrescimo) => void; rotuloPct?: string }) {
   return (
@@ -71,6 +73,8 @@ export function Painel(props: {
   vendas: { total: number; noMes: number; creditoTotal: number } | null;
   dados: Dados;
   configsAdmins: { authUserId: string; nome: string; cfg: ConfigContempladas }[];
+  comissoes: Comissao[];
+  authUserId: string;
   origem: "ERP" | "PORTAL";
 }) {
   const router = useRouter();
@@ -102,6 +106,8 @@ export function Painel(props: {
   const [convite, setConvite] = useState<string | null>(null);
   const porId = new Map(props.cotas.map((c) => [c.id, c]));
   const [filtroCota, setFiltroCota] = useState<"DISPONIVEL" | "RESERVADA" | "VENDIDA" | "TODAS">("DISPONIVEL");
+  const aPagar = props.comissoes.filter((c) => c.status === "PENDENTE" && (props.papel === "DONO" || c.donoAuthId === props.authUserId)).length;
+  const aReceber = props.comissoes.filter((c) => c.status === "PAGO" && c.revendaAuthId === props.authUserId).length;
   const pendentes = props.equipe.filter((m) => m.status === "PENDENTE");
   const pedidos = props.cotas.filter((c) => c.exclusao_solicitada_em && c.status !== "INATIVA");
   const agir = (fn: () => Promise<unknown>, ok?: string) =>
@@ -120,8 +126,8 @@ export function Painel(props: {
   const somaAberta = props.propostas.filter((p) => !p.vendida).reduce((s, p) => s + p.rentabilidade, 0);
 
   const abas: [Aba, string][] = gerencia
-    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["equipe", props.papel === "DONO" && props.equipe.some((m) => m.status === "PENDENTE") ? `Equipe (${props.equipe.filter((m) => m.status === "PENDENTE").length} novos)` : "Equipe"], [ "config", props.papel === "DONO" ? "Configurar" : "Minha unidade"], ["meu", "Meu perfil"]]
-    : [["propostas", "Minhas propostas"], ["meu", "Meu perfil"]];
+    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["comissoes", `Comissões${aPagar ? ` (${aPagar})` : ""}`], ["equipe", props.papel === "DONO" && props.equipe.some((m) => m.status === "PENDENTE") ? `Equipe (${props.equipe.filter((m) => m.status === "PENDENTE").length} novos)` : "Equipe"], [ "config", props.papel === "DONO" ? "Configurar" : "Minha unidade"], ["meu", "Meu perfil"]]
+    : [["propostas", "Minhas propostas"], ["comissoes", `Comissões${aReceber ? ` (${aReceber})` : ""}`], ["meu", "Meu perfil"]];
 
   return (
     <div className="space-y-4">
@@ -256,6 +262,8 @@ export function Painel(props: {
           ))}
         </div>
       )}
+
+      {aba === "comissoes" && <Comissoes itens={props.comissoes} authUserId={props.authUserId} dono={props.papel === "DONO"} volumeVendido={props.vendas?.creditoTotal ?? null} />}
 
       {aba === "propostas" && (
         <div className="space-y-2">

@@ -48,6 +48,7 @@ export default async function Page() {
     gerencia ? repo.resumoVendas(empresaId, meuEscopo) : Promise.resolve(null),
     meusDados(empresaId, a),
   ]);
+  const comissoes = await repo.listarComissoes(empresaId, a.authUserId, a.papel === "DONO");
   // Dono vê e edita a configuração de cada administrador de cotas.
   const configsAdmins =
     a.papel === "DONO"
@@ -73,6 +74,8 @@ export default async function Page() {
         vendas={vendas}
         dados={dados}
         configsAdmins={configsAdmins}
+        comissoes={comissoes}
+        authUserId={a.authUserId}
         origem={a.origem}
       />
     </Shell>

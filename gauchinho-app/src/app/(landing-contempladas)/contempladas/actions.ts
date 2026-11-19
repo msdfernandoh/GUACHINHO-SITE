@@ -565,3 +565,24 @@ export async function desfazerLoteAction(loteId: string) {
     return { retiradas };
   });
 }
+
+/* ------------------------------- Comissões ------------------------------- */
+
+export async function pagarComissaoAction(fd: FormData) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirGerencia();
+    const comp = fd.get("comprovante");
+    await repo.pagarComissao(empresaId, String(fd.get("id") ?? ""), a.authUserId, a.papel === "DONO", comp instanceof File ? comp : null);
+    revalidatePath("/contempladas/painel");
+    return {};
+  });
+}
+
+export async function confirmarRecebimentoAction(id: string) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirLogado();
+    await repo.confirmarRecebimento(empresaId, id, a.authUserId);
+    revalidatePath("/contempladas/painel");
+    return {};
+  });
+}
