@@ -24,3 +24,8 @@
 - Negociar usa o WhatsApp/PIX/sinal da unidade dona; cotas de unidades diferentes não são reservadas juntas.
 - Painel do gerente mostra só as cotas e reservas da unidade dele; o dono vê todas.
 - Proposta: layout A4, logomarca e telefone do vendedor, bloco de assinatura.
+
+## Domínio contempladasracon.com.br, menu no site e aprovação de revendas (19/11/2026)
+- `contempladasracon.com.br` (e www) abre o portal como `contempladas.raconsinop.com.br` (`LANDING_DOMINIOS_PROPRIOS` em `src/lib/landings/subdominios.ts`); o endereço antigo segue funcionando. Rotas curtas `/solicitar` e `/seja-parceiro` incluídas.
+- Site raconsinop.com.br: menu "Contempladas" (`/contempladas`) em todas as páginas e faixa "Acessar o portal" na home (`src/lib/contempladas/site-link.ts`).
+- Administrador de cotas (GERENTE) aprova ou recusa cadastros pendentes de revenda; administradores novos continuam com o dono.
