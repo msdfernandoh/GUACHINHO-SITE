@@ -233,7 +233,11 @@ export async function statusCotaAction(cotaId: string, status: "DISPONIVEL" | "V
   revalidatePath("/contempladas/painel");
 }
 
-export async function salvarConfigAction(c: repo.ConfigContempladas, atualizarEntradas = true) {
+/**
+ * Salva a configuração. Sem alvo: a de quem está logado (dono = padrão da empresa).
+ * O dono pode salvar a de um administrador de cotas passando o auth id dele.
+ */
+export async function salvarConfigAction(c: repo.ConfigContempladas, atualizarEntradas = true, alvoAuthId: string | null = null) {
   return resultado(async () => {
     const { empresaId, a } = await exigirGerencia();
     const v = (x: unknown) => Math.max(0, Number(x) || 0);
@@ -256,10 +260,14 @@ export async function salvarConfigAction(c: repo.ConfigContempladas, atualizarEn
       dia_vencimento: Math.min(31, Math.max(1, Math.round(Number(c.dia_vencimento) || 10))),
       unidade: c.unidade?.trim() || null,
     };
-    if (a.papel === "DONO") await repo.salvarConfig(empresaId, limpo);
+    const alvo = a.papel === "DONO" && alvoAuthId && alvoAuthId !== a.authUserId ? alvoAuthId : null;
+    if (alvo) await repo.salvarConfigGerente(empresaId, alvo, limpo);
+    else if (a.papel === "DONO") await repo.salvarConfig(empresaId, limpo);
     else await repo.salvarConfigGerente(empresaId, a.authUserId, limpo);
     // Ágio novo atualiza a entrada de todas as cotas disponíveis da unidade.
-    const atualizadas = atualizarEntradas ? await repo.reaplicarAgio(empresaId, a.authUserId, a.papel === "DONO", limpo) : 0;
+    const atualizadas = atualizarEntradas
+      ? await repo.reaplicarAgio(empresaId, alvo ?? a.authUserId, !alvo && a.papel === "DONO", limpo)
+      : 0;
     revalidatePath("/contempladas");
     revalidatePath("/contempladas/painel");
     return { atualizadas };

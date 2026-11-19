@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import * as repo from "@/lib/contempladas/repo";
-import { getAcesso, listarUsuariosPortal, meusDados, podeGerenciar, situacaoCadastro } from "@/lib/contempladas/acesso";
+import { getAcesso, listarGerentes, listarUsuariosPortal, meusDados, podeGerenciar, situacaoCadastro } from "@/lib/contempladas/acesso";
 import { LoginBox, Sair, Shell } from "@/components/contempladas/ui";
 import { Painel } from "@/components/contempladas/painel";
 
@@ -48,6 +48,13 @@ export default async function Page() {
     gerencia ? repo.resumoVendas(empresaId, meuEscopo) : Promise.resolve(null),
     meusDados(empresaId, a),
   ]);
+  // Dono vê e edita a configuração de cada administrador de cotas.
+  const configsAdmins =
+    a.papel === "DONO"
+      ? await Promise.all(
+          (await listarGerentes(empresaId)).map(async (g) => ({ authUserId: g.authUserId, nome: g.nome, cfg: await repo.getConfigGerente(empresaId, g.authUserId) })),
+        )
+      : [];
   const papelTxt = a.papel === "DONO" ? "dono do portal" : a.papel === "GERENTE" ? "administrador de cotas" : "revenda";
   return (
     <Shell titulo="Painel" sub={`${a.nome} · ${papelTxt}`} papel={a.papel}>
@@ -65,6 +72,7 @@ export default async function Page() {
         usuariosErp={usuariosErp}
         vendas={vendas}
         dados={dados}
+        configsAdmins={configsAdmins}
         origem={a.origem}
       />
     </Shell>

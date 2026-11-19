@@ -14,11 +14,11 @@ import {
   gerarConviteAction,
   permissaoEnvioAction,
   salvarPerfilAction,
-  salvarConfigAction,
   statusCotaAction,
 } from "@/app/(landing-contempladas)/contempladas/actions";
 import type { ConfigContempladas, CotaPortal } from "@/lib/contempladas/repo";
 import type { Acrescimo } from "@/lib/contempladas/motor";
+import { ConfigEditor } from "./config-editor";
 import { brl, btnOuro, btnSec, Card, inputCls, MoneyInput, PixInput, Sair, TelInput, mascaraPix, mascaraTelefone, type TipoPix } from "./ui";
 
 type Reserva = { id: string; tipo: "PRE" | "PIX"; nome: string; telefone: string; cotaIds: string[]; expiraEm: string | null; criadaEm: string; valorPix: number | null; comprovanteUrl: string | null };
@@ -70,6 +70,7 @@ export function Painel(props: {
   usuariosErp: UsuarioErp[];
   vendas: { total: number; noMes: number; creditoTotal: number } | null;
   dados: Dados;
+  configsAdmins: { authUserId: string; nome: string; cfg: ConfigContempladas }[];
   origem: "ERP" | "PORTAL";
 }) {
   const router = useRouter();
@@ -77,8 +78,7 @@ export function Painel(props: {
   const [aba, setAba] = useState<Aba>(gerencia ? "reservas" : "propostas");
   const [busca, setBusca] = useState("");
   const [pend, start] = useTransition();
-  const [cfg, setCfg] = useState(props.config);
-  const [atualizarEntradas, setAtualizarEntradas] = useState(true);
+  const cfg = props.config;
   const [editando, setEditando] = useState<{
     id: string; nome: string; email: string; telefone: string; senha: string; papel: "GERENTE" | "VENDEDOR";
     administradora: string; cidade: string; empresa: string; cnpj: string; cpf: string;
@@ -95,9 +95,6 @@ export function Painel(props: {
     cnpj: mascaraPix("CNPJ", props.dados.cnpj ?? ""),
     cpf: mascaraPix("CPF", props.dados.cpf ?? ""),
   });
-  const [mesmoAgio, setMesmoAgio] = useState(
-    !props.config || (props.config.agio_tipo === props.config.agio_auto_tipo && props.config.agio_valor === props.config.agio_auto_valor),
-  );
   const [adicional, setAdicional] = useState(props.adicional);
   const [tel, setTel] = useState(mascaraTelefone(props.telefone ?? ""));
   const [aviso, setAviso] = useState<string | null>(null);
@@ -349,86 +346,21 @@ export function Painel(props: {
       )}
 
       {aba === "config" && gerencia && cfg && (
-        <Card className="space-y-4">
-          <p className="text-sm text-slate-500">
-            {props.papel === "DONO"
-              ? "Padrão da empresa: vale para as suas cotas e para administradores de cotas que ainda não configuraram a unidade."
-              : "Configuração da sua unidade: vale só para as cotas que você sobe."}
-          </p>
-          <label className="block text-sm font-semibold">Nome da unidade (aparece para o cliente)
-            <input className={inputCls} value={cfg.unidade ?? ""} onChange={(e) => setCfg({ ...cfg, unidade: e.target.value })} placeholder="Ex.: Racon Sorriso" />
-          </label>
-
-          <div>
-            <p className="text-sm font-semibold">Ágio na subida das cotas</p>
-            <label className="my-1 flex items-center gap-2 text-xs text-slate-600">
-              <input type="checkbox" className="h-4 w-4 accent-[#0047bb]" checked={mesmoAgio}
-                onChange={(e) => { setMesmoAgio(e.target.checked); if (e.target.checked) setCfg({ ...cfg, agio_auto_tipo: cfg.agio_tipo, agio_auto_valor: cfg.agio_valor }); }} />
-              Mesmo ágio para imóvel e veículo
-            </label>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div><p className="mb-1 text-xs text-slate-500">{mesmoAgio ? "Imóvel e veículo" : "Imóvel"}</p>
-                <SeletorValor valor={{ tipo: cfg.agio_tipo, valor: cfg.agio_valor }}
-                  onChange={(v) => setCfg({ ...cfg, agio_tipo: v.tipo, agio_valor: v.valor, ...(mesmoAgio ? { agio_auto_tipo: v.tipo, agio_auto_valor: v.valor } : {}) })} /></div>
-              {!mesmoAgio && <div><p className="mb-1 text-xs text-slate-500">Veículo</p>
-                <SeletorValor valor={{ tipo: cfg.agio_auto_tipo, valor: cfg.agio_auto_valor }} onChange={(v) => setCfg({ ...cfg, agio_auto_tipo: v.tipo, agio_auto_valor: v.valor })} /></div>}
-            </div>
-          </div>
-
-          <label className="flex items-center gap-2 text-xs text-slate-600">
-            <input type="checkbox" className="h-4 w-4 accent-[#0047bb]" checked={atualizarEntradas} onChange={(e) => setAtualizarEntradas(e.target.checked)} />
-            Ao salvar, atualizar a entrada de todas as cotas disponíveis com este ágio
-          </label>
-
-          <div>
-            <p className="text-sm font-semibold">Sinal mínimo para segurar a cota (opcional)</p>
-            <p className="mb-1 text-xs text-slate-500">PIX que o cliente paga para travar a cota. Em branco ou zero: o PIX é a entrada inteira.</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <label className="text-xs text-slate-500">Imóvel<MoneyInput value={cfg.sinal_imovel} onChange={(v) => setCfg({ ...cfg, sinal_imovel: v })} /></label>
-              <label className="text-xs text-slate-500">Veículo<MoneyInput value={cfg.sinal_auto} onChange={(v) => setCfg({ ...cfg, sinal_auto: v })} /></label>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-sm font-semibold">Mensagens de WhatsApp</p>
-            <p className="mb-1 text-xs text-slate-500">Taxa de transferência padrão por cota (quando a lista não traz) e dia do vencimento.</p>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <label className="text-xs text-slate-500">Transferência imóvel<MoneyInput value={cfg.transferencia_imovel} onChange={(v) => setCfg({ ...cfg, transferencia_imovel: v })} /></label>
-              <label className="text-xs text-slate-500">Transferência veículo<MoneyInput value={cfg.transferencia_auto} onChange={(v) => setCfg({ ...cfg, transferencia_auto: v })} /></label>
-              <label className="text-xs text-slate-500">Dia do vencimento<input className={inputCls} type="number" min={1} max={31} value={cfg.dia_vencimento} onChange={(e) => setCfg({ ...cfg, dia_vencimento: Number(e.target.value) })} /></label>
-            </div>
-          </div>
-
-          <label className="block text-sm font-semibold">Comissão paga às revendas (todas as cotas)
-            <select className={inputCls} value={cfg.comissao_modo} onChange={(e) => setCfg({ ...cfg, comissao_modo: e.target.value as ConfigContempladas["comissao_modo"] })}>
-              <option value="TABELA">A comissão de cada cota (tabela)</option>
-              <option value="PERCENTUAL">Percentual sobre o crédito</option>
-            </select>
-          </label>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {cfg.comissao_modo === "PERCENTUAL" && (
-              <label className="block text-sm">% do crédito<input className={inputCls} type="number" step="0.01" value={cfg.comissao_percentual} onChange={(e) => setCfg({ ...cfg, comissao_percentual: Number(e.target.value) })} /></label>
-            )}
-            <label className="block text-sm">Repasse à revenda (%)<input className={inputCls} type="number" value={cfg.comissao_repasse_percentual} onChange={(e) => setCfg({ ...cfg, comissao_repasse_percentual: Number(e.target.value) })} /></label>
-          </div>
-          <label className="block text-sm font-semibold">WhatsApp de reservas da unidade
-            <TelInput value={mascaraTelefone(cfg.whatsapp ?? "")} onChange={(v) => setCfg({ ...cfg, whatsapp: v })} />
-          </label>
-          <div className="block text-sm font-semibold">Chave PIX da unidade
-            <PixInput tipo={cfg.chave_pix_tipo as TipoPix} valor={cfg.chave_pix ?? ""} onChange={(t, v) => setCfg({ ...cfg, chave_pix_tipo: t, chave_pix: v })} />
-          </div>
-          <label className="block text-sm font-semibold">Favorecido (nome que aparece no PIX)<input className={inputCls} value={cfg.favorecido_pix ?? ""} onChange={(e) => setCfg({ ...cfg, favorecido_pix: e.target.value })} /></label>
-          {props.papel === "DONO" && (
-            <label className="block text-sm font-semibold">Tempo da pré-reserva (minutos, vale para todas as unidades)
-              <input className={inputCls} type="number" min={5} value={cfg.pre_reserva_minutos} onChange={(e) => setCfg({ ...cfg, pre_reserva_minutos: Number(e.target.value) })} />
-            </label>
+        <div className="space-y-3">
+          <ConfigEditor
+            titulo={props.papel === "DONO" ? "Padrão da empresa (suas cotas)" : "Minha unidade"}
+            inicial={cfg}
+            ehPadrao={props.papel === "DONO"}
+          />
+          {props.papel === "DONO" && props.configsAdmins.length > 0 && (
+            <>
+              <p className="pt-2 text-xs font-bold uppercase tracking-wide text-slate-500">Administradores de cotas</p>
+              {props.configsAdmins.map((g) => (
+                <ConfigEditor key={g.authUserId} titulo={g.nome} inicial={g.cfg} ehPadrao={false} alvoAuthId={g.authUserId} />
+              ))}
+            </>
           )}
-          <button className={`${btnOuro} w-full`} disabled={pend} onClick={() => start(async () => {
-            const r = await salvarConfigAction(cfg, atualizarEntradas);
-            setAviso(r.ok ? `✅ Configuração salva.${r.atualizadas ? ` Entrada de ${r.atualizadas} cota(s) atualizada com o novo ágio.` : ""}` : `⚠️ ${r.erro}`);
-            router.refresh();
-          })}>Salvar</button>
-        </Card>
+        </div>
       )}
 
       {aba === "equipe" && gerencia && (
