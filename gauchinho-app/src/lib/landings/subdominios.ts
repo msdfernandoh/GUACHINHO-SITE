@@ -17,7 +17,13 @@ export const LANDING_SUBDOMINIOS = {
   spl: { base: "/spl", rotas: { "/": "/spl", "/cadastro": "/spl/cadastro", "/evento": "/spl/evento" } },
   contempladas: {
     base: "/contempladas",
-    rotas: { "/": "/contempladas", "/importar": "/contempladas/importar", "/painel": "/contempladas/painel" },
+    rotas: {
+      "/": "/contempladas",
+      "/importar": "/contempladas/importar",
+      "/painel": "/contempladas/painel",
+      "/solicitar": "/contempladas/solicitar",
+      "/seja-parceiro": "/contempladas/seja-parceiro",
+    },
   },
 } as const satisfies Record<string, { base: string; rotas: Record<string, string> }>;
 
@@ -25,9 +31,20 @@ export type LandingSubdominio = keyof typeof LANDING_SUBDOMINIOS;
 
 export type LandingDoHost = { subdominio: LandingSubdominio; parent: string };
 
-/** Identifica `<landing>.<domínio pai>`; qualquer outro host → null. */
+/**
+ * Domínios próprios que abrem uma landing como se fossem o subdomínio dela
+ * (ex.: contempladasracon.com.br = contempladas.raconsinop.com.br). O endereço
+ * antigo continua funcionando.
+ */
+export const LANDING_DOMINIOS_PROPRIOS: Record<string, LandingDoHost> = {
+  "contempladasracon.com.br": { subdominio: "contempladas", parent: "raconsinop.com.br" },
+};
+
+/** Identifica `<landing>.<domínio pai>` ou um domínio próprio de landing; qualquer outro host → null. */
 export function landingDoHost(rawHost: string | null | undefined): LandingDoHost | null {
   const host = normalizeHost(rawHost);
+  const proprio = LANDING_DOMINIOS_PROPRIOS[host.replace(/^www\./, "")];
+  if (proprio) return proprio;
   const ponto = host.indexOf(".");
   if (ponto <= 0) return null;
   const prefixo = host.slice(0, ponto);

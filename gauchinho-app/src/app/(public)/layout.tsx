@@ -3,6 +3,7 @@ import { isRaconModel } from "@/lib/tenant/model-family";
 import { resolveSiteContacts } from "@/lib/tenant/site-contacts";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { comMenuContempladas, siteMostraContempladas } from "@/lib/contempladas/site-link";
 import { PublicHeader } from "@/components/public/public-header";
 import { PublicFooter } from "@/components/public/public-footer";
 import { LenisProvider } from "@/components/public/lenis-provider";
@@ -66,7 +67,8 @@ export default async function PublicLayout({ children }: { children: React.React
     : resolveSiteContacts(tenant?.branding || {}, identidadeRacon.contatos);
   const nomeSite = partnerView?.nome_site ?? tenant?.branding.nome_site ?? "Gauchinho Consórcios";
   const menusBase = partnerView?.modelo_menus ?? tenant?.siteModel?.menus ?? [];
-  const menusRacon = usaChromeRacon ? raconPartnerNavigation(menusBase) : menusBase;
+  const menusRaconBase = usaChromeRacon ? raconPartnerNavigation(menusBase) : menusBase;
+  const menusRacon = siteMostraContempladas(requestHeaders.get("host")) ? comMenuContempladas(menusRaconBase) : menusRaconBase;
   const footerRacon = partnerView?.modelo_footer_copyright ?? tenant?.siteModel?.footerCopyright ?? undefined;
 
   const brandStyle: CSSProperties & Record<string, string> = {

@@ -424,7 +424,7 @@ const TIPOS_CADASTRO = { ADMINISTRA: "GERENTE", ADMINISTRA_E_REVENDE: "GERENTE",
 const so = (v: unknown) => String(v ?? "").trim();
 const digitos = (v: unknown) => so(v).replace(/\D/g, "");
 
-/** Cadastro público pelo portal: fica pendente até o dono aprovar. */
+/** Cadastro público pelo portal: fica pendente até o dono (ou um administrador de cotas, para revendas) aprovar. */
 export async function solicitarAcessoAction(p: {
   tipo: keyof typeof TIPOS_CADASTRO;
   nome: string;
@@ -469,7 +469,12 @@ export async function solicitarAcessoAction(p: {
 export async function decidirSolicitacaoAction(id: string, aprovar: boolean) {
   return resultado(async () => {
     const { empresaId, a } = await exigirGerencia();
-    if (a.papel !== "DONO") throw new Error("Somente o dono do portal aprova cadastros.");
+    if (a.papel !== "DONO") {
+      // O administrador de cotas aprova revendas; administradores novos ficam com o dono.
+      const alvo = await acesso.papelUsuarioPortal(empresaId, id);
+      if (!alvo || alvo.status !== "PENDENTE") throw new Error("Solicitação não encontrada.");
+      if (alvo.papel !== "VENDEDOR") throw new Error("Somente o dono do portal aprova administradores de cotas.");
+    }
     await acesso.atualizarUsuarioPortal(empresaId, id, aprovar ? { status: "ATIVO", ativo: true } : { status: "RECUSADO", ativo: false });
     revalidatePath("/contempladas/painel");
     return {};

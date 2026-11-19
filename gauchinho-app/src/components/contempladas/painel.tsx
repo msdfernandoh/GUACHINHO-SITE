@@ -108,7 +108,8 @@ export function Painel(props: {
   const [filtroCota, setFiltroCota] = useState<"DISPONIVEL" | "RESERVADA" | "VENDIDA" | "TODAS">("DISPONIVEL");
   const aPagar = props.comissoes.filter((c) => c.status === "PENDENTE" && (props.papel === "DONO" || c.donoAuthId === props.authUserId)).length;
   const aReceber = props.comissoes.filter((c) => c.status === "PAGO" && c.revendaAuthId === props.authUserId).length;
-  const pendentes = props.equipe.filter((m) => m.status === "PENDENTE");
+  // Dono aprova todos; o administrador de cotas aprova as revendas.
+  const pendentes = props.equipe.filter((m) => m.status === "PENDENTE" && (props.papel === "DONO" || m.papel === "VENDEDOR"));
   const pedidos = props.cotas.filter((c) => c.exclusao_solicitada_em && c.status !== "INATIVA");
   const agir = (fn: () => Promise<unknown>, ok?: string) =>
     start(async () => {
@@ -126,7 +127,7 @@ export function Painel(props: {
   const somaAberta = props.propostas.filter((p) => !p.vendida).reduce((s, p) => s + p.rentabilidade, 0);
 
   const abas: [Aba, string][] = gerencia
-    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["comissoes", `Comissões${aPagar ? ` (${aPagar})` : ""}`], ["equipe", props.papel === "DONO" && props.equipe.some((m) => m.status === "PENDENTE") ? `Equipe (${props.equipe.filter((m) => m.status === "PENDENTE").length} novos)` : "Equipe"], [ "config", props.papel === "DONO" ? "Configurar" : "Minha unidade"], ["meu", "Meu perfil"]]
+    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["comissoes", `Comissões${aPagar ? ` (${aPagar})` : ""}`], ["equipe", pendentes.length ? `Equipe (${pendentes.length} novos)` : "Equipe"], [ "config", props.papel === "DONO" ? "Configurar" : "Minha unidade"], ["meu", "Meu perfil"]]
     : [["propostas", "Minhas propostas"], ["comissoes", `Comissões${aReceber ? ` (${aReceber})` : ""}`], ["meu", "Meu perfil"]];
 
   return (
@@ -413,7 +414,7 @@ export function Painel(props: {
               })}>Cadastrar</button>
           </Card>
 
-          {props.papel === "DONO" && pendentes.length > 0 && (
+          {pendentes.length > 0 && (
             <Card className="space-y-2 border-amber-300 bg-amber-50">
               <p className="font-bold text-amber-900">Solicitações de acesso ({pendentes.length})</p>
               {pendentes.map((m) => (

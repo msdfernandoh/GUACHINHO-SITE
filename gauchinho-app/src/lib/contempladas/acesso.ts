@@ -148,6 +148,11 @@ export async function listarUsuariosPortal(empresaId: string) {
   return ((data ?? []) as MembroPortal[]).map((m) => ({ ...m, pix: pix.get(m.auth_user_id) ?? null }));
 }
 
+export async function papelUsuarioPortal(empresaId: string, id: string): Promise<{ papel: string; status: string } | null> {
+  const { data } = await db().from("contempladas_usuarios").select("papel,status").eq("empresa_id", empresaId).eq("id", id).maybeSingle();
+  return (data as { papel: string; status: string } | null) ?? null;
+}
+
 export async function atualizarUsuarioPortal(empresaId: string, id: string, campos: { ativo?: boolean; papel?: "GERENTE" | "VENDEDOR"; status?: "ATIVO" | "PENDENTE" | "RECUSADO" }) {
   const { error } = await db().from("contempladas_usuarios").update(campos).eq("empresa_id", empresaId).eq("id", id);
   if (error) throw new Error(error.message);
