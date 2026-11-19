@@ -13,7 +13,7 @@ import {
 import { TENANT_EMPRESA_ID_HEADER, TENANT_SLUG_HEADER } from "@/lib/tenant/constants";
 
 import { AtalhoContempladas } from "@/components/contempladas/atalho-site";
-import { comMenuContempladas, siteMostraContempladas } from "@/lib/contempladas/site-link";
+import { menuSiteRaconSinop, siteMostraContempladas } from "@/lib/contempladas/site-link";
 import { RaconJsonLd } from "@/components/public/seo/racon-json-ld";
 
 type PageProps = { params: Promise<{ slug: string }> };
@@ -136,7 +136,7 @@ export default async function ParceiroPublicPage({ params }: PageProps) {
           empresaNome={result.view.nome_site}
           logoUrl={result.view.logo_url ?? result.view.modelo_logo_padrao_url}
           identidade={result.view.modelo_identidade as RaconTemplateIdentidade}
-          menus={contempladas ? comMenuContempladas(result.view.modelo_menus) : result.view.modelo_menus}
+          menus={contempladas ? menuSiteRaconSinop(result.view.modelo_menus) : result.view.modelo_menus}
           topoExtra={contempladas ? <AtalhoContempladas /> : undefined}
           secoes={result.view.modelo_secoes}
           telefoneContato={result.view.contato.telefone ?? undefined}

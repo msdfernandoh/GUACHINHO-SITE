@@ -17,3 +17,16 @@ export function comMenuContempladas(menus: RaconTemplateMenu[]): RaconTemplateMe
   const pos = Math.max(0, menus.length - 1);
   return [...menus.slice(0, pos), item, ...menus.slice(pos)];
 }
+
+const FORA_DO_MENU = ["/indicar", "/app-indicador"];
+
+/** Menu do site raconsinop: sem Programa de Indicação e Área do Parceiro; com Eventos e Contempladas. */
+export function menuSiteRaconSinop(menus: RaconTemplateMenu[]): RaconTemplateMenu[] {
+  if (!menus.length) return menus;
+  let lista = menus.filter((m) => !FORA_DO_MENU.some((r) => m.rota.startsWith(r)));
+  if (!lista.some((m) => m.rota.startsWith("/eventos"))) {
+    const pos = Math.max(0, lista.length - 1);
+    lista = [...lista.slice(0, pos), { id: "eventos", label: "Eventos", rota: "/eventos", ativo: true }, ...lista.slice(pos)];
+  }
+  return comMenuContempladas(lista);
+}
