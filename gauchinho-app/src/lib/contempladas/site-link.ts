@@ -12,7 +12,7 @@ export function siteMostraContempladas(rawHost: string | null | undefined): bool
 
 /** Acrescenta "Contempladas" antes do último item do menu, se ainda não existir. */
 export function comMenuContempladas(menus: RaconTemplateMenu[]): RaconTemplateMenu[] {
-  if (menus.some((m) => m.rota.startsWith("/contempladas") || m.id === "contempladas")) return menus;
+  if (!menus.length || menus.some((m) => m.rota.startsWith("/contempladas") || m.id === "contempladas")) return menus;
   const item: RaconTemplateMenu = { id: "contempladas", label: "Contempladas", rota: "/contempladas", ativo: true };
   const pos = Math.max(0, menus.length - 1);
   return [...menus.slice(0, pos), item, ...menus.slice(pos)];

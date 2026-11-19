@@ -121,6 +121,8 @@ export type RaconInspiredHomeProps = {
   whatsappContato?: string;
   isInteractive?: boolean;
   showChrome?: boolean;
+  /** Conteúdo logo abaixo do cabeçalho (ex.: atalho do portal de contempladas). */
+  topoExtra?: React.ReactNode;
 };
 
 export function RaconInspiredHome({
@@ -134,6 +136,7 @@ export function RaconInspiredHome({
   whatsappContato,
   isInteractive = true,
   showChrome = true,
+  topoExtra,
 }: RaconInspiredHomeProps) {
   const ownBrand = identidade.marca_propria === true;
   const brandName = ownBrand ? empresaNome : "Racon Consórcios";
@@ -233,6 +236,7 @@ export function RaconInspiredHome({
           1. TOPBAR DISCRETA (PADRÃO RACON: Televendas 0800...)
       ─────────────────────────────────────────────────────────── */}
       {showChrome ? <RaconInspiredHeader empresaNome={empresaNome} logoUrl={logoUrl} identidade={identidade} menus={activeMenus} telefoneContato={telefoneContato} /> : null}
+      {topoExtra}
 
       {/* ───────────────────────────────────────────────────────────
           3. HERO PRINCIPAL: BANNER DO GAROTO PROPAGANDA (RUBINHO) + SIMULADOR RACON

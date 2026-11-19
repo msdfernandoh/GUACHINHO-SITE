@@ -12,6 +12,8 @@ import {
 } from "@/lib/parceiros/partner-site-types";
 import { TENANT_EMPRESA_ID_HEADER, TENANT_SLUG_HEADER } from "@/lib/tenant/constants";
 
+import { AtalhoContempladas } from "@/components/contempladas/atalho-site";
+import { comMenuContempladas, siteMostraContempladas } from "@/lib/contempladas/site-link";
 import { RaconJsonLd } from "@/components/public/seo/racon-json-ld";
 
 type PageProps = { params: Promise<{ slug: string }> };
@@ -120,6 +122,8 @@ export default async function ParceiroPublicPage({ params }: PageProps) {
     : undefined;
 
   if (result.view.template_codigo === "racon_inspired") {
+    const h = await headers();
+    const contempladas = siteMostraContempladas(h.get("x-forwarded-host") ?? h.get("host"));
     return (
       <>
         <RaconJsonLd
@@ -132,7 +136,8 @@ export default async function ParceiroPublicPage({ params }: PageProps) {
           empresaNome={result.view.nome_site}
           logoUrl={result.view.logo_url ?? result.view.modelo_logo_padrao_url}
           identidade={result.view.modelo_identidade as RaconTemplateIdentidade}
-          menus={result.view.modelo_menus}
+          menus={contempladas ? comMenuContempladas(result.view.modelo_menus) : result.view.modelo_menus}
+          topoExtra={contempladas ? <AtalhoContempladas /> : undefined}
           secoes={result.view.modelo_secoes}
           telefoneContato={result.view.contato.telefone ?? undefined}
           whatsappContato={result.view.contato.whatsapp ?? undefined}
