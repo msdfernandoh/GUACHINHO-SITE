@@ -7,20 +7,26 @@ export const metadata: Metadata = {
 };
 
 const ADMIN = [
-  ["Mais vendedores", "Todas as revendas cadastradas veem e oferecem suas cotas, sem mandar planilha para cada uma."],
-  ["Seu ágio garantido", "O ágio que você define (imóvel e veículo) entra sozinho na entrada de cada cota. Mudou? Atualiza todas."],
-  ["Suba pelo WhatsApp", "Cole a lista de cartas do jeito que recebe. O sistema lê crédito, entrada, prazo, parcela, saldo, vencimento e comissão."],
-  ["Você decide a comissão", "Um padrão para todas as cotas (% ou R$ fixo) ou um valor diferente em cada envio."],
-  ["Sinal segura a venda", "Defina o sinal mínimo. O cliente paga o PIX na sua chave e a cota fica em análise só para ele."],
-  ["Tudo registrado", "Você confirma o PIX e marca vendida. Fica gravado quem vendeu, a unidade, a data e a hora."],
+  ["Mais vendedores", "Todas as revendas cadastradas veem e oferecem suas cartas, sem você mandar planilha para cada uma."],
+  ["Suba como recebe", "Cole a mensagem do WhatsApp ou copie direto da planilha. O sistema lê crédito, entrada, prazo, parcela, saldo, vencimento, comissão e transferência."],
+  ["Sem cota repetida", "Se subir uma carta idêntica a uma que já está no ar, o sistema avisa e deixa você decidir. Errou o envio? Desfaz com um clique."],
+  ["Seu ágio garantido", "Defina o ágio de imóvel e de veículo (% ou R$). Ele entra sozinho na entrada e, se mudar, atualiza todas as suas cotas."],
+  ["Você decide a comissão", "Um padrão para todas as cotas ou o valor que veio na lista de cada carta. A revenda vê, o cliente nunca."],
+  ["Seu PIX e seu WhatsApp", "Cada administrador tem a própria chave PIX, WhatsApp e sinal mínimo. A reserva cai direto para você."],
+  ["Sinal segura a venda", "O cliente paga o sinal no seu PIX e anexa o comprovante. A cota fica em análise, bloqueada só para ele."],
+  ["Comissões organizadas", "A comissão da revenda aparece pendente quando a carta é vendida. Você paga, anexa o comprovante e ela confirma o recebimento."],
+  ["Tudo registrado", "Cada venda fica gravada com revenda, administrador, data e hora, e os cards mostram o volume negociado."],
 ];
 const REVENDA = [
-  ["Comissão à vista", "Veja a comissão de cada carta e de cada proposta antes de oferecer. Um toque no olho esconde na frente do cliente."],
-  ["Junte cartas", "Some cartas para chegar no crédito do cliente, com a taxa mensal e anual calculada na hora."],
+  ["Estoque sem comprar nada", "Cartas de vários administradores num lugar só, com filtros por imóvel, veículo e administradora e o total do crédito do filtro."],
+  ["Comissão à vista", "Veja a comissão de cada carta e de cada proposta. Um toque no olho esconde quando estiver na frente do cliente."],
+  ["Junte cartas", "O sistema soma cartas para chegar no crédito do cliente e traz a mais próxima acima e abaixo, sem limite de cartas."],
+  ["Taxa efetiva calculada", "Cada carta e cada junção mostram a taxa mensal e anual (crédito menos a entrada contra as parcelas)."],
   ["Planos sob medida", "Mensal, semestral antecipado ou anual antecipado, muito usado por produtor rural."],
-  ["Sua marca na proposta", "A proposta sai com sua logo, seu nome e seu WhatsApp para assinatura."],
-  ["Mensagens prontas", "Gere oportunidades e textos de WhatsApp com emojis e chamada, prontos para enviar."],
-  ["Reserve e feche", "Pré-reserva de 30 minutos para negociar e sinal no PIX para segurar a venda."],
+  ["Sua marca na proposta", "A proposta sai com sua logo, seu nome e seu WhatsApp para assinatura, e pode ser reimpressa pelo número."],
+  ["Mensagens prontas", "Gere oportunidades com as melhores junções e textos de WhatsApp com emojis, taxa e o código das cartas."],
+  ["Ganhe mais", "Some um adicional fixo na entrada de todas as suas propostas ou dê desconto como oportunidade para fechar."],
+  ["Reserve e receba", "Pré-reserva de 30 minutos e sinal no PIX. Vendida, sua comissão aparece para receber com comprovante."],
 ];
 
 function Bloco({ titulo, sub, itens, cta, href }: { titulo: string; sub: string; itens: string[][]; cta: string; href: string }) {
@@ -64,6 +70,27 @@ export default function Page() {
         <div id="revenda">
           <Bloco titulo="Revenda" sub="Um estoque inteiro de cartas para oferecer, sem comprar nada." itens={REVENDA} cta="Solicitar acesso de revenda" href="/contempladas/solicitar?tipo=revenda" />
         </div>
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <h2 className="text-2xl font-black text-[#0a2a66] sm:text-3xl">Como uma venda acontece</h2>
+          <ol className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              ["O administrador sobe as cartas", "Colando a lista. O ágio dele entra na entrada e a comissão fica definida."],
+              ["A revenda simula", "Crédito e entrada do cliente; o sistema junta cartas e mostra a taxa mensal e anual."],
+              ["Proposta com a marca da revenda", "Mensal, semestral ou anual antecipado, com logo, nome e WhatsApp."],
+              ["Pré-reserva de 30 minutos", "Relógio na tela para negociar; a cota continua livre e cria escassez."],
+              ["Sinal no PIX do administrador", "Com o comprovante a cota fica em análise; ele confere e marca vendida."],
+              ["Comissão paga e confirmada", "O administrador paga com comprovante e a revenda confirma o recebimento."],
+            ].map(([t, d], i) => (
+              <li key={t} className="rounded-2xl bg-[#f5f7fb] p-4">
+                <p className="text-sm font-black text-[#0047bb]">Passo {i + 1}</p>
+                <p className="font-extrabold text-[#0a2a66]">{t}</p>
+                <p className="text-sm text-slate-600">{d}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-5 text-sm text-slate-500">Acesso só ao portal de cotas, sem acesso a sistemas internos. Cada administrador vê e cuida só das cartas dele.</p>
+        </section>
+
         <section className="rounded-3xl bg-[#0a2a66] p-6 text-white sm:p-8">
           <h2 className="text-2xl font-black">Como começa</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
