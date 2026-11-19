@@ -202,6 +202,27 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia, me
         </div>
       </section>
 
+      {(() => {
+        const soma = (k: "credito" | "entrada" | "saldo_devedor") => visiveis.reduce((t, c) => t + c[k], 0);
+        const cards: [string, string, string?][] = [
+          ["Cartas no filtro", String(visiveis.length), `${visiveis.filter((c) => c.tipo === "imovel").length} imóveis · ${visiveis.filter((c) => c.tipo === "automovel").length} veículos`],
+          ["Crédito somado", brl(soma("credito"))],
+          ["Entradas somadas", brl(soma("entrada"))],
+          ["Saldo devedor somado", brl(soma("saldo_devedor"))],
+        ];
+        return (
+          <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {cards.map(([l, v, sub], i) => (
+              <div key={l} className={`rounded-2xl p-4 shadow-sm ${i === 1 ? "bg-[#0047bb] text-white" : "border border-slate-200 bg-white"}`}>
+                <p className={`text-[11px] font-bold uppercase tracking-wide ${i === 1 ? "text-white/75" : "text-slate-500"}`}>{l}</p>
+                <p className={`mt-1 text-2xl font-black sm:text-3xl ${i === 1 ? "text-white" : "text-[#0a2a66]"}`}>{v}</p>
+                {sub && <p className="text-xs text-slate-500">{sub}</p>}
+              </div>
+            ))}
+          </section>
+        );
+      })()}
+
       <Card className="mb-6 !p-5">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <div className="flex flex-wrap items-center gap-3">
