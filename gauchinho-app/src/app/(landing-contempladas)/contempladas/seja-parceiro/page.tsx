@@ -30,7 +30,7 @@ const REVENDA = [
 ];
 
 const PERGUNTAS = [
-  ["Quanto custa para participar?", "O cadastro é gratuito. Você pede o acesso, ele é aprovado e já pode usar o portal."],
+  ["Como faço para participar?", "Clique em Solicitar acesso, preencha seus dados e os da empresa e aguarde a aprovação. Liberado, você entra com seu e-mail e senha."],
   ["Quem pode se cadastrar?", "Quem tem cartas contempladas para vender (administrador de cotas), quem vai revender e quem faz as duas coisas."],
   ["Tenho acesso aos sistemas internos?", "Não. O acesso é só ao portal de cotas contempladas."],
   ["Como subo minhas cartas?", "Em Enviar cotas: cole a mensagem do WhatsApp ou copie da planilha com a linha de títulos. Clique em Conferir e depois em Enviar."],
