@@ -6,6 +6,7 @@ import { comissaoVisivel, configsPorDono, estatisticas, listarCotas } from "@/li
 import { configPublica, type ConfigPublica } from "@/lib/contempladas/publico";
 import { Shell } from "@/components/contempladas/ui";
 import { Portal } from "@/components/contempladas/portal";
+import { BannerSistema } from "@/components/contempladas/banner-sistema";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -40,6 +41,7 @@ export default async function Page() {
         meuWhatsapp={a?.telefone ?? null}
         gerencia={a && (a.papel === "DONO" || a.papel === "GERENTE") ? { dono: a.papel === "DONO", authUserId: a.authUserId } : null}
       />
+      <BannerSistema />
     </Shell>
   );
 }
