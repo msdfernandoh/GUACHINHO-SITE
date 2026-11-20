@@ -1,9 +1,7 @@
-const WHATSAPP = "5566996086030";
-const MENSAGEM = "Olá! Vi o portal de cotas contempladas e quero conhecer o sistema de gestão de consórcios.";
+const SITE_SISTEMA = "https://www.msdeducacaoead.com.br/inicio/consorcio";
 
 /** Banner no fim do portal divulgando o ERP de gestão de consórcios. */
 export function BannerSistema() {
-  const href = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(MENSAGEM)}`;
   return (
     <section className="mt-10 overflow-hidden rounded-2xl bg-[#0b1d3d] text-white shadow-lg">
       <div className="grid gap-6 p-6 sm:p-8 md:grid-cols-[1.4fr_1fr] md:items-center">
@@ -21,11 +19,11 @@ export function BannerSistema() {
           </ul>
         </div>
         <div className="flex flex-col items-start gap-3 md:items-end">
-          <a href={href} target="_blank" rel="noopener noreferrer"
+          <a href={SITE_SISTEMA} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center justify-center rounded-xl bg-[#f5a524] px-6 py-3 text-base font-bold text-[#0b1d3d] shadow hover:bg-[#ffb83d]">
             Conheça o sistema de gestão de consórcios
           </a>
-          <p className="text-xs text-slate-400">Fale com a gente pelo WhatsApp</p>
+          <p className="text-xs text-slate-400">Planos, demonstração e detalhes do sistema</p>
         </div>
       </div>
     </section>
