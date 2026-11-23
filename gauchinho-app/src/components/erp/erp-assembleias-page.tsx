@@ -206,10 +206,14 @@ export async function ErpAssembleiasPage({
   const totalContempladasPedra = gruposApurados.filter((g) => g.possuiContempladaPedra).length;
 
   const grupoFiltro = params?.grupo;
+  // Padrão: só grupos com cotas da carteira; "sem_cotas=1" mostra todos.
+  const mostrarSemCotas = params?.sem_cotas === "1";
+  const gruposVisiveis = mostrarSemCotas ? gruposApurados : gruposApurados.filter((g) => g.cotas.length > 0);
+  const qsSemCotas = mostrarSemCotas ? "&sem_cotas=1" : "";
   const gruposExibidos =
     grupoFiltro && grupoFiltro !== "todos"
       ? gruposApurados.filter((g) => g.grupoId === grupoFiltro)
-      : gruposApurados;
+      : gruposVisiveis;
 
   const abaAtiva = params?.aba === "contemplacoes" || params?.aba === "clientes-contemplados" ? params.aba : "pedras";
   const resumoPorGrupo = abaAtiva === "pedras" && gruposExibidos.length
@@ -344,11 +348,23 @@ export async function ErpAssembleiasPage({
                   </div>
                 </div>
 
-                {gruposApurados.length > 1 && (
+                <Link
+                  href={`/erp/assembleias?assembleia=${selecionada.id}${grupoFiltro ? `&grupo=${grupoFiltro}` : ""}${mostrarSemCotas ? "" : "&sem_cotas=1"}`}
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-slate-700"
+                  role="checkbox"
+                  aria-checked={!mostrarSemCotas}
+                >
+                  <span className={`flex h-4 w-4 items-center justify-center rounded border ${mostrarSemCotas ? "border-slate-400 bg-white" : "border-blue-600 bg-blue-600 text-white"}`}>
+                    {mostrarSemCotas ? null : <svg viewBox="0 0 12 12" className="h-3 w-3" aria-hidden="true"><path d="M2 6l3 3 5-6" fill="none" stroke="currentColor" strokeWidth="2" /></svg>}
+                  </span>
+                  Mostrar só grupos com cotas
+                </Link>
+
+                {gruposVisiveis.length > 1 && (
                   <div className="-mx-4 mt-4 overflow-x-auto px-4 md:mx-0 md:px-0">
                     <div className="flex min-w-max gap-2 md:min-w-0 md:flex-wrap">
                     <Link
-                      href={`/erp/assembleias?assembleia=${selecionada.id}`}
+                      href={`/erp/assembleias?assembleia=${selecionada.id}${qsSemCotas}`}
                       data-grupo-value="TODOS"
                       className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                         !grupoFiltro || grupoFiltro === "todos"
@@ -356,14 +372,14 @@ export async function ErpAssembleiasPage({
                           : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                       }`}
                     >
-                      Todos ({gruposApurados.length})
+                      Todos ({gruposVisiveis.length})
                     </Link>
-                    {gruposApurados.map((g) => {
+                    {gruposVisiveis.map((g) => {
                       const isActive = grupoFiltro === g.grupoId;
                       return (
                         <Link
                           key={g.grupoId}
-                          href={`/erp/assembleias?assembleia=${selecionada.id}&grupo=${g.grupoId}`}
+                          href={`/erp/assembleias?assembleia=${selecionada.id}&grupo=${g.grupoId}${qsSemCotas}`}
                           className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                             isActive
                               ? "bg-blue-700 text-white"
