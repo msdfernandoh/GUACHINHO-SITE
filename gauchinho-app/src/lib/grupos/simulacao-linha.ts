@@ -54,6 +54,17 @@ function tipoBemPrazoPosContemplacao(modalidade: string): TipoBemPrazoPosContemp
 }
 
 /** Respeita a escolha na linha; estratégia de lance só define o padrão ao selecionar a modalidade. */
+function cotaTemParcelaReduzida(cota: GrupoCota | null | undefined): boolean {
+  if (!cota) return false;
+  return (
+    cota.parcela_reduzida != null ||
+    cota.parcela_reduzida_50 != null ||
+    cota.parcela_reduzida_60 != null ||
+    cota.parcela_reduzida_70 != null ||
+    (!!cota.parcelas_reduzidas && typeof cota.parcelas_reduzidas === "object" && Object.keys(cota.parcelas_reduzidas).length > 0)
+  );
+}
+
 export function resolveParcelaTipoLinha(
   config: Pick<ConfigLinhaSimulacaoGrupo, "modalidadeParcela">,
   grupo: Pick<
@@ -358,7 +369,11 @@ export function calcularLinhaSimulacaoGrupo(args: {
     modLance && config.usaLanceEmbutido
       ? normalizarPercentualGrupo(modLance.percentual_recurso_proprio_minimo)
       : 0;
-  const parcelaTipoLinha = resolveParcelaTipoLinha(config, grupo);
+  // A cota pode ter parcelas reduzidas cadastradas mesmo com a flag do grupo desligada.
+  // O catálogo público já trata isso como "tem reduzida"; o servidor (proposta/PDF) precisa
+  // fazer o mesmo, senão a proposta sai com parcela integral.
+  const temReduzidaEfetiva = !!grupo.tem_parcela_reduzida || cotaTemParcelaReduzida(cota);
+  const parcelaTipoLinha = resolveParcelaTipoLinha(config, { ...grupo, tem_parcela_reduzida: temReduzidaEfetiva });
   const baseLance = modLance?.base_referencia === "CREDITO" ? somaCotas : saldoDevedorInicial;
 
   const lanceEmbutido =
@@ -409,7 +424,7 @@ export function calcularLinhaSimulacaoGrupo(args: {
     saldoDevedor: saldoDevedorInicial,
     prazoTotal: params.prazoTotal,
     quantidadeCotas: qty,
-    temParcelaReduzida: !!grupo.tem_parcela_reduzida,
+    temParcelaReduzida: temReduzidaEfetiva,
     percentualParcelaReduzida: pctRedEscolhido ?? num(grupo.percentual_parcela_reduzida, 100),
     modalidadeParcela: parcelaTipoLinha,
     percentualParcelaPersonalizada: pctPersonalLinha,
