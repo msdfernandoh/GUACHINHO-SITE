@@ -1,9 +1,10 @@
+import { cache } from "react";
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import { listGruposAutorizadosForEmpresa } from "@/lib/grupos/catalogo-autorizado-service";
 
-export async function listarGruposParaAssembleias(
+async function listarGruposParaAssembleiasSemCache(
   supabase: Awaited<ReturnType<typeof createClient>>,
   empresaId: string,
 ) {
@@ -34,3 +35,6 @@ export async function listarGruposParaAssembleias(
   }
   return [...grupos.values()];
 }
+
+/** Uma consulta por requisição: a página e os indicadores reaproveitam o mesmo resultado. */
+export const listarGruposParaAssembleias = cache(listarGruposParaAssembleiasSemCache);

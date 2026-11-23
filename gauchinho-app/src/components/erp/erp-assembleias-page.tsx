@@ -1,6 +1,6 @@
 import { formatBRL } from "@/lib/formatters/money";
 import { valorCreditoPorCota } from "@/lib/erp/valor-credito-cota";
-import { fetchResumoGruposAssembleiaAction } from "@/app/erp/assembleias/actions";
+import { resumoGruposAssembleia } from "@/lib/erp/assembleias-resumo";
 import { StatusCotaAssembleiaButtons } from "@/components/erp/assembleias/status-cota-assembleia-buttons";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -128,7 +128,8 @@ export async function ErpAssembleiasPage({
   let cotasMapeadas: Array<CotaAssembleia & { grupo_id: string }> = [];
   let atencoes = new Set<string>();
 
-  if (selecionada && grupoIdsDoEvento.length > 0) {
+  const abaPedras = params?.aba !== "contemplacoes" && params?.aba !== "clientes-contemplados";
+  if (abaPedras && selecionada && grupoIdsDoEvento.length > 0) {
     const [{ data: cotas }, { data: marcadas }] = await Promise.all([
       supabase
         .from("cotas_definitivas")
@@ -212,7 +213,10 @@ export async function ErpAssembleiasPage({
 
   const abaAtiva = params?.aba === "contemplacoes" || params?.aba === "clientes-contemplados" ? params.aba : "pedras";
   const resumoPorGrupo = abaAtiva === "pedras" && gruposExibidos.length
-    ? await fetchResumoGruposAssembleiaAction(gruposExibidos.map((grupo) => grupo.grupoId)).catch((error) => {
+    ? await resumoGruposAssembleia(
+        supabase,
+        gruposAutorizados.filter((g) => gruposExibidos.some((e) => e.grupoId === g.id)),
+      ).catch((error) => {
         console.error("Indicadores das assembleias indisponíveis", error);
         return null;
       })
