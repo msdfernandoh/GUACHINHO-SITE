@@ -17,5 +17,5 @@ export default async function ErpLayout({ children }: { children: React.ReactNod
   const brandPrimary = tenant?.empresaId === empresaAtiva.id
     ? tenant.branding.cor_primaria || String(tenant.siteModel?.identidadeVisual.cor_primaria || "#0066cc")
     : "#1d4ed8";
-  return <div className="flex min-h-screen bg-slate-100"><ErpSidebar config={config} empresaNome={brandName} logoUrl={brandLogo} brandPrimary={brandPrimary} allowedAccess={allowedAccess} /><main className="min-w-0 flex-1 overflow-auto bg-white p-6 text-slate-900">{children}</main></div>;
+  return <div className="flex min-h-screen flex-col bg-slate-100 md:flex-row"><ErpSidebar config={config} empresaNome={brandName} logoUrl={brandLogo} brandPrimary={brandPrimary} allowedAccess={allowedAccess} /><main className="min-w-0 flex-1 overflow-x-hidden bg-white p-4 text-slate-900 md:overflow-auto md:p-6">{children}</main></div>;
 }

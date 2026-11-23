@@ -224,47 +224,36 @@ export async function ErpAssembleiasPage({
 
   return (
     <div className="space-y-6">
-      <header>
-        <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Operação de consórcio</p>
-        <h1 className="text-3xl font-bold">Assembleias / Pedras</h1>
-        <p className="mt-1 text-slate-500">
-          Histórico operacional de apuração, conferência das pedras da Loteria Federal e resultados oficiais com médias de lance importadas da Racon.
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-blue-700">Operação de consórcio</p>
+          <h1 className="text-2xl font-bold md:text-3xl">Assembleias e pedras</h1>
+          <p className="mt-1 max-w-2xl text-sm text-slate-500">
+            Pedra da Loteria Federal, cotas da carteira mais próximas e resultados oficiais da Racon.
+          </p>
+        </div>
       </header>
 
-      {/* Navegação entre Abas */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-zinc-800 pb-3">
-        <Link
-          href="/erp/assembleias?aba=pedras"
-          className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
-            abaAtiva === "pedras"
-              ? "bg-blue-600 text-white shadow-sm"
-              : "text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800"
-          }`}
-        >
-          🎯 Pedras da Loteria & Aproximação
-        </Link>
-        <Link
-          href="/erp/assembleias?aba=contemplacoes"
-          className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
-            abaAtiva === "contemplacoes"
-              ? "bg-blue-600 text-white shadow-sm"
-              : "text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800"
-          }`}
-        >
-          🏆 Resultado de Assembleias & Contemplações (Robô Racon)
-        </Link>
-        <Link
-          href="/erp/assembleias?aba=clientes-contemplados"
-          className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-            abaAtiva === "clientes-contemplados"
-              ? "bg-blue-600 text-white shadow-sm"
-              : "text-slate-600 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          }`}
-        >
-          Clientes Contemplados
-        </Link>
-      </div>
+      {/* Navegação entre abas */}
+      <nav className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+        <div className="inline-flex min-w-max gap-1 rounded-xl bg-slate-100 p-1">
+          {([
+            ["pedras", "Pedras e aproximação"],
+            ["contemplacoes", "Resultados e contemplações"],
+            ["clientes-contemplados", "Clientes contemplados"],
+          ] as const).map(([id, rotulo]) => (
+            <Link
+              key={id}
+              href={`/erp/assembleias?aba=${id}`}
+              className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition md:px-4 ${
+                abaAtiva === id ? "bg-white text-blue-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              {rotulo}
+            </Link>
+          ))}
+        </div>
+      </nav>
 
       {abaAtiva === "clientes-contemplados" ? (
         <ErpClientesContempladosPanel />
@@ -272,15 +261,24 @@ export async function ErpAssembleiasPage({
         <ErpContemplacoesPanel grupos={grupos} />
       ) : (
         <>
-          {canWrite === true && <ErpAssembleiasForm grupos={grupos} />}
+          {canWrite === true && (
+            <details className="group rounded-xl border bg-white">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-800">
+                <span>+ Registrar nova assembleia</span>
+                <span className="text-xs font-normal text-slate-500 group-open:hidden">Abrir</span>
+                <span className="hidden text-xs font-normal text-slate-500 group-open:inline">Fechar</span>
+              </summary>
+              <div className="border-t p-4"><ErpAssembleiasForm grupos={grupos} /></div>
+            </details>
+          )}
 
-          <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
         <section className="rounded-xl border bg-white">
-          <div className="border-b px-4 py-3">
-            <h2 className="font-semibold text-slate-900">Histórico de Assembleias</h2>
-            <p className="text-xs text-slate-500">{eventos.length} evento(s) registrado(s)</p>
+          <div className="flex items-center justify-between border-b px-4 py-3">
+            <h2 className="font-semibold text-slate-900">Histórico</h2>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{eventos.length}</span>
           </div>
-          <div className="max-h-[680px] overflow-auto">
+          <div className="max-h-56 overflow-auto md:max-h-[680px]">
             {eventos.length === 0 ? (
               <p className="p-5 text-sm text-slate-500">Nenhuma assembleia registrada.</p>
             ) : (
@@ -290,22 +288,22 @@ export async function ErpAssembleiasPage({
                   <Link
                     key={e.chave}
                     href={`/erp/assembleias?assembleia=${e.id}`}
-                    className={`block border-b px-4 py-3 text-sm transition-colors ${
+                    className={`flex items-center justify-between gap-3 border-b px-4 py-3 text-sm transition-colors ${
                       isSelected ? "border-l-4 border-l-blue-600 bg-blue-50/70" : "hover:bg-slate-50"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <p className="font-bold text-slate-900">
-                        {e.totalGrupos > 1 ? `Todos os grupos (${e.totalGrupos})` : `Grupo ${e.gruposNomes[0]}`}
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-900">
+                        {e.totalGrupos > 1 ? `${e.totalGrupos} grupos` : `Grupo ${e.gruposNomes[0]}`}
                       </p>
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700">
-                        {e.pedras.size === 1 ? `Pedra ${[...e.pedras][0]}` : "Pedras por grupo"}
-                      </span>
+                      <p className="text-xs text-slate-500">
+                        {e.data_assembleia.split("-").reverse().join("/")}
+                        {e.numero_assembleia ? ` · nº ${e.numero_assembleia}` : ""}
+                      </p>
                     </div>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {e.data_assembleia}
-                      {e.numero_assembleia ? ` · Assembleia ${e.numero_assembleia}` : ""}
-                    </p>
+                    <span className="shrink-0 rounded-lg bg-slate-900 px-2 py-1 font-mono text-xs font-bold text-white">
+                      {e.pedras.size === 1 ? [...e.pedras][0] : "várias"}
+                    </span>
                   </Link>
                 );
               })
@@ -317,46 +315,48 @@ export async function ErpAssembleiasPage({
           {!selecionada ? (
             <div className="rounded-xl border bg-white p-12 text-center text-slate-500">
               <p className="font-semibold">Nenhuma assembleia selecionada</p>
-              <p className="mt-1 text-sm">Registre uma assembleia acima para analisar a proximidade das cotas.</p>
+              <p className="mt-1 text-sm">Registre uma assembleia para ver as cotas mais próximas da pedra.</p>
             </div>
           ) : (
             <>
-              <div className="rounded-xl border bg-white p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+              <div className="rounded-xl border bg-white p-4 md:p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">
-                      Cotas mais próximas da pedra por grupo
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Assembleia selecionada</p>
+                    <h2 className="text-lg font-bold text-slate-900 md:text-xl">
+                      {selecionada.data_assembleia.split("-").reverse().join("/")}
+                      {selecionada.numero_assembleia ? ` · nº ${selecionada.numero_assembleia}` : ""}
                     </h2>
-                    <p className="text-xs text-slate-500">
-                      Data: {selecionada.data_assembleia}
-                      {selecionada.numero_assembleia ? ` · Assembleia ${selecionada.numero_assembleia}` : ""} · Somente cotas definitivas do mesmo grupo e tenant.
-                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {totalContempladasPedra > 0 && (
-                      <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">
-                        🎯 {totalContempladasPedra} grupo(s) com pedra sorteada
-                      </span>
-                    )}
-                    <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800">
-                      {totalCotasApuradas} cota(s) no total
-                    </span>
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2 md:gap-3">
+                  <div className="rounded-lg bg-slate-50 p-3">
+                    <p className="text-[11px] font-semibold uppercase text-slate-500">Grupos</p>
+                    <p className="text-xl font-bold text-slate-900">{gruposApurados.length}</p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 p-3">
+                    <p className="text-[11px] font-semibold uppercase text-slate-500">Cotas</p>
+                    <p className="text-xl font-bold text-slate-900">{totalCotasApuradas}</p>
+                  </div>
+                  <div className={`rounded-lg p-3 ${totalContempladasPedra > 0 ? "bg-emerald-50" : "bg-slate-50"}`}>
+                    <p className="text-[11px] font-semibold uppercase text-slate-500">Na pedra</p>
+                    <p className={`text-xl font-bold ${totalContempladasPedra > 0 ? "text-emerald-700" : "text-slate-900"}`}>{totalContempladasPedra}</p>
                   </div>
                 </div>
 
                 {gruposApurados.length > 1 && (
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-500">Filtrar por grupo:</span>
+                  <div className="-mx-4 mt-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+                    <div className="flex min-w-max gap-2 md:min-w-0 md:flex-wrap">
                     <Link
                       href={`/erp/assembleias?assembleia=${selecionada.id}`}
                       data-grupo-value="TODOS"
-                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
+                      className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                         !grupoFiltro || grupoFiltro === "todos"
                           ? "bg-slate-900 text-white"
                           : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                       }`}
                     >
-                      Todos os grupos autorizados ({gruposApurados.length})
+                      Todos ({gruposApurados.length})
                     </Link>
                     {gruposApurados.map((g) => {
                       const isActive = grupoFiltro === g.grupoId;
@@ -364,7 +364,7 @@ export async function ErpAssembleiasPage({
                         <Link
                           key={g.grupoId}
                           href={`/erp/assembleias?assembleia=${selecionada.id}&grupo=${g.grupoId}`}
-                          className={`rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
+                          className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                             isActive
                               ? "bg-blue-700 text-white"
                               : g.possuiContempladaPedra
@@ -372,18 +372,19 @@ export async function ErpAssembleiasPage({
                               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                           }`}
                         >
-                          Grupo {g.codigoGrupo} ({g.cotas.length}
-                          {g.possuiContempladaPedra ? " · 🎯" : ""})
+                          {g.codigoGrupo} · {g.cotas.length}
                         </Link>
                       );
                     })}
+                    </div>
                   </div>
                 )}
               </div>
 
-              <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900">
-                <strong>Regra Oficial do Consórcio:</strong> A aproximação busca sempre a <strong>cota sorteada na pedra</strong> ou as <strong>cotas imediatamente superiores (maiores)</strong> em ordem crescente do grupo. Cotas com número inferior aparecem somente após o término do grupo (após giro).
-              </div>
+              <details className="rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs text-amber-900">
+                <summary className="cursor-pointer font-semibold">Como a aproximação é calculada</summary>
+                <p className="mt-2">A aproximação busca a <strong>cota sorteada na pedra</strong> ou as <strong>cotas imediatamente superiores</strong>, em ordem crescente do grupo. Cotas com número inferior aparecem só depois do fim do grupo (após o giro).</p>
+              </details>
 
               {gruposExibidos.length === 0 ? (
                 <div className="rounded-xl border bg-white p-8 text-center text-slate-500">
@@ -395,7 +396,7 @@ export async function ErpAssembleiasPage({
                   const assembleiaIdDoGrupo = g.assembleiaId ?? selecionada.id;
                   return (
                     <article key={g.grupoId} className="overflow-hidden rounded-xl border bg-white shadow-sm">
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-slate-50/75 px-5 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-slate-50/75 px-4 py-3 md:px-5">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-base font-bold text-slate-900">
                             Grupo {g.codigoGrupo} · {g.modalidade}
@@ -408,7 +409,7 @@ export async function ErpAssembleiasPage({
                           </span>
                           {g.possuiContempladaPedra && (
                             <span className="rounded bg-emerald-500 px-2 py-0.5 text-xs font-bold text-white">
-                              🎯 Cota sorteada na pedra!
+                              Cota sorteada na pedra
                             </span>
                           )}
                         </div>
@@ -430,10 +431,10 @@ export async function ErpAssembleiasPage({
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-x-5 gap-y-1 border-b bg-slate-50 px-5 py-2 text-xs text-slate-700">
-                        <span>Média de lance livre (3 meses) <strong>{resumo?.media3m == null ? "—" : `${resumo.media3m.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`}</strong></span>
-                        <span>Contempladas / a contemplar <strong>{resumo?.contempladas ?? "—"}/{resumo?.aContemplar ?? "—"}</strong></span>
-                        <span>Assembleias <strong>{resumo?.ultima ?? "—"}/{resumo?.totalAssembleias || "—"}</strong></span>
+                      <div className="grid grid-cols-3 divide-x border-b text-center">
+                        <div className="px-2 py-2"><p className="text-[10px] font-semibold uppercase text-slate-500">Lance livre 3m</p><p className="text-sm font-bold text-slate-900">{resumo?.media3m == null ? "—" : `${resumo.media3m.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`}</p></div>
+                        <div className="px-2 py-2"><p className="text-[10px] font-semibold uppercase text-slate-500">Contempladas / faltam</p><p className="text-sm font-bold text-slate-900">{resumo?.contempladas ?? "—"} / {resumo?.aContemplar ?? "—"}</p></div>
+                        <div className="px-2 py-2"><p className="text-[10px] font-semibold uppercase text-slate-500">Assembleias</p><p className="text-sm font-bold text-slate-900">{resumo?.ultima ?? "—"} / {resumo?.totalAssembleias || "—"}</p></div>
                       </div>
                       <div>
                         <table className="w-full table-fixed break-words text-sm max-sm:block">
@@ -462,7 +463,7 @@ export async function ErpAssembleiasPage({
                                 return (
                                   <tr
                                     key={c.id}
-                                    className={`transition-colors max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] max-sm:p-2 ${
+                                    className={`transition-colors max-sm:grid max-sm:grid-cols-[auto_minmax(0,1fr)_auto] max-sm:items-center max-sm:gap-x-2 max-sm:px-2 max-sm:py-3 ${
                                       isPedraExata
                                         ? "bg-emerald-50/80 font-medium hover:bg-emerald-100/70"
                                         : marcada
@@ -478,16 +479,16 @@ export async function ErpAssembleiasPage({
                                         </span>
                                       )}
                                     </td>
-                                                                        <td className="px-2 py-3 font-medium text-slate-800 max-sm:col-span-2 max-sm:order-first">
-                                      {c.cliente_nome} <span className="font-semibold text-slate-600">{c.valor_credito ? formatBRL(c.valor_credito) : "· Crédito não informado"}</span>
+                                                                        <td className="px-2 py-3 font-medium text-slate-800 max-sm:col-span-3 max-sm:order-first max-sm:py-0">
+                                      <span className="block">{c.cliente_nome}</span><span className="text-xs font-semibold text-slate-500">{c.valor_credito ? formatBRL(c.valor_credito) : "Crédito não informado"}</span>
                                     </td>
                                     <td className="px-2 py-2">
                                       {isPedraExata ? (
-                                        <span className="font-black text-emerald-700">0 (Sorteada!)</span>
+                                        <span className="font-black text-emerald-700">0 · sorteada</span>
                                       ) : c.posicaoFila === "SUPERIOR" ? (
-                                        <span className="font-bold text-blue-700">+{c.distancia} (Superior)</span>
+                                        <span className="font-bold text-blue-700">+{c.distancia} <span className="font-normal text-slate-500">acima</span></span>
                                       ) : (
-                                        <span className="font-medium text-slate-500">+{c.distancia} (Após giro)</span>
+                                        <span className="font-medium text-slate-500">+{c.distancia} após giro</span>
                                       )}
                                     </td>
                                     <td className="px-2 py-2">
@@ -495,9 +496,9 @@ export async function ErpAssembleiasPage({
                                         {c.status}
                                       </span>
                                     </td>
-                                    <td className="px-2 py-2">
+                                    <td className="px-2 py-2 max-sm:col-span-3 max-sm:pt-2">
                                       {canWrite === true ? (
-                                        <div className="flex flex-col items-start gap-1.5">
+                                        <div className="flex flex-wrap items-start gap-1.5 md:flex-col">
                                         <form action={toggleAtencaoAssembleiaAction}>
                                           <input type="hidden" name="assembleia_id" value={assembleiaIdDoGrupo} />
                                           <input type="hidden" name="cota_id" value={c.id} />
