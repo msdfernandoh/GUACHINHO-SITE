@@ -43,9 +43,9 @@ export function Colaboradores({
         <p className="mb-3 font-bold">Novo colaborador</p>
         <div className="grid gap-2 sm:grid-cols-2">
           <input className={inputCls} placeholder="Nome" value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} />
-          <input className={inputCls} placeholder="E-mail" type="email" value={novo.email} onChange={(e) => setNovo({ ...novo, email: e.target.value })} />
+          <input className={inputCls} placeholder="E-mail do colaborador" type="email" autoComplete="off" value={novo.email} onChange={(e) => setNovo({ ...novo, email: e.target.value })} />
           <TelInput value={novo.telefone} onChange={(v) => setNovo({ ...novo, telefone: v })} />
-          <input className={inputCls} placeholder="Senha (mín. 8) — não precisa se já tiver acesso" type="password" value={novo.senha} onChange={(e) => setNovo({ ...novo, senha: e.target.value })} />
+          <input className={inputCls} placeholder="Senha (mín. 8) — não precisa se já tiver acesso" type="password" autoComplete="new-password" value={novo.senha} onChange={(e) => setNovo({ ...novo, senha: e.target.value })} />
           <label className="flex items-center rounded-xl border border-slate-300 bg-white">
             <span className="whitespace-nowrap pl-3 text-sm text-slate-500">Comissão do colaborador</span>
             <input className="w-full bg-transparent px-3 py-2.5 text-right outline-none" type="number" min={0} max={100} step="0.5" value={novo.percentual} onChange={(e) => setNovo({ ...novo, percentual: e.target.value })} />
