@@ -1,5 +1,6 @@
 import { listarClientesContempladosAction } from "@/app/erp/assembleias/actions";
 import { formatBRL } from "@/lib/formatters/money";
+import { AvisoContemplado } from "./aviso-contemplado";
 
 function formatarData(data: string | null) {
   return data ? data.slice(0, 10).split("-").reverse().join("/") : "—";
@@ -26,6 +27,7 @@ export async function ErpClientesContempladosPanel() {
                 <th scope="col" className="px-4 py-3">Data da contratação</th>
                 <th scope="col" className="px-4 py-3">Valor da cota</th>
                 <th scope="col" className="px-4 py-3">Data da contemplação</th>
+                <th scope="col" className="px-4 py-3">Avisar cliente</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -36,6 +38,7 @@ export async function ErpClientesContempladosPanel() {
                   <td className="whitespace-nowrap px-4 py-3">{formatarData(cota.contratacao)}</td>
                   <td className="whitespace-nowrap px-4 py-3">{cota.credito == null ? "—" : formatBRL(cota.credito)}</td>
                   <td className="whitespace-nowrap px-4 py-3">{formatarData(cota.contemplacao)}</td>
+                  <td className="px-4 py-3"><AvisoContemplado cota={cota} /></td>
                 </tr>
               ))}
             </tbody>

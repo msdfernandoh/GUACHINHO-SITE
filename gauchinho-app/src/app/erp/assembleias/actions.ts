@@ -213,7 +213,7 @@ export async function listarClientesContempladosAction() {
   const codigoPorGrupo = new Map(grupos.map((grupo) => [grupo.id, grupo.codigo_grupo]));
   const porCota = new Map<string, {
     cliente: string; grupo: string; cota: string; contratacao: string | null;
-    credito: number | null; contemplacao: string;
+    credito: number | null; contemplacao: string; modalidade: string | null;
   }>();
 
   for (const linha of identificarContemplacoesDaCarteira(linhasResultado(resultados), carteira)) {
@@ -225,7 +225,7 @@ export async function listarClientesContempladosAction() {
     porCota.set(chave, {
       cliente: linha.cliente_nosso_nome, grupo: codigoPorGrupo.get(linha.grupo_id) ?? "—",
       cota, contratacao: linha.contratacao_da_cota, credito: linha.credito_da_cota,
-      contemplacao: linha.assembleia_data,
+      contemplacao: linha.assembleia_data, modalidade: linha.modalidade ?? null,
     });
   }
   for (const cota of carteira) {
@@ -234,7 +234,7 @@ export async function listarClientesContempladosAction() {
     porCota.set(`${cota.grupo_id}:${numero}`, {
       cliente: cota.cliente_nome, grupo: codigoPorGrupo.get(cota.grupo_id) ?? "—",
       cota: numero, contratacao: cota.data_venda, credito: cota.valor_credito ?? null,
-      contemplacao: cota.data_contemplacao,
+      contemplacao: cota.data_contemplacao, modalidade: porCota.get(`${cota.grupo_id}:${numero}`)?.modalidade ?? null,
     });
   }
 
