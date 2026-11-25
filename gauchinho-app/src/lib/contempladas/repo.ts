@@ -874,3 +874,52 @@ export async function desfazerLote(empresaId: string, loteId: string, dono?: Esc
   await db().from("contempladas_lotes").update({ desfeito_em: new Date().toISOString() }).eq("id", loteId);
   return tiradas?.length ?? 0;
 }
+
+/* ------------------------------ Leads do Negociar ------------------------------ */
+
+export type LeadPortal = {
+  id: string;
+  nome: string;
+  telefone: string;
+  codigos: string[];
+  credito: number;
+  entrada: number;
+  donos: string[];
+  status: "NOVO" | "EM_CONTATO" | "FECHADO" | "PERDIDO";
+  criadoEm: string;
+};
+
+export async function registrarLeadPortal(empresaId: string, l: { leadId: string | null; nome: string; telefone: string; cotas: CotaPortal[] }) {
+  const donos = [...new Set(l.cotas.map((c) => c.dono_auth_id).filter(Boolean))] as string[];
+  await db().from("contempladas_leads").insert({
+    empresa_id: empresaId,
+    lead_id: l.leadId,
+    nome: l.nome,
+    telefone: l.telefone.replace(/\D/g, ""),
+    cota_ids: l.cotas.map((c) => c.id),
+    codigos: l.cotas.map((c) => c.codigo),
+    credito: l.cotas.reduce((s, c) => s + c.credito, 0),
+    entrada: l.cotas.reduce((s, c) => s + c.entrada, 0),
+    dono_auth_ids: donos,
+    dono_nomes: [...new Set(l.cotas.map((c) => c.dono_nome).filter(Boolean))],
+  });
+}
+
+/** Dono vê todos; administradora vê só os leads das cotas dela. */
+export async function listarLeadsPortal(empresaId: string, donoAuthId?: string): Promise<LeadPortal[]> {
+  let q = db().from("contempladas_leads").select("*").eq("empresa_id", empresaId).order("created_at", { ascending: false }).limit(300);
+  if (donoAuthId) q = q.contains("dono_auth_ids", [donoAuthId]);
+  const { data } = await q;
+  return (data ?? []).map((r) => ({
+    id: r.id, nome: r.nome, telefone: r.telefone, codigos: r.codigos ?? [], credito: num(r.credito), entrada: num(r.entrada),
+    donos: r.dono_nomes ?? [], status: r.status, criadoEm: r.created_at,
+  }));
+}
+
+export async function statusLeadPortal(empresaId: string, id: string, status: LeadPortal["status"], donoAuthId?: string) {
+  let q = db().from("contempladas_leads").update({ status }).eq("empresa_id", empresaId).eq("id", id);
+  if (donoAuthId) q = q.contains("dono_auth_ids", [donoAuthId]);
+  const { data, error } = await q.select("id");
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("Lead não encontrado.");
+}

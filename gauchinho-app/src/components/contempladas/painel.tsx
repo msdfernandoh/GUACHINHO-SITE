@@ -1,6 +1,8 @@
 "use client";
 
 import { Colaboradores } from "./colaboradores";
+import { Leads } from "./leads";
+import type { LeadPortal } from "@/lib/contempladas/repo";
 import type { Colaboracao, Colaborador } from "@/lib/contempladas/acesso";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -38,7 +40,7 @@ const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julh
 const dataHora = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
-type Aba = "colaboradores" | "comissoes" | "reservas" | "cotas" | "propostas" | "equipe" | "config" | "meu";
+type Aba = "leads" | "colaboradores" | "comissoes" | "reservas" | "cotas" | "propostas" | "equipe" | "config" | "meu";
 
 function SeletorValor({ valor, onChange, rotuloPct = "% do crédito" }: { valor: Acrescimo; onChange: (v: Acrescimo) => void; rotuloPct?: string }) {
   return (
@@ -80,6 +82,7 @@ export function Painel(props: {
   colaboradores: Colaborador[];
   colaboracao: Colaboracao | null;
   ocultarComissao: boolean;
+  leads: LeadPortal[];
   responsaveis: { authUserId: string; nome: string }[];
 }) {
   const router = useRouter();
@@ -133,7 +136,7 @@ export function Painel(props: {
   const somaAberta = props.propostas.filter((p) => !p.vendida).reduce((s, p) => s + p.rentabilidade, 0);
 
   const abas: [Aba, string][] = gerencia
-    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["comissoes", `Comissões${aPagar ? ` (${aPagar})` : ""}`], ["equipe", pendentes.length ? `Usuários (${pendentes.length} novos)` : "Usuários"], [ "config", props.papel === "DONO" ? "Configurar" : "Minha unidade"], ["meu", "Meu perfil"]]
+    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["leads", `Leads${props.leads.some((l) => l.status === "NOVO") ? ` (${props.leads.filter((l) => l.status === "NOVO").length} novos)` : ""}`], ["comissoes", `Comissões${aPagar ? ` (${aPagar})` : ""}`], ["equipe", pendentes.length ? `Usuários (${pendentes.length} novos)` : "Usuários"], [ "config", props.papel === "DONO" ? "Configurar" : "Minha unidade"], ["meu", "Meu perfil"]]
     : [["propostas", "Minhas propostas"], ["comissoes", `Comissões${aReceber ? ` (${aReceber})` : ""}`], ["meu", "Meu perfil"]];
   // Quem não é colaborador pode cadastrar os próprios colaboradores.
   if (!props.colaboracao) abas.splice(abas.length - 1, 0, ["colaboradores", `Colaboradores${props.colaboradores.length ? ` (${props.colaboradores.length})` : ""}`]);
@@ -275,6 +278,7 @@ export function Painel(props: {
       {props.colaboracao && (
         <p className="rounded-xl bg-blue-50 p-3 text-sm text-slate-700">Você é colaborador de <b>{props.colaboracao.responsavelNome}</b>. A comissão que aparece nas cotas já é a sua parte ({props.colaboracao.percentual.toLocaleString("pt-BR")}%). Seu ágio fica em <b>Meu perfil</b>.</p>
       )}
+      {aba === "leads" && gerencia && <Leads itens={props.leads} dono={props.papel === "DONO"} />}
       {aba === "colaboradores" && !props.colaboracao && (
         <Colaboradores itens={props.colaboradores} dono={props.papel === "DONO"} responsaveis={props.responsaveis} authUserId={props.authUserId} />
       )}

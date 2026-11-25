@@ -45,3 +45,7 @@
 - Aba "Equipe" passa a "Usuários", em três grupos. No editar, o papel tem "Colaborador" com o responsável (dono do portal, administradora ou revenda) e o %.
 - Dono como responsável usa o nome da empresa (empresas.nome_fantasia). Leonam: colaborador da Gauchinho Consórcios com 30%.
 - Visitante sem login em "Negociar": entrar ou deixar nome + WhatsApp; vira lead no CRM (`leadNegociarAction`, origem "contempladas") com crédito/entrada das cotas.
+
+## Leads no painel (25/11/2026)
+- Migration 362 `contempladas_leads`: cada "Negociar" sem login grava o lead do portal (cotas, crédito, entrada, administradoras) além do lead no CRM do ERP.
+- Aba "Leads" no painel: dono vê todos; administradora vê os das cotas dela. WhatsApp com mensagem pronta e situação (Novo, Em contato, Fechado, Perdido).

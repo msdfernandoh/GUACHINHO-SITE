@@ -734,6 +734,17 @@ export async function leadNegociarAction(p: { cotaIds: string[]; nome: string; t
       status: "Novo",
     } as Parameters<typeof upsertLeadPorTelefone>[1]);
     if (!r.ok) throw new Error("Não foi possível registrar agora. Tente pelo WhatsApp.");
+    await repo.registrarLeadPortal(empresaId, { leadId: r.lead_id ?? null, nome, telefone: p.telefone, cotas });
+    return {};
+  });
+}
+
+export async function statusLeadAction(id: string, status: "NOVO" | "EM_CONTATO" | "FECHADO" | "PERDIDO") {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirGerencia();
+    if (!["NOVO", "EM_CONTATO", "FECHADO", "PERDIDO"].includes(status)) throw new Error("Situação inválida.");
+    await repo.statusLeadPortal(empresaId, id, status, a.papel === "DONO" ? undefined : a.authUserId);
+    revalidatePath("/contempladas/painel");
     return {};
   });
 }

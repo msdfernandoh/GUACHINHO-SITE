@@ -48,9 +48,10 @@ export default async function Page() {
     gerencia ? repo.resumoVendas(empresaId, meuEscopo) : Promise.resolve(null),
     meusDados(empresaId, a),
   ]);
-  const [comissoes, colaboradores] = await Promise.all([
+  const [comissoes, colaboradores, leads] = await Promise.all([
     repo.listarComissoes(empresaId, a.authUserId, a.papel === "DONO"),
     a.colaborador ? Promise.resolve([]) : listarColaboradores(empresaId, a.papel === "DONO" ? null : a.authUserId),
+    gerencia ? repo.listarLeadsPortal(empresaId, meuEscopo) : Promise.resolve([]),
   ]);
   // Dono pode cadastrar colaboradores em nome de uma revenda ou administrador de cotas.
   const responsaveis =
@@ -88,6 +89,7 @@ export default async function Page() {
         colaboradores={colaboradores}
         colaboracao={a.colaborador}
         ocultarComissao={a.ocultarComissao}
+        leads={leads}
         responsaveis={responsaveis}
       />
     </Shell>
