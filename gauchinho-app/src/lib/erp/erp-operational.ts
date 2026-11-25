@@ -9,6 +9,7 @@ export type ErpOperationalRoute = {
 };
 
 export const ERP_OPERATIONAL_ROUTES: ErpOperationalRoute[] = [
+  { id: "extrato-clientes", label: "Extrato de Clientes", href: "/erp/extrato-clientes", section: "Comercial", requiresAny: ["vendas", "propostas"] },
   { id: "clientes", label: "Clientes e carteira", href: "/erp/clientes", section: "Comercial", requiresAny: ["leads", "propostas", "contratacoes", "vendas"] },
   { id: "consultores", label: "Consultores", href: "/erp/consultores", section: "Comercial", requiresAny: ["usuarios", "comissoes"] },
   { id: "lances", label: "Lances e estrategias", href: "/erp/lances", section: "Consorcio", requiresAny: ["grupos"] },

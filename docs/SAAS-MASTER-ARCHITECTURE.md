@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Extrato de Clientes e mensagem mensal (25/11/2026)
+
+Menu paginado, extrato único por cliente, PDF e mensagem de WhatsApp editável.
+O histórico Newcon fundamenta crédito na adesão, reajustes, simulação das parcelas
+e projeções. A tabela extratos_clientes_envios registra competência e cliente
+para acompanhamento. Relatório em
+`docs/relatorios-fases/EXTRATO-CLIENTES-2026-11-25.md`.
+
 ### Simulação Ilustrativa da proposta PDF (25/11/2026)
 
 O formulário autenticado de Grupos aceita hipóteses opcionais de reajuste

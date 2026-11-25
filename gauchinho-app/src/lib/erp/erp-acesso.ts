@@ -77,6 +77,7 @@ const ERP_ROUTE_PERMISSIONS: Record<ErpAccessId, string[]> = {
   tarefas: ["gerenciar_leads"],
   usuarios: ["gerenciar_usuarios"],
   clientes: ["gerenciar_leads", "gerenciar_propostas"],
+  "extrato-clientes": ["gerenciar_leads", "gerenciar_propostas"],
   consultores: ["gerenciar_participantes"],
   lances: ["gerenciar_grupos", "gerenciar_leads"],
   assembleias: ["gerenciar_grupos", "gerenciar_leads"],
