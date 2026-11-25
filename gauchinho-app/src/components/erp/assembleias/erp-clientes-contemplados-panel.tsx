@@ -19,6 +19,18 @@ export async function ErpClientesContempladosPanel() {
   const cotas = await listarClientesContempladosAction();
   const contempladas = cotas.filter((c) => c.situacao === "contemplada").length;
   const semLance = cotas.length - contempladas;
+  // Recusadas e desclassificadas também contam: o cliente foi contemplado e não quis pagar o lance.
+  const mesAtual = new Date().toLocaleDateString("en-CA", { timeZone: "America/Cuiaba" }).slice(0, 7);
+  const porMes = new Map<string, { total: number; recusadas: number }>();
+  for (const c of cotas) {
+    const m = c.contemplacao.slice(0, 7);
+    const v = porMes.get(m) ?? { total: 0, recusadas: 0 };
+    v.total++; if (c.situacao !== "contemplada") v.recusadas++;
+    porMes.set(m, v);
+  }
+  const meses = [...porMes].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6);
+  const noMes = porMes.get(mesAtual) ?? { total: 0, recusadas: 0 };
+  const nomeMes = (m: string) => new Date(m + "-15T12:00:00Z").toLocaleDateString("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" }).replace(". de ", "/").replace(" de ", "/");
 
   return (
     <section className="rounded-xl border bg-white">
@@ -30,6 +42,37 @@ export async function ErpClientesContempladosPanel() {
         </p>
         <p className="mt-1 text-xs text-slate-500">No lance livre o cliente pode recusar (não pagar o lance). Use “Cliente recusou” para a cota voltar a concorrer como cota normal. As desclassificadas pela Racon já entram assim.</p>
       </header>
+      <div className="grid gap-3 border-b p-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">Total de contempladas</p>
+          <p className="mt-1 text-3xl font-black text-emerald-900">{cotas.length}</p>
+          <p className="text-xs text-emerald-800">{contempladas} ativas + {semLance} por lance não pago</p>
+        </div>
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-blue-800">Contempladas no mês</p>
+          <p className="mt-1 text-3xl font-black text-blue-900">{noMes.total}</p>
+          <p className="text-xs text-blue-800">{nomeMes(mesAtual)}{noMes.recusadas ? ` · ${noMes.recusadas} recusada(s)` : ""}</p>
+        </div>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-red-800">Recusadas / lance não pago</p>
+          <p className="mt-1 text-3xl font-black text-red-900">{semLance}</p>
+          <p className="text-xs text-red-800">Voltaram a concorrer como cota normal</p>
+        </div>
+        {meses.length > 0 && (
+          <div className="sm:col-span-3">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Por mês</p>
+            <div className="flex flex-wrap gap-2">
+              {meses.map(([m, v]) => (
+                <div key={m} className={`rounded-lg border px-3 py-2 text-sm ${m === mesAtual ? "border-blue-300 bg-blue-50" : "bg-white"}`}>
+                  <span className="font-semibold capitalize">{nomeMes(m)}</span>
+                  <span className="ml-2 font-black">{v.total}</span>
+                  {v.recusadas ? <span className="ml-1 text-xs text-red-700">({v.recusadas} rec.)</span> : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
       {cotas.length === 0 ? (
         <p className="p-5 text-sm text-slate-600">Nenhuma cota contemplada identificada na carteira.</p>
       ) : (
