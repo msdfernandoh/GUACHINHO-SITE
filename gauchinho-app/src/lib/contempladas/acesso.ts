@@ -23,7 +23,23 @@ export type Acesso = {
   adicional: Acrescimo;
   telefone: string | null;
   logoUrl: string | null;
+  /** Preenchido quando a pessoa é colaborador de uma revenda/administrador. */
+  colaborador: Colaboracao | null;
 };
+
+export type Colaboracao = { percentual: number; responsavelAuthId: string; responsavelNome: string };
+
+function colaboracaoDe(portal: Record<string, unknown> | null | undefined): Colaboracao | null {
+  if (!portal?.responsavel_auth_id || portal.colaborador_percentual == null) return null;
+  return {
+    percentual: Number(portal.colaborador_percentual) || 0,
+    responsavelAuthId: String(portal.responsavel_auth_id),
+    responsavelNome: String(portal.responsavel_nome ?? "Responsável"),
+  };
+}
+
+/** Parte da comissão que a pessoa logada enxerga (colaborador vê só o percentual dele). */
+export const fatorComissao = (a: Acesso | null) => (a?.colaborador ? a.colaborador.percentual / 100 : 1);
 
 export const podeGerenciar = (a: Acesso | null) => a?.papel === "DONO" || a?.papel === "GERENTE";
 
@@ -47,11 +63,11 @@ export async function getAcesso(empresaId: string): Promise<Acesso | null> {
     const { data: vinc } = await db().from("empresa_usuarios").select("usuario_id").eq("empresa_id", empresaId).eq("usuario_id", erp.id).maybeSingle();
     if (vinc || erp.perfil === "master") {
       const papel: Papel = erp.perfil === "master" ? "DONO" : erp.contempladas_pode_enviar || portal?.papel === "GERENTE" ? "GERENTE" : "VENDEDOR";
-      return { papel, authUserId: user.id, nome: portal?.nome || erp.nome, email: erp.email, origem: "ERP", adicional, telefone: portal?.telefone ?? (erp as { telefone?: string | null }).telefone ?? null, logoUrl: portal?.logo_url ?? null };
+      return { papel, authUserId: user.id, nome: portal?.nome || erp.nome, email: erp.email, origem: "ERP", adicional, telefone: portal?.telefone ?? (erp as { telefone?: string | null }).telefone ?? null, logoUrl: portal?.logo_url ?? null, colaborador: papel === "VENDEDOR" ? colaboracaoDe(portal) : null };
     }
   }
   if (portal?.ativo && (portal.status ?? "ATIVO") === "ATIVO") {
-    return { papel: portal.papel, authUserId: user.id, nome: portal.nome, email: portal.email, origem: "PORTAL", adicional, telefone: portal.telefone, logoUrl: portal.logo_url };
+    return { papel: portal.papel, authUserId: user.id, nome: portal.nome, email: portal.email, origem: "PORTAL", adicional, telefone: portal.telefone, logoUrl: portal.logo_url, colaborador: portal.papel === "VENDEDOR" ? colaboracaoDe(portal) : null };
   }
   return null;
 }
@@ -314,4 +330,72 @@ export async function salvarPixMembro(empresaId: string, authUserId: string, pix
 export async function pixDosMembros(empresaId: string) {
   const { data } = await db().from("contempladas_gerente_config").select("auth_user_id,chave_pix,chave_pix_tipo,favorecido_pix").eq("empresa_id", empresaId);
   return new Map((data ?? []).map((r) => [r.auth_user_id as string, { tipo: (r.chave_pix_tipo as string) ?? "CELULAR", chave: (r.chave_pix as string) ?? "", favorecido: (r.favorecido_pix as string) ?? "" }]));
+}
+
+/* ------------------------------ Colaboradores ------------------------------ */
+
+export type Colaborador = {
+  id: string;
+  authUserId: string;
+  nome: string;
+  email: string;
+  telefone: string | null;
+  percentual: number;
+  ativo: boolean;
+  responsavelAuthId: string;
+  responsavelNome: string;
+};
+
+export async function colaboracaoDoVendedor(empresaId: string, authUserId: string | null | undefined): Promise<Colaboracao | null> {
+  if (!authUserId) return null;
+  const { data } = await db()
+    .from("contempladas_usuarios")
+    .select("responsavel_auth_id,responsavel_nome,colaborador_percentual,papel")
+    .eq("empresa_id", empresaId)
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
+  return data?.papel === "VENDEDOR" ? colaboracaoDe(data) : null;
+}
+
+/** Colaboradores de um responsável (ou de todos, para o dono). */
+export async function listarColaboradores(empresaId: string, responsavelAuthId: string | null): Promise<Colaborador[]> {
+  let q = db()
+    .from("contempladas_usuarios")
+    .select("id,auth_user_id,nome,email,telefone,ativo,responsavel_auth_id,responsavel_nome,colaborador_percentual")
+    .eq("empresa_id", empresaId)
+    .not("responsavel_auth_id", "is", null)
+    .order("nome");
+  if (responsavelAuthId) q = q.eq("responsavel_auth_id", responsavelAuthId);
+  const { data } = await q;
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    authUserId: r.auth_user_id,
+    nome: r.nome,
+    email: r.email,
+    telefone: r.telefone,
+    percentual: Number(r.colaborador_percentual) || 0,
+    ativo: Boolean(r.ativo),
+    responsavelAuthId: r.responsavel_auth_id,
+    responsavelNome: r.responsavel_nome ?? "",
+  }));
+}
+
+export async function definirColaboracao(empresaId: string, authUserId: string, c: { percentual: number; responsavelAuthId: string; responsavelNome: string }) {
+  const { error } = await db()
+    .from("contempladas_usuarios")
+    .update({ papel: "VENDEDOR", responsavel_auth_id: c.responsavelAuthId, responsavel_nome: c.responsavelNome, colaborador_percentual: c.percentual })
+    .eq("empresa_id", empresaId)
+    .eq("auth_user_id", authUserId);
+  if (error) throw new Error(error.message);
+}
+
+export async function atualizarColaborador(empresaId: string, id: string, responsavelAuthId: string | null, campos: { percentual?: number; ativo?: boolean }) {
+  let q = db().from("contempladas_usuarios").update({
+    ...(campos.percentual != null ? { colaborador_percentual: campos.percentual } : {}),
+    ...(campos.ativo != null ? { ativo: campos.ativo, status: campos.ativo ? "ATIVO" : "RECUSADO" } : {}),
+  }).eq("empresa_id", empresaId).eq("id", id).not("responsavel_auth_id", "is", null);
+  if (responsavelAuthId) q = q.eq("responsavel_auth_id", responsavelAuthId);
+  const { data, error } = await q.select("id");
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("Colaborador não encontrado.");
 }

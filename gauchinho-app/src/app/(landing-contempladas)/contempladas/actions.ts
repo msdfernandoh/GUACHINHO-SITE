@@ -137,7 +137,7 @@ export async function simularAction(p: { credito: number; entradaMax: number | n
   // Comissão só vai para quem está logado.
   const cotas = todas
     .filter((c) => c.status === "DISPONIVEL" && (!p.tipo || c.tipo === p.tipo))
-    .map((c) => ({ ...c, comissao_parceiro: a ? repo.comissaoVisivel(c, cfgs.de(c.dono_auth_id)) : 0 }));
+    .map((c) => ({ ...c, comissao_parceiro: a ? repo.comissaoVisivel(c, cfgs.de(c.dono_auth_id)) * acesso.fatorComissao(a) : 0 }));
   const credito = Math.max(0, Number(p.credito) || 0);
   const entradaMax = p.entradaMax ? Math.max(0, Number(p.entradaMax)) : null;
   const preferencia: Preferencia = p.preferencia === "MENOR_PRAZO" ? "MENOR_PRAZO" : "MENOR_PARCELA";
@@ -157,7 +157,7 @@ export async function gerarPropostaAction(p: { cotaIds: string[]; modo: string; 
     // Adicional fixo do vendedor entra sozinho; desconto só para quem está logado.
     const adicional = a ? valorAcrescimo(credito, a.adicional) : 0;
     const desconto = a ? Math.min(Math.max(0, Number(p.desconto) || 0), entradaBase + adicional) : 0;
-    const comissao = a ? cotas.reduce((s, c) => s + repo.comissaoVisivel(c, cfgs.de(c.dono_auth_id)), 0) : 0;
+    const comissao = a ? cotas.reduce((s, c) => s + repo.comissaoVisivel(c, cfgs.de(c.dono_auth_id)), 0) * acesso.fatorComissao(a) : 0;
     const modos = ["COMPLETA", "MENSAL", "SEMESTRAL", "ANUAL", "RESUMO"];
     const numero = await repo.salvarProposta({
       empresaId,
@@ -591,3 +591,74 @@ export async function confirmarRecebimentoAction(id: string) {
     return {};
   });
 }
+
+/* ------------------------------ Colaboradores ------------------------------ */
+
+const pctValido = (v: unknown) => {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0 || n > 100) throw new Error("Informe um percentual entre 0 e 100.");
+  return Math.round(n * 100) / 100;
+};
+
+/**
+ * Revenda, administrador de cotas ou dono cadastra um colaborador da própria equipe.
+ * O colaborador vê só o percentual de comissão definido aqui e pode incluir ágio.
+ * Se o e-mail já tem acesso (portal ou ERP desta empresa), só vincula.
+ */
+export async function criarColaboradorAction(p: { nome: string; email: string; telefone: string; senha: string; percentual: number; responsavelAuthId?: string | null }) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirLogado();
+    if (a.colaborador) throw new Error("Colaborador não cadastra outros colaboradores.");
+    let resp = { authId: a.authUserId, nome: a.nome };
+    if (a.papel === "DONO" && p.responsavelAuthId && p.responsavelAuthId !== a.authUserId) {
+      const r = (await acesso.listarUsuariosPortal(empresaId)).find((m) => m.auth_user_id === p.responsavelAuthId && m.status === "ATIVO");
+      if (!r) throw new Error("Responsável não encontrado.");
+      resp = { authId: r.auth_user_id, nome: r.nome };
+    }
+    const percentual = pctValido(p.percentual);
+    const email = (p.email ?? "").trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("E-mail inválido.");
+    if (email === a.email?.toLowerCase()) throw new Error("Use o e-mail do colaborador, não o seu.");
+    const db = createAdminClient({ noStore: true });
+    const { data: noPortal } = await db.from("contempladas_usuarios").select("auth_user_id,papel,responsavel_auth_id").eq("empresa_id", empresaId).eq("email", email).maybeSingle();
+    let authId: string;
+    if (noPortal) {
+      if (noPortal.papel !== "VENDEDOR") throw new Error("Este e-mail é de um administrador de cotas e não pode ser colaborador.");
+      if (noPortal.responsavel_auth_id && noPortal.responsavel_auth_id !== resp.authId) throw new Error("Este e-mail já é colaborador de outra revenda.");
+      authId = noPortal.auth_user_id;
+    } else {
+      const { data: erp } = await db.from("usuarios").select("id,auth_user_id,nome,telefone").eq("email", email).maybeSingle();
+      const { data: vinc } = erp ? await db.from("empresa_usuarios").select("usuario_id").eq("empresa_id", empresaId).eq("usuario_id", erp.id).maybeSingle() : { data: null };
+      if (erp?.auth_user_id && vinc) {
+        // Membro da equipe do ERP: ganha um cadastro no portal ligado ao mesmo login.
+        const { error } = await db.from("contempladas_usuarios").insert({
+          empresa_id: empresaId, auth_user_id: erp.auth_user_id, nome: (p.nome || erp.nome).trim(), email,
+          telefone: digitosTel(p.telefone) || erp.telefone || null, papel: "VENDEDOR", criado_por: a.authUserId, status: "ATIVO", ativo: true,
+        });
+        if (error) throw new Error(error.message);
+        authId = erp.auth_user_id;
+      } else {
+        validarCadastro({ nome: p.nome, email, senha: p.senha });
+        authId = await acesso.criarUsuarioPortal({ empresaId, nome: p.nome, email, telefone: digitosTel(p.telefone) || null, senha: p.senha, papel: "VENDEDOR", criadoPor: a.authUserId });
+      }
+    }
+    await acesso.definirColaboracao(empresaId, authId, { percentual, responsavelAuthId: resp.authId, responsavelNome: resp.nome });
+    revalidatePath("/contempladas/painel");
+    return {};
+  });
+}
+
+export async function atualizarColaboradorAction(id: string, campos: { percentual?: number; ativo?: boolean }) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirLogado();
+    if (a.colaborador) throw new Error("Sem permissão.");
+    await acesso.atualizarColaborador(empresaId, id, a.papel === "DONO" ? null : a.authUserId, {
+      percentual: campos.percentual == null ? undefined : pctValido(campos.percentual),
+      ativo: campos.ativo,
+    });
+    revalidatePath("/contempladas/painel");
+    return {};
+  });
+}
+
+const digitosTel = (t: string | null | undefined) => String(t ?? "").replace(/\D/g, "");

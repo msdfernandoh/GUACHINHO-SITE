@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getResolvedTenant } from "@/lib/tenant/get-resolved-empresa";
 import * as repo from "@/lib/contempladas/repo";
-import { getAcesso, listarGerentes, listarUsuariosPortal, meusDados, podeGerenciar, situacaoCadastro } from "@/lib/contempladas/acesso";
+import { getAcesso, listarColaboradores, listarGerentes, listarUsuariosPortal, meusDados, podeGerenciar, situacaoCadastro } from "@/lib/contempladas/acesso";
 import { LoginBox, Sair, Shell } from "@/components/contempladas/ui";
 import { Painel } from "@/components/contempladas/painel";
 
@@ -48,7 +48,15 @@ export default async function Page() {
     gerencia ? repo.resumoVendas(empresaId, meuEscopo) : Promise.resolve(null),
     meusDados(empresaId, a),
   ]);
-  const comissoes = await repo.listarComissoes(empresaId, a.authUserId, a.papel === "DONO");
+  const [comissoes, colaboradores] = await Promise.all([
+    repo.listarComissoes(empresaId, a.authUserId, a.papel === "DONO"),
+    a.colaborador ? Promise.resolve([]) : listarColaboradores(empresaId, a.papel === "DONO" ? null : a.authUserId),
+  ]);
+  // Dono pode cadastrar colaboradores em nome de uma revenda ou administrador de cotas.
+  const responsaveis =
+    a.papel === "DONO"
+      ? equipe.filter((m) => m.status === "ATIVO" && m.ativo && !colaboradores.some((c) => c.authUserId === m.auth_user_id)).map((m) => ({ authUserId: m.auth_user_id, nome: m.nome }))
+      : [];
   // Dono vê e edita a configuração de cada administrador de cotas.
   const configsAdmins =
     a.papel === "DONO"
@@ -56,7 +64,7 @@ export default async function Page() {
           (await listarGerentes(empresaId)).map(async (g) => ({ authUserId: g.authUserId, nome: g.nome, cfg: await repo.getConfigGerente(empresaId, g.authUserId) })),
         )
       : [];
-  const papelTxt = a.papel === "DONO" ? "dono do portal" : a.papel === "GERENTE" ? "administrador de cotas" : "revenda";
+  const papelTxt = a.papel === "DONO" ? "dono do portal" : a.papel === "GERENTE" ? "administrador de cotas" : a.colaborador ? `colaborador · ${a.colaborador.responsavelNome}` : "revenda";
   return (
     <Shell titulo="Painel" sub={`${a.nome} · ${papelTxt}`} papel={a.papel}>
       <Painel
@@ -77,6 +85,9 @@ export default async function Page() {
         comissoes={comissoes}
         authUserId={a.authUserId}
         origem={a.origem}
+        colaboradores={colaboradores}
+        colaboracao={a.colaborador}
+        responsaveis={responsaveis}
       />
     </Shell>
   );

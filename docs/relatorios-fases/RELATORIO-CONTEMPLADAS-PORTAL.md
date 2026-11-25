@@ -29,3 +29,9 @@
 - `contempladasracon.com.br` (e www) abre o portal como `contempladas.raconsinop.com.br` (`LANDING_DOMINIOS_PROPRIOS` em `src/lib/landings/subdominios.ts`); o endereço antigo segue funcionando. Rotas curtas `/solicitar` e `/seja-parceiro` incluídas.
 - Site raconsinop.com.br: menu "Contempladas" (`/contempladas`) em todas as páginas e faixa "Acessar o portal" na home (`src/lib/contempladas/site-link.ts`).
 - Administrador de cotas (GERENTE) aprova ou recusa cadastros pendentes de revenda; administradores novos continuam com o dono.
+
+## Colaboradores (25/11/2026)
+- Migration 360: `contempladas_usuarios.responsavel_auth_id/responsavel_nome/colaborador_percentual`; `contempladas_comissoes.colaborador_auth_id/colaborador_nome/tipo`.
+- Aba "Colaboradores" no painel (dono, administrador de cotas e revenda): cadastra ou vincula (portal/ERP) um colaborador com o % da comissão; dono pode escolher o responsável.
+- Colaborador vê nas cotas só a sua parte (comissão × %), inclui ágio em Meu perfil e não cadastra outros colaboradores.
+- Venda de colaborador: o dono da cota paga o responsável (comissão cheia + ágio − desconto, tipo REVENDA) e o responsável paga o colaborador (% + ágio − desconto, tipo COLABORADOR).

@@ -1,4 +1,5 @@
 import "server-only";
+import { colaboracaoDoVendedor } from "@/lib/contempladas/acesso";
 
 import { randomBytes } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -577,15 +578,11 @@ async function gerarComissao(
   const base = comissaoVisivel({ credito, comissao_parceiro: num(c.comissao_parceiro), comissao_fixada: Boolean(c.comissao_fixada) }, cfgDe(c.dono_auth_id));
   const adicional = Math.round(num(prop.adicional_valor) * parte * 100) / 100;
   const desconto = Math.round(num(prop.desconto_valor) * parte * 100) / 100;
-  await db()
-    .from("contempladas_comissoes")
-    .insert({
-      empresa_id: empresaId,
-      cota_id: cotaId,
-      codigo: c.codigo,
-      credito,
-      proposta_id: prop.id,
-      proposta_numero: prop.numero,
+  const comum = { empresa_id: empresaId, cota_id: cotaId, codigo: c.codigo, credito, proposta_id: prop.id, proposta_numero: prop.numero };
+  const colab = await colaboracaoDoVendedor(empresaId, prop.vendedor_auth_id as string | null);
+  if (!colab) {
+    await db().from("contempladas_comissoes").insert({
+      ...comum,
       revenda_auth_id: prop.vendedor_auth_id,
       revenda_nome: prop.vendedor_nome,
       dono_auth_id: c.dono_auth_id,
@@ -595,6 +592,41 @@ async function gerarComissao(
       valor_desconto: desconto,
       valor: Math.max(0, Math.round((base + adicional - desconto) * 100) / 100),
     });
+    return;
+  }
+  // Venda de colaborador: o dono da cota paga o responsável (como uma venda dele)
+  // e o responsável paga ao colaborador o percentual combinado + o ágio.
+  const parteColab = Math.round(base * (colab.percentual / 100) * 100) / 100;
+  if (colab.responsavelAuthId !== c.dono_auth_id) {
+    await db().from("contempladas_comissoes").insert({
+      ...comum,
+      tipo: "REVENDA",
+      revenda_auth_id: colab.responsavelAuthId,
+      revenda_nome: colab.responsavelNome,
+      colaborador_auth_id: prop.vendedor_auth_id,
+      colaborador_nome: prop.vendedor_nome,
+      dono_auth_id: c.dono_auth_id,
+      dono_nome: c.dono_nome,
+      valor_comissao: base,
+      valor_adicional: adicional,
+      valor_desconto: desconto,
+      valor: Math.max(0, Math.round((base + adicional - desconto) * 100) / 100),
+    });
+  }
+  await db().from("contempladas_comissoes").insert({
+    ...comum,
+    tipo: "COLABORADOR",
+    revenda_auth_id: prop.vendedor_auth_id,
+    revenda_nome: prop.vendedor_nome,
+    colaborador_auth_id: prop.vendedor_auth_id,
+    colaborador_nome: prop.vendedor_nome,
+    dono_auth_id: colab.responsavelAuthId,
+    dono_nome: colab.responsavelNome,
+    valor_comissao: parteColab,
+    valor_adicional: adicional,
+    valor_desconto: desconto,
+    valor: Math.max(0, Math.round((parteColab + adicional - desconto) * 100) / 100),
+  });
 }
 
 export type Comissao = {
@@ -604,6 +636,8 @@ export type Comissao = {
   propostaNumero: number | null;
   revenda: string | null;
   revendaAuthId: string | null;
+  tipo: "REVENDA" | "COLABORADOR";
+  colaborador: string | null;
   dono: string | null;
   donoAuthId: string | null;
   valorComissao: number;
@@ -636,6 +670,8 @@ export async function listarComissoes(empresaId: string, authId: string, verToda
         propostaNumero: r.proposta_numero ? Number(r.proposta_numero) : null,
         revenda: r.revenda_nome,
         revendaAuthId: r.revenda_auth_id,
+        tipo: r.tipo === "COLABORADOR" ? "COLABORADOR" : "REVENDA",
+        colaborador: r.colaborador_nome ?? null,
         dono: r.dono_nome,
         donoAuthId: r.dono_auth_id,
         valorComissao: num(r.valor_comissao),

@@ -25,7 +25,10 @@ function Linha({ c, lado, onAcao }: { c: Comissao; lado: "pagar" | "receber"; on
         <div>
           <p className="font-bold text-[#0a2a66]">{c.codigo} · {brl(c.credito)}{c.propostaNumero ? <span className="font-normal text-slate-500"> · proposta nº {c.propostaNumero}</span> : null}</p>
           <p className="text-xs text-slate-500">
-            {lado === "pagar" ? `Revenda ${c.revenda ?? "—"}` : `Administrador ${c.dono ?? "—"}`} · vendida em {dataHora(c.criadaEm)}
+            {c.tipo === "COLABORADOR"
+              ? lado === "pagar" ? `Colaborador ${c.revenda ?? "—"}` : `Responsável ${c.dono ?? "—"}`
+              : lado === "pagar" ? `Revenda ${c.revenda ?? "—"}` : `Administrador ${c.dono ?? "—"}`}
+            {c.tipo === "REVENDA" && c.colaborador ? ` · venda do colaborador ${c.colaborador}` : ""} · vendida em {dataHora(c.criadaEm)}
           </p>
           <p className="mt-1 text-xs text-slate-600">
             Comissão {brl(c.valorComissao)}{c.valorAdicional ? ` + adicional da revenda ${brl(c.valorAdicional)}` : ""}{c.valorDesconto ? ` − desconto ${brl(c.valorDesconto)}` : ""}
