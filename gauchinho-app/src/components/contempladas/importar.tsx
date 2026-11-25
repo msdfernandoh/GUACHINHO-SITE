@@ -53,7 +53,28 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
     }
     if (/^image\//.test(f.type)) {
       setLendo("Lendo a imagem… pode levar alguns segundos.");
-      const dataUrl = await new Promise<string>((ok, erro) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = erro; r.readAsDataURL(f); });
+      // Reduz a imagem no navegador (limite de envio ~1 MB) mantendo a tabela legível.
+      const dataUrl = await new Promise<string>((ok, erro) => {
+        const img = new Image();
+        img.onload = () => {
+          const escala = Math.min(1, 2000 / Math.max(img.width, img.height));
+          const cv = document.createElement("canvas");
+          cv.width = Math.round(img.width * escala);
+          cv.height = Math.round(img.height * escala);
+          const ctx = cv.getContext("2d");
+          if (!ctx) return erro(new Error("canvas"));
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, cv.width, cv.height);
+          ctx.drawImage(img, 0, 0, cv.width, cv.height);
+          let q = 0.85;
+          let url = cv.toDataURL("image/jpeg", q);
+          while (url.length > 900_000 && q > 0.4) { q -= 0.1; url = cv.toDataURL("image/jpeg", q); }
+          URL.revokeObjectURL(img.src);
+          ok(url);
+        };
+        img.onerror = erro;
+        img.src = URL.createObjectURL(f);
+      });
       const r = await lerImagemCotasAction(dataUrl);
       setLendo(null);
       if (!r.ok) { setMsg(`⚠️ ${r.erro}`); return; }

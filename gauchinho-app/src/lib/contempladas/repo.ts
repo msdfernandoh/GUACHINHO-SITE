@@ -933,7 +933,7 @@ export async function venderForaDaLista(
   donoAuthId: string | null,
   incluirSemDono: boolean,
   lista: { administradora: string; credito: number; prazo: number; entrada_original: number }[],
-  por: { authId: string; nome: string },
+  por: { authId: string; nome: string; vendedor?: string | null },
   soConfirmar = false,
 ) {
   const chave = (c: { administradora: string; credito: number; prazo: number; entrada_original: number }) =>
@@ -947,6 +947,6 @@ export async function venderForaDaLista(
   if (soConfirmar) return 0;
   const ids = (data ?? []).filter((c) => !naLista.has(chave(c as never))).map((c) => c.id as string);
   if (!ids.length) return 0;
-  await mudarStatusCotas(empresaId, ids, "VENDIDA", undefined, { authId: por.authId, nome: por.nome, vendedor: "Atualização da tabela" });
+  await mudarStatusCotas(empresaId, ids, "VENDIDA", undefined, { authId: por.authId, nome: por.nome, vendedor: por.vendedor || por.nome });
   return ids.length;
 }

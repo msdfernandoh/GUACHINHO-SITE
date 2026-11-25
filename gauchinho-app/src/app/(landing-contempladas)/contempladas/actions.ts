@@ -129,7 +129,7 @@ export async function enviarCotasAction(
     });
     // Só mexe nas cotas do administrador deste envio: as que vieram na lista ganham a data de atualização.
     const naLista = lidas.flatMap((l) => (l.cota ? [l.cota] : []));
-    const vendidasFora = await repo.venderForaDaLista(empresaId, dono.authUserId, a.papel === "DONO" && dono.proprio, naLista, { authId: a.authUserId, nome: a.nome }, modo !== "VENDER_FORA");
+    const vendidasFora = await repo.venderForaDaLista(empresaId, dono.authUserId, a.papel === "DONO" && dono.proprio, naLista, { authId: a.authUserId, nome: a.nome, vendedor: dono.nome }, modo !== "VENDER_FORA");
     revalidatePath("/contempladas");
     return { ...r, vendidasFora };
   });
@@ -761,31 +761,63 @@ export async function lerImagemCotasAction(dataUrl: string) {
     await exigirGerencia();
     if (!/^data:image\/(png|jpe?g|webp);base64,/.test(dataUrl ?? "")) throw new Error("Envie a imagem em PNG, JPG ou WEBP.");
     if (dataUrl.length > 8_000_000) throw new Error("Imagem muito grande (máx. ~6 MB).");
-    const key = process.env.OPENAI_API_KEY?.trim();
-    if (!key) throw new Error("Leitura de imagem não configurada (falta a chave de IA). Use o texto ou a planilha.");
+    const texto = await lerImagemComIa(dataUrl);
+    if (!texto) throw new Error("Nenhuma carta encontrada na imagem.");
+    return { texto };
+  });
+}
+
+const PROMPT_IMAGEM =
+  "Você lê tabelas/listas de cartas de consórcio contempladas em imagens. Responda SOMENTE com uma linha por carta, sem cabeçalho e sem comentários, neste formato exato:\n" +
+  "<administradora> <IMÓVEL|VEÍCULO> R$ <crédito> R$ <entrada> <nº de parcelas> R$ <valor da parcela> R$ <saldo devedor> <mês do vencimento por extenso> R$ <comissão>\n" +
+  "Use valores no formato brasileiro (R$ 311.000,00). Se faltar saldo, use R$ 0,00. Se faltar comissão, omita o último campo. Se faltar o mês, omita. Não invente cartas que não estão na imagem.";
+
+const limparTexto = (t: string) => t.replace(/```[a-z]*\n?|```/g, "").trim();
+
+/** Gemini (plano gratuito do Google AI Studio) primeiro; OpenAI se estiver configurada. */
+async function lerImagemComIa(dataUrl: string): Promise<string> {
+  const [, mime, b64] = dataUrl.match(/^data:([^;]+);base64,(.*)$/) ?? [];
+  const gemini = process.env.GEMINI_API_KEY?.trim();
+  if (gemini) {
+    const modelos = [process.env.GEMINI_MODEL?.trim(), "gemini-flash-latest", "gemini-2.5-flash"].filter(Boolean) as string[];
+    for (const modelo of modelos) {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
+        method: "POST",
+        headers: { "x-goog-api-key": gemini, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: PROMPT_IMAGEM }] },
+          contents: [{ role: "user", parts: [{ text: "Extraia as cartas desta imagem." }, { inline_data: { mime_type: mime, data: b64 } }] }],
+          generationConfig: { temperature: 0, maxOutputTokens: 8000 },
+        }),
+      });
+      if (!res.ok) {
+        console.error("[contempladas/imagem] gemini", modelo, res.status, (await res.text()).slice(0, 300));
+        continue;
+      }
+      const j = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+      return limparTexto((j.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join(""));
+    }
+  }
+  const openai = process.env.OPENAI_API_KEY?.trim();
+  if (openai) {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${openai}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: process.env.IA_MODEL_VISAO?.trim() || "gpt-4o-mini",
         temperature: 0,
         max_tokens: 4000,
         messages: [
-          {
-            role: "system",
-            content:
-              "Você lê tabelas/listas de cartas de consórcio contempladas em imagens. Responda SOMENTE com uma linha por carta, sem cabeçalho e sem comentários, neste formato exato:\n" +
-              "<administradora> <IMÓVEL|VEÍCULO> R$ <crédito> R$ <entrada> <nº de parcelas> R$ <valor da parcela> R$ <saldo devedor> <mês do vencimento por extenso> R$ <comissão>\n" +
-              "Use valores no formato brasileiro (R$ 311.000,00). Se faltar saldo, use R$ 0,00. Se faltar comissão, omita o último campo. Se faltar o mês, omita. Não invente cartas que não estão na imagem.",
-          },
+          { role: "system", content: PROMPT_IMAGEM },
           { role: "user", content: [{ type: "text", text: "Extraia as cartas desta imagem." }, { type: "image_url", image_url: { url: dataUrl } }] },
         ],
       }),
     });
-    if (!res.ok) throw new Error("Não foi possível ler a imagem agora.");
-    const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    const texto = (j.choices?.[0]?.message?.content ?? "").replace(/```[a-z]*\n?|```/g, "").trim();
-    if (!texto) throw new Error("Nenhuma carta encontrada na imagem.");
-    return { texto };
-  });
+    if (res.ok) {
+      const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      return limparTexto(j.choices?.[0]?.message?.content ?? "");
+    }
+  }
+  if (!gemini && !openai) throw new Error("Leitura de imagem não configurada (falta a chave GEMINI_API_KEY). Use o texto ou a planilha.");
+  throw new Error("Não foi possível ler a imagem agora. Tente de novo ou use a planilha.");
 }
