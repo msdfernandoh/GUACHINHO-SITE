@@ -86,12 +86,13 @@ export function Colaboradores({
                 <p className="font-semibold">{c.nome} {c.ativo ? null : <span className="ml-1 rounded bg-slate-200 px-1.5 text-xs">inativo</span>}</p>
                 <p className="truncate text-xs text-slate-500">{c.email}{dono ? ` · responsável: ${c.responsavelNome}` : ""}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <label className="flex items-center rounded-xl border border-slate-300 bg-white">
                   <input className="w-20 bg-transparent px-2 py-2 text-right outline-none" type="number" min={0} max={100} step="0.5" value={pcts[c.id] ?? String(c.percentual)} onChange={(e) => setPcts({ ...pcts, [c.id]: e.target.value })} />
                   <span className="pr-2 text-sm font-semibold text-slate-500">%</span>
                 </label>
                 <button disabled={pend || pcts[c.id] == null} className={`${btnSec} !px-3 !py-2 text-sm`} onClick={() => rodar(() => atualizarColaboradorAction(c.id, { percentual: Number(pcts[c.id]) }), "Percentual salvo.")}>Salvar</button>
+                <button disabled={pend} title="Ocultar comissão na página principal (o olho pede a senha)" className={`${btnSec} !px-3 !py-2 text-sm ${c.ocultarComissao ? "!bg-slate-800 !text-white" : ""}`} onClick={() => rodar(() => atualizarColaboradorAction(c.id, { ocultarComissao: !c.ocultarComissao }), c.ocultarComissao ? "Comissão visível na página principal." : "Comissão oculta na página principal.")}>{c.ocultarComissao ? "Comissão oculta" : "Ocultar comissão"}</button>
                 <button disabled={pend} className={`${btnSec} !px-3 !py-2 text-sm`} onClick={() => rodar(() => atualizarColaboradorAction(c.id, { ativo: !c.ativo }), c.ativo ? "Colaborador desativado." : "Colaborador ativado.")}>{c.ativo ? "Desativar" : "Ativar"}</button>
               </div>
             </div>

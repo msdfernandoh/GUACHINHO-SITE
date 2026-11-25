@@ -87,6 +87,7 @@ export default async function Page() {
         origem={a.origem}
         colaboradores={colaboradores}
         colaboracao={a.colaborador}
+        ocultarComissao={a.ocultarComissao}
         responsaveis={responsaveis}
       />
     </Shell>

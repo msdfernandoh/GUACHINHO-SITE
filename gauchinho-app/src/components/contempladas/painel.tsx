@@ -16,8 +16,7 @@ import {
   gerarConviteAction,
   permissaoEnvioAction,
   salvarPerfilAction,
-  statusCotaAction,
-} from "@/app/(landing-contempladas)/contempladas/actions";
+  statusCotaAction, ocultarComissaoMembroAction } from "@/app/(landing-contempladas)/contempladas/actions";
 import type { ConfigContempladas, CotaPortal } from "@/lib/contempladas/repo";
 import type { Acrescimo } from "@/lib/contempladas/motor";
 import { ConfigEditor } from "./config-editor";
@@ -80,6 +79,7 @@ export function Painel(props: {
   origem: "ERP" | "PORTAL";
   colaboradores: Colaborador[];
   colaboracao: Colaboracao | null;
+  ocultarComissao: boolean;
   responsaveis: { authUserId: string; nome: string }[];
 }) {
   const router = useRouter();
@@ -362,6 +362,13 @@ export function Painel(props: {
               <p className="mb-1 text-xs text-slate-500">Entra sozinho em toda proposta que você gerar logado e soma na sua rentabilidade. O cliente vê só a entrada total.</p>
               <SeletorValor valor={adicional} onChange={setAdicional} />
             </div>
+            <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <input type="checkbox" name="ocultar_comissao" value="1" defaultChecked={props.ocultarComissao} className="mt-1 h-4 w-4" />
+              <span>
+                <span className="block font-semibold">Ocultar comissão na página principal</span>
+                <span className="block text-xs text-slate-500">Para mostrar a tela na frente do cliente. O olho da página principal só revela a comissão com a sua senha.</span>
+              </span>
+            </label>
             <button className={`${btnOuro} w-full`} disabled={pend}>Salvar</button>
           </form>
         </Card>
@@ -454,7 +461,7 @@ export function Painel(props: {
               <div key={m.id} className="border-t border-slate-100">
               <div className="flex items-center justify-between gap-2 py-2">
                 <span className="text-sm"><b>{m.nome}</b><span className="block text-xs text-slate-500">{m.email} · {m.papel === "GERENTE" ? "administrador de cotas" : "revenda"}{m.empresa ? ` · ${m.empresa}` : ""}{m.cidade ? ` · ${m.cidade}` : ""}{m.status === "RECUSADO" ? " · recusado" : ""}</span></span>
-                <div className="flex gap-1">
+                <div className="flex flex-wrap justify-end gap-1">
                   {props.papel === "DONO" && (
                     <button className="rounded-lg bg-[#0047bb] px-2 py-1 text-xs font-bold text-white" onClick={() => setEditando(editando?.id === m.id ? null : {
                       id: m.id, nome: m.nome, email: m.email, telefone: mascaraTelefone(m.telefone ?? ""), senha: "", papel: m.papel,
@@ -468,6 +475,9 @@ export function Painel(props: {
                       {m.papel === "GERENTE" ? "→ revenda" : "→ administrador"}
                     </button>
                   )}
+                  <button className={`rounded-lg px-2 py-1 text-xs ${m.ocultar_comissao ? "bg-slate-800 text-white" : "bg-slate-100"}`} disabled={pend} title="Ocultar comissão na página principal (o olho pede a senha)" onClick={() => agir(async () => { const r = await ocultarComissaoMembroAction(m.id, !m.ocultar_comissao); if (!r.ok) throw new Error(r.erro); })}>
+                    {m.ocultar_comissao ? "Comissão oculta" : "Ocultar comissão"}
+                  </button>
                   <button className={`rounded-lg px-2 py-1 text-xs ${m.ativo ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-800"}`} disabled={pend} onClick={() => agir(() => atualizarUsuarioAction(m.id, { ativo: !m.ativo }))}>
                     {m.ativo ? "Bloquear" : "Ativar"}
                   </button>

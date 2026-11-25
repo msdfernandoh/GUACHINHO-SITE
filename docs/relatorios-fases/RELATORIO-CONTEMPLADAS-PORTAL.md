@@ -35,3 +35,8 @@
 - Aba "Colaboradores" no painel (dono, administrador de cotas e revenda): cadastra ou vincula (portal/ERP) um colaborador com o % da comissão; dono pode escolher o responsável.
 - Colaborador vê nas cotas só a sua parte (comissão × %), inclui ágio em Meu perfil e não cadastra outros colaboradores.
 - Venda de colaborador: o dono da cota paga o responsável (comissão cheia + ágio − desconto, tipo REVENDA) e o responsável paga o colaborador (% + ágio − desconto, tipo COLABORADOR).
+
+## Ocultar comissão e logout (25/11/2026)
+- Migration 361: `contempladas_usuarios.ocultar_comissao`.
+- Marcado (em Meu perfil, na Equipe ou em Colaboradores), a página principal não recebe a comissão; o olho pede a senha (`revelarComissaoAction`, confere com signInWithPassword sem trocar a sessão) e só então carrega os valores.
+- Botão "Sair" no topo do portal para quem está logado.

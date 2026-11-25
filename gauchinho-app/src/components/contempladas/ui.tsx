@@ -28,6 +28,7 @@ export function Shell({ children, titulo, sub, papel = null }: { children: React
               <a className="rounded-lg bg-[#0047bb] px-3 py-2 text-white hover:bg-[#003a99]" href="/contempladas/importar">Enviar cotas</a>
             )}
             {!papel && <a className="rounded-lg border border-[#0047bb] px-3 py-2 text-[#0047bb]" href="/contempladas/painel">Área do parceiro</a>}
+            {papel && <Sair destaque />}
           </nav>
         </div>
       </header>
@@ -79,17 +80,18 @@ export function LoginBox({ motivo }: { motivo: string }) {
   );
 }
 
-export function Sair() {
+export function Sair({ destaque = false }: { destaque?: boolean }) {
   const router = useRouter();
   return (
     <button
-      className="text-xs text-slate-500 underline"
+      className={destaque ? "rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100" : "text-xs text-slate-500 underline"}
       onClick={async () => {
         await createClient().auth.signOut();
+        router.push("/contempladas");
         router.refresh();
       }}
     >
-      sair
+      {destaque ? "Sair" : "sair"}
     </button>
   );
 }

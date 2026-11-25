@@ -137,7 +137,7 @@ export async function simularAction(p: { credito: number; entradaMax: number | n
   // Comissão só vai para quem está logado.
   const cotas = todas
     .filter((c) => c.status === "DISPONIVEL" && (!p.tipo || c.tipo === p.tipo))
-    .map((c) => ({ ...c, comissao_parceiro: a ? repo.comissaoVisivel(c, cfgs.de(c.dono_auth_id)) * acesso.fatorComissao(a) : 0 }));
+    .map((c) => ({ ...c, comissao_parceiro: a && !a.ocultarComissao ? repo.comissaoVisivel(c, cfgs.de(c.dono_auth_id)) * acesso.fatorComissao(a) : 0 }));
   const credito = Math.max(0, Number(p.credito) || 0);
   const entradaMax = p.entradaMax ? Math.max(0, Number(p.entradaMax)) : null;
   const preferencia: Preferencia = p.preferencia === "MENOR_PRAZO" ? "MENOR_PRAZO" : "MENOR_PARCELA";
@@ -316,7 +316,7 @@ export async function salvarPerfilAction(fd: FormData) {
       if (logo.size > 2 * 1024 * 1024) throw new Error("Logo acima de 2 MB.");
       logoUrl = await uploadImagemPublica("parceiros", `contempladas/logos/${empresaId}/${a.authUserId}-${Date.now()}`, logo);
     }
-    await acesso.salvarPerfil(empresaId, a, { adicional, telefone, logoUrl });
+    await acesso.salvarPerfil(empresaId, a, { adicional, telefone, logoUrl, ocultarComissao: fd.get("ocultar_comissao") === "1" });
     revalidatePath("/contempladas");
     revalidatePath("/contempladas/painel");
     return {};
@@ -648,13 +648,14 @@ export async function criarColaboradorAction(p: { nome: string; email: string; t
   });
 }
 
-export async function atualizarColaboradorAction(id: string, campos: { percentual?: number; ativo?: boolean }) {
+export async function atualizarColaboradorAction(id: string, campos: { percentual?: number; ativo?: boolean; ocultarComissao?: boolean }) {
   return resultado(async () => {
     const { empresaId, a } = await exigirLogado();
     if (a.colaborador) throw new Error("Sem permissão.");
     await acesso.atualizarColaborador(empresaId, id, a.papel === "DONO" ? null : a.authUserId, {
       percentual: campos.percentual == null ? undefined : pctValido(campos.percentual),
       ativo: campos.ativo,
+      ocultarComissao: campos.ocultarComissao,
     });
     revalidatePath("/contempladas/painel");
     return {};
@@ -662,3 +663,25 @@ export async function atualizarColaboradorAction(id: string, campos: { percentua
 }
 
 const digitosTel = (t: string | null | undefined) => String(t ?? "").replace(/\D/g, "");
+
+/** Gerência marca/desmarca "ocultar comissão na página principal" de um membro. */
+export async function ocultarComissaoMembroAction(id: string, ocultar: boolean) {
+  return resultado(async () => {
+    const { empresaId } = await exigirGerencia();
+    await acesso.definirOcultarComissao(empresaId, id, Boolean(ocultar));
+    revalidatePath("/contempladas/painel");
+    return {};
+  });
+}
+
+/** Olho da página principal: com a senha certa, devolve as comissões que estavam escondidas. */
+export async function revelarComissaoAction(senha: string) {
+  return resultado(async () => {
+    const { empresaId, a } = await exigirLogado();
+    if (!senha || !(await acesso.senhaConfere(a.email, senha))) throw new Error("Senha incorreta.");
+    const [cotas, cfgs] = await Promise.all([repo.listarCotas(empresaId, { vendidasRecentesDias: 60 }), repo.configsPorDono(empresaId)]);
+    const comissoes: Record<string, number> = {};
+    for (const c of cotas) comissoes[c.id] = repo.comissaoVisivel(c, cfgs.de(c.dono_auth_id)) * acesso.fatorComissao(a);
+    return { comissoes };
+  });
+}

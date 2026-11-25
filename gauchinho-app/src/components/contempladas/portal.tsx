@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { gerarPropostaAction, marcarVendidaAction, simularAction } from "@/app/(landing-contempladas)/contempladas/actions";
+import { gerarPropostaAction, marcarVendidaAction, revelarComissaoAction, simularAction } from "@/app/(landing-contempladas)/contempladas/actions";
 import { pct, resumirCombinacao, taxaJuncao, valorAcrescimo, type Acrescimo, type Combinacao, type Preferencia } from "@/lib/contempladas/motor";
 import type { CotaPortal } from "@/lib/contempladas/repo";
 import { brl, btnOuro, btnSec, Card, inputCls, mascaraTelefone, MoneyInput } from "./ui";
@@ -64,7 +64,16 @@ function Situacao({ c }: { c: CotaPortal }) {
   return <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Disponível</span>;
 }
 
-export function Portal({ cotas, stats, logado, adicional, unidades, gerencia, meuWhatsapp = null }: { cotas: CotaPortal[]; stats: Stats; logado: string | null; adicional: Acrescimo | null; unidades: Record<string, ConfigPublica>; gerencia: { dono: boolean; authUserId: string } | null; meuWhatsapp?: string | null }) {
+export function Portal({ cotas: cotasIniciais, stats, logado, adicional, unidades, gerencia, meuWhatsapp = null, comissaoProtegida = false }: { cotas: CotaPortal[]; stats: Stats; logado: string | null; adicional: Acrescimo | null; unidades: Record<string, ConfigPublica>; gerencia: { dono: boolean; authUserId: string } | null; meuWhatsapp?: string | null; comissaoProtegida?: boolean }) {
+  // Comissão protegida: só chega ao navegador depois de confirmar a senha no olho.
+  const [revelado, setRevelado] = useState<Record<string, number> | null>(null);
+  const [pedirSenha, setPedirSenha] = useState(false);
+  const [senha, setSenha] = useState("");
+  const [erroSenha, setErroSenha] = useState<string | null>(null);
+  const cotas = useMemo(
+    () => (revelado ? cotasIniciais.map((c) => ({ ...c, comissao_parceiro: revelado[c.id] ?? c.comissao_parceiro })) : cotasIniciais),
+    [cotasIniciais, revelado],
+  );
   const router = useRouter();
   const [tipo, setTipo] = useState<Tipo>("todos");
   const [adm, setAdm] = useState("");
@@ -76,11 +85,30 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia, me
   const [pref, setPref] = useState<Preferencia>("MENOR_PARCELA");
   const [maxCotas, setMaxCotas] = useState(0);
   // Olho discreto: esconde a rentabilidade quando o vendedor está na frente do cliente.
-  const [ocultar, setOcultar] = useState(false);
+  const [ocultar, setOcultar] = useState(comissaoProtegida);
   useEffect(() => {
+    if (comissaoProtegida) return;
     try { setOcultar(localStorage.getItem("contempladas-ocultar-rent") === "1"); } catch {}
-  }, []);
-  const alternarOculto = () => setOcultar((v) => { try { localStorage.setItem("contempladas-ocultar-rent", v ? "0" : "1"); } catch {} return !v; });
+  }, [comissaoProtegida]);
+  const alternarOculto = () => {
+    if (comissaoProtegida && ocultar && !revelado) {
+      setErroSenha(null);
+      setSenha("");
+      setPedirSenha(true);
+      return;
+    }
+    setOcultar((v) => { if (!comissaoProtegida) { try { localStorage.setItem("contempladas-ocultar-rent", v ? "0" : "1"); } catch {} } return !v; });
+    // Ao esconder de novo, a comissão protegida sai do navegador.
+    if (comissaoProtegida && !ocultar) setRevelado(null);
+  };
+  const confirmarSenha = async () => {
+    const r = await revelarComissaoAction(senha);
+    if (!r.ok) { setErroSenha(r.erro ?? "Senha incorreta."); return; }
+    setRevelado(r.comissoes);
+    setOcultar(false);
+    setPedirSenha(false);
+    setSenha("");
+  };
   const [opcoes, setOpcoes] = useState<{ rotulo: string; c: Combinacao }[] | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [sel, setSel] = useState<string[]>([]);
@@ -161,6 +189,20 @@ export function Portal({ cotas, stats, logado, adicional, unidades, gerencia, me
 
   return (
     <>
+      {pedirSenha && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={() => setPedirSenha(false)}>
+          <form className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void confirmarSenha(); }}>
+            <p className="font-bold text-slate-900">Mostrar comissões</p>
+            <p className="mt-1 text-sm text-slate-500">Digite a sua senha de acesso para ver as comissões.</p>
+            <input autoFocus type="password" autoComplete="current-password" className="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none focus:border-[#0047bb]" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Sua senha" />
+            {erroSenha ? <p className="mt-2 text-sm font-semibold text-red-600">{erroSenha}</p> : null}
+            <div className="mt-4 flex gap-2">
+              <button type="button" className="flex-1 rounded-xl border border-slate-300 py-2.5 font-semibold" onClick={() => setPedirSenha(false)}>Cancelar</button>
+              <button type="submit" className="flex-1 rounded-xl bg-[#0047bb] py-2.5 font-semibold text-white">Mostrar</button>
+            </div>
+          </form>
+        </div>
+      )}
       {!logado && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#0047bb]/20 bg-white p-4">
           <p className="text-sm text-slate-600"><b className="text-[#0a2a66]">Quer vender ou anunciar cotas?</b> <a className="font-semibold text-[#0047bb] underline" href="/contempladas/seja-parceiro" target="_blank" rel="noreferrer">Veja como ganhar com a rede ↗</a></p>

@@ -25,6 +25,8 @@ export type Acesso = {
   logoUrl: string | null;
   /** Preenchido quando a pessoa é colaborador de uma revenda/administrador. */
   colaborador: Colaboracao | null;
+  /** Comissão escondida na página principal; o olho pede a senha para mostrar. */
+  ocultarComissao: boolean;
 };
 
 export type Colaboracao = { percentual: number; responsavelAuthId: string; responsavelNome: string };
@@ -63,16 +65,16 @@ export async function getAcesso(empresaId: string): Promise<Acesso | null> {
     const { data: vinc } = await db().from("empresa_usuarios").select("usuario_id").eq("empresa_id", empresaId).eq("usuario_id", erp.id).maybeSingle();
     if (vinc || erp.perfil === "master") {
       const papel: Papel = erp.perfil === "master" ? "DONO" : erp.contempladas_pode_enviar || portal?.papel === "GERENTE" ? "GERENTE" : "VENDEDOR";
-      return { papel, authUserId: user.id, nome: portal?.nome || erp.nome, email: erp.email, origem: "ERP", adicional, telefone: portal?.telefone ?? (erp as { telefone?: string | null }).telefone ?? null, logoUrl: portal?.logo_url ?? null, colaborador: papel === "VENDEDOR" ? colaboracaoDe(portal) : null };
+      return { papel, authUserId: user.id, nome: portal?.nome || erp.nome, email: erp.email, origem: "ERP", adicional, telefone: portal?.telefone ?? (erp as { telefone?: string | null }).telefone ?? null, logoUrl: portal?.logo_url ?? null, colaborador: papel === "VENDEDOR" ? colaboracaoDe(portal) : null, ocultarComissao: Boolean(portal?.ocultar_comissao) };
     }
   }
   if (portal?.ativo && (portal.status ?? "ATIVO") === "ATIVO") {
-    return { papel: portal.papel, authUserId: user.id, nome: portal.nome, email: portal.email, origem: "PORTAL", adicional, telefone: portal.telefone, logoUrl: portal.logo_url, colaborador: portal.papel === "VENDEDOR" ? colaboracaoDe(portal) : null };
+    return { papel: portal.papel, authUserId: user.id, nome: portal.nome, email: portal.email, origem: "PORTAL", adicional, telefone: portal.telefone, logoUrl: portal.logo_url, colaborador: portal.papel === "VENDEDOR" ? colaboracaoDe(portal) : null, ocultarComissao: Boolean(portal.ocultar_comissao) };
   }
   return null;
 }
 
-export async function salvarPerfil(empresaId: string, a: Acesso, perfil: { adicional: Acrescimo; telefone: string | null; logoUrl: string | null }) {
+export async function salvarPerfil(empresaId: string, a: Acesso, perfil: { adicional: Acrescimo; telefone: string | null; logoUrl: string | null; ocultarComissao: boolean }) {
   const { error } = await db()
     .from("contempladas_usuarios")
     .upsert(
@@ -86,6 +88,7 @@ export async function salvarPerfil(empresaId: string, a: Acesso, perfil: { adici
         adicional_valor: perfil.adicional.valor,
         telefone: perfil.telefone,
         logo_url: perfil.logoUrl,
+        ocultar_comissao: perfil.ocultarComissao,
       },
       { onConflict: "empresa_id,auth_user_id" },
     );
@@ -152,12 +155,13 @@ export type MembroPortal = {
   cpf: string | null;
   tipo_cadastro: string | null;
   created_at: string;
+  ocultar_comissao?: boolean;
 };
 
 export async function listarUsuariosPortal(empresaId: string) {
   const { data } = await db()
     .from("contempladas_usuarios")
-    .select("id,auth_user_id,nome,email,telefone,papel,ativo,status,administradora,cidade,empresa,cnpj,cpf,tipo_cadastro,created_at")
+    .select("id,auth_user_id,nome,email,telefone,papel,ativo,status,administradora,cidade,empresa,cnpj,cpf,tipo_cadastro,created_at,ocultar_comissao")
     .eq("empresa_id", empresaId)
     .order("nome");
   const pix = await pixDosMembros(empresaId);
@@ -344,6 +348,7 @@ export type Colaborador = {
   ativo: boolean;
   responsavelAuthId: string;
   responsavelNome: string;
+  ocultarComissao: boolean;
 };
 
 export async function colaboracaoDoVendedor(empresaId: string, authUserId: string | null | undefined): Promise<Colaboracao | null> {
@@ -361,7 +366,7 @@ export async function colaboracaoDoVendedor(empresaId: string, authUserId: strin
 export async function listarColaboradores(empresaId: string, responsavelAuthId: string | null): Promise<Colaborador[]> {
   let q = db()
     .from("contempladas_usuarios")
-    .select("id,auth_user_id,nome,email,telefone,ativo,responsavel_auth_id,responsavel_nome,colaborador_percentual")
+    .select("id,auth_user_id,nome,email,telefone,ativo,responsavel_auth_id,responsavel_nome,colaborador_percentual,ocultar_comissao")
     .eq("empresa_id", empresaId)
     .not("responsavel_auth_id", "is", null)
     .order("nome");
@@ -377,6 +382,7 @@ export async function listarColaboradores(empresaId: string, responsavelAuthId: 
     ativo: Boolean(r.ativo),
     responsavelAuthId: r.responsavel_auth_id,
     responsavelNome: r.responsavel_nome ?? "",
+    ocultarComissao: Boolean(r.ocultar_comissao),
   }));
 }
 
@@ -389,13 +395,30 @@ export async function definirColaboracao(empresaId: string, authUserId: string, 
   if (error) throw new Error(error.message);
 }
 
-export async function atualizarColaborador(empresaId: string, id: string, responsavelAuthId: string | null, campos: { percentual?: number; ativo?: boolean }) {
+export async function atualizarColaborador(empresaId: string, id: string, responsavelAuthId: string | null, campos: { percentual?: number; ativo?: boolean; ocultarComissao?: boolean }) {
   let q = db().from("contempladas_usuarios").update({
     ...(campos.percentual != null ? { colaborador_percentual: campos.percentual } : {}),
     ...(campos.ativo != null ? { ativo: campos.ativo, status: campos.ativo ? "ATIVO" : "RECUSADO" } : {}),
+    ...(campos.ocultarComissao != null ? { ocultar_comissao: campos.ocultarComissao } : {}),
   }).eq("empresa_id", empresaId).eq("id", id).not("responsavel_auth_id", "is", null);
   if (responsavelAuthId) q = q.eq("responsavel_auth_id", responsavelAuthId);
   const { data, error } = await q.select("id");
   if (error) throw new Error(error.message);
   if (!data?.length) throw new Error("Colaborador não encontrado.");
+}
+
+/** Gerência liga/desliga "ocultar comissão" de um membro da equipe. */
+export async function definirOcultarComissao(empresaId: string, id: string, ocultar: boolean) {
+  const { error } = await db().from("contempladas_usuarios").update({ ocultar_comissao: ocultar }).eq("empresa_id", empresaId).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** Confere a senha do usuário logado sem trocar a sessão. */
+export async function senhaConfere(email: string, senha: string) {
+  const { createClient: criar } = await import("@supabase/supabase-js");
+  const c = criar(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await c.auth.signInWithPassword({ email, password: senha });
+  if (error || !data.session) return false;
+  await c.auth.signOut().catch(() => undefined);
+  return true;
 }

@@ -25,7 +25,7 @@ export default async function Page() {
     getAcesso(tenant.empresaId),
   ]);
   // Comissão só vai para o navegador de quem está logado.
-  const lista = cotas.map((c) => ({ ...c, comissao_parceiro: a ? comissaoVisivel(c, cfgs.de(c.dono_auth_id)) * fatorComissao(a) : 0 }));
+  const lista = cotas.map((c) => ({ ...c, comissao_parceiro: a && !a.ocultarComissao ? comissaoVisivel(c, cfgs.de(c.dono_auth_id)) * fatorComissao(a) : 0 }));
   // WhatsApp, PIX e sinal de cada unidade dona de cota ("" = padrão da empresa).
   const unidades: Record<string, ConfigPublica> = {};
   for (const c of cotas) {
@@ -39,6 +39,7 @@ export default async function Page() {
         adicional={a?.adicional ?? null}
         unidades={unidades}
         meuWhatsapp={a?.telefone ?? null}
+        comissaoProtegida={Boolean(a?.ocultarComissao)}
         gerencia={a && (a.papel === "DONO" || a.papel === "GERENTE") ? { dono: a.papel === "DONO", authUserId: a.authUserId } : null}
       />
       <BannerSistema />
