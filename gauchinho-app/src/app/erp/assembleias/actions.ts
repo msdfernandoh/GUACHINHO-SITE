@@ -170,7 +170,7 @@ async function carregarCarteiraContemplacoes(
 
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await supabase.from("cotas_definitivas")
-      .select("grupo_id,numero_cota,valor_credito,snapshot_cota,contemplada,data_contemplacao,venda:vendas(cliente_id,cliente_nome,data_venda,cliente:clientes(nome))")
+      .select("grupo_id,numero_cota,valor_credito,snapshot_cota,contemplada,data_contemplacao,tipo_contemplacao,venda:vendas(cliente_id,cliente_nome,data_venda,cliente:clientes(nome))")
       .eq("empresa_id", empresaId).in("grupo_id", grupoIds)
       .neq("status", "cancelada").order("id").range(offset, offset + 499);
     if (error) throw new Error("Não foi possível cruzar os resultados com a carteira.");
@@ -184,6 +184,7 @@ async function carregarCarteiraContemplacoes(
         cliente_nome: nome, data_venda: venda.data_venda,
         valor_credito: valorCreditoPorCota(cota) || null,
         data_contemplacao: cota.contemplada ? cota.data_contemplacao : null,
+        tipo_contemplacao: cota.contemplada ? cota.tipo_contemplacao : null,
       });
     }
     if ((data?.length ?? 0) < 500) break;
@@ -254,7 +255,7 @@ export async function listarClientesContempladosAction(): Promise<ClienteContemp
     porCota.set(chave, {
       grupoId: cota.grupo_id, cliente: cota.cliente_nome, grupo: codigoPorGrupo.get(cota.grupo_id) ?? "—",
       cota: numero, contratacao: cota.data_venda, credito: cota.valor_credito ?? null,
-      contemplacao: cota.data_contemplacao, modalidade: porCota.get(chave)?.modalidade ?? null, situacao: "contemplada", recusaId: null,
+      contemplacao: cota.data_contemplacao, modalidade: porCota.get(chave)?.modalidade ?? cota.tipo_contemplacao ?? null, situacao: "contemplada", recusaId: null,
     });
   }
 

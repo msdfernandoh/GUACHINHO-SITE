@@ -72,6 +72,7 @@ export type CotaCarteiraContemplacao = {
   data_venda: string | null;
   valor_credito?: number | null;
   data_contemplacao?: string | null;
+  tipo_contemplacao?: string | null;
 };
 
 export function normalizarCotaContemplacao(numero: string) {
