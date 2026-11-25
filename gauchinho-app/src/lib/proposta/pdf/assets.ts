@@ -24,7 +24,8 @@ export function pdfImage(
     | "rubinho.png"
     | "cena-casa.jpg"
     | "grad-campanha.png"
-    | "grad-padrao.png",
+    | "grad-padrao.png"
+    | "racon-gauchinho-logo.png",
 ): string {
   const mime = name.endsWith(".jpg") ? "image/jpeg" : "image/png";
   return toDataUri(name, ASSET_DIR, mime);

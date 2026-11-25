@@ -64,3 +64,9 @@ export async function registrarEnvioExtrato(clienteId: string, mes: string) {
   }, { onConflict: "empresa_id,cliente_id,competencia", ignoreDuplicates: true });
   if (error) throw new Error("Não foi possível registrar o envio.");
 }
+
+/** Dados mínimos para montar a mensagem de WhatsApp direto da lista. */
+export async function resumoMensagemExtrato(clienteId: string, mes: string) {
+  const d = await carregarExtratoCliente(clienteId, "12", mes);
+  return { cliente: { nome: d.cliente.nome }, historico: d.historico, telefone: d.cliente.telefone ?? null, cotas: d.cotas.map((c) => ({ atual: c.atual, valorizacao: c.valorizacao })) };
+}

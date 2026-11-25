@@ -4,20 +4,17 @@ import { useState } from "react";
 import type { carregarExtratoCliente } from "../actions";
 import { registrarEnvioExtrato } from "../actions";
 import { moedaExtrato as brl } from "@/lib/erp/extrato-cliente";
+import { CHAVE_MODELO_EXTRATO, MODELO_MENSAGEM_EXTRATO, montarMensagemExtrato } from "@/lib/erp/extrato-mensagem";
 
 type Dados = Awaited<ReturnType<typeof carregarExtratoCliente>>;
-const modeloMensagem = "Olá, {cliente}! 😊\n\n📄 Seu extrato de {periodo} está pronto!\n🏦 Crédito atualizado da sua carteira: {credito}\n📈 Reajuste acumulado do crédito: {reajuste}\n\nConfira no PDF a evolução das suas cotas, as assembleias e as projeções de 3 e 5 anos. 🌱\nAs projeções consideram a repetição do último reajuste anual. A proximidade numérica descreve resultados passados.\n\nEstou à disposição para acompanhar seu planejamento! 🤝";
+const modeloMensagem = MODELO_MENSAGEM_EXTRATO;
 
 export function ExtratoClienteDetalhe({ dados }: { dados: Dados }) {
   const [template, setTemplate] = useState(modeloMensagem);
   const [feedback, setFeedback] = useState("");
   const [registrando, setRegistrando] = useState(false);
   const [enviado, setEnviado] = useState(false);
-  const periodo = dados.historico === "mes" ? "mês atual" : dados.historico === "todos" ? "desde a adesão" : "últimos 12 meses";
-  const completo = (campo: "atual" | "valorizacao") => dados.cotas.length && dados.cotas.every((c) => c[campo] !== null)
-    ? dados.cotas.reduce((s, c) => s + c[campo]!, 0) : null;
-  const mensagem = template.replaceAll("{cliente}", dados.cliente.nome).replaceAll("{periodo}", periodo)
-    .replaceAll("{credito}", brl(completo("atual"))).replaceAll("{reajuste}", brl(completo("valorizacao")));
+  const mensagem = montarMensagemExtrato(template, dados);
   const parametros = new URLSearchParams({ historico: dados.historico, mes: dados.mes });
   const pdf = `/api/erp/extrato-clientes/${dados.cliente.id}/pdf?${parametros}`;
   let telefone = (dados.cliente.telefone ?? "").replace(/\D/g, "");
@@ -60,11 +57,11 @@ export function ExtratoClienteDetalhe({ dados }: { dados: Dados }) {
         <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 p-4 font-sans text-sm">{mensagem}</pre>
         <div className="flex flex-wrap gap-3">
           <button className="rounded-lg border px-4 py-3 font-bold" onClick={() => {
-            try { localStorage.setItem("extrato-cliente-modelo-whatsapp", template); setFeedback("Modelo salvo neste navegador."); }
+            try { localStorage.setItem(CHAVE_MODELO_EXTRATO, template); setFeedback("Modelo salvo neste navegador."); }
             catch { setFeedback("Não foi possível salvar o modelo neste navegador."); }
           }}>Salvar modelo de mensagem</button>
           <button className="rounded-lg border px-4 py-3 font-bold" onClick={() => {
-            try { setTemplate(localStorage.getItem("extrato-cliente-modelo-whatsapp") || modeloMensagem); setFeedback("Modelo carregado."); }
+            try { setTemplate(localStorage.getItem(CHAVE_MODELO_EXTRATO) || modeloMensagem); setFeedback("Modelo carregado."); }
             catch { setFeedback("Não foi possível carregar o modelo."); }
           }}>Carregar modelo salvo</button>
           <button className="rounded-lg bg-emerald-800 px-4 py-3 font-bold text-white" onClick={async () => {

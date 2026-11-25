@@ -11,3 +11,8 @@
 - Webhook: `message_template_status_update`, `history`, `smb_app_state_sync`, descadastro por palavra.
 - Cron `/api/cron/whatsapp-envios` a cada minuto (CRON_SECRET).
 - Env aceita também `META_APP_ID`, `META_APP_SECRET`, `META_CONFIG_ID`.
+
+## Extrato de clientes — atalhos e novo PDF (2026-11-25)
+- Lista `/erp/extrato-clientes`: cartões de enviados/pendentes do mês, e em cada cliente os atalhos Copiar mensagem (gera e copia sem abrir), Baixar PDF, Abrir e Marcar enviado.
+- Mensagem centralizada em `lib/erp/extrato-mensagem.ts` (mesmo modelo salvo no navegador nas duas telas; saudação pelo primeiro nome).
+- PDF novo em `lib/erp/extrato-cliente-pdf.tsx`: capa com logo Racon + Gauchinho, texto de gestão do investimento, assinaturas de Fernando e Eroni; resumo da carteira; página por cota com gráfico de evolução e assembleias; encerramento.
