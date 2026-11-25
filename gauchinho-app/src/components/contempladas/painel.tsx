@@ -89,7 +89,8 @@ export function Painel(props: {
   const [pend, start] = useTransition();
   const cfg = props.config;
   const [editando, setEditando] = useState<{
-    id: string; nome: string; email: string; telefone: string; senha: string; papel: "GERENTE" | "VENDEDOR";
+    id: string; nome: string; email: string; telefone: string; senha: string; papel: "GERENTE" | "VENDEDOR" | "COLABORADOR";
+    responsavelAuthId: string; percentual: string;
     administradora: string; cidade: string; empresa: string; cnpj: string; cpf: string;
     pixTipo: string; pixChave: string; pixFavorecido: string;
   } | null>(null);
@@ -132,9 +133,9 @@ export function Painel(props: {
   const somaAberta = props.propostas.filter((p) => !p.vendida).reduce((s, p) => s + p.rentabilidade, 0);
 
   const abas: [Aba, string][] = gerencia
-    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["comissoes", `Comissões${aPagar ? ` (${aPagar})` : ""}`], ["equipe", pendentes.length ? `Equipe (${pendentes.length} novos)` : "Equipe"], [ "config", props.papel === "DONO" ? "Configurar" : "Minha unidade"], ["meu", "Meu perfil"]]
+    ? [["reservas", `Reservas (${props.reservas.length})`], ["cotas", "Cotas"], ["propostas", "Propostas"], ["comissoes", `Comissões${aPagar ? ` (${aPagar})` : ""}`], ["equipe", pendentes.length ? `Usuários (${pendentes.length} novos)` : "Usuários"], [ "config", props.papel === "DONO" ? "Configurar" : "Minha unidade"], ["meu", "Meu perfil"]]
     : [["propostas", "Minhas propostas"], ["comissoes", `Comissões${aReceber ? ` (${aReceber})` : ""}`], ["meu", "Meu perfil"]];
-  // Quem não é colaborador pode montar a própria equipe de colaboradores.
+  // Quem não é colaborador pode cadastrar os próprios colaboradores.
   if (!props.colaboracao) abas.splice(abas.length - 1, 0, ["colaboradores", `Colaboradores${props.colaboradores.length ? ` (${props.colaboradores.length})` : ""}`]);
 
   return (
@@ -457,22 +458,33 @@ export function Painel(props: {
           <Card className="space-y-1">
             <p className="mb-1 font-semibold">Usuários do portal</p>
             {!props.equipe.length && <p className="text-sm text-slate-500">Ninguém cadastrado ainda.</p>}
-            {props.equipe.filter((m) => m.status !== "PENDENTE").map((m) => (
+            {([
+              ["Administradoras de cotas", (m: Membro) => m.papel === "GERENTE"],
+              ["Revendas", (m: Membro) => m.papel === "VENDEDOR" && !m.responsavel_auth_id],
+              ["Colaboradores", (m: Membro) => Boolean(m.responsavel_auth_id)],
+            ] as const).map(([grupo, filtro]) => {
+              const lista = props.equipe.filter((m) => m.status !== "PENDENTE" && filtro(m));
+              if (!lista.length) return null;
+              return (
+              <div key={grupo} className="pt-2">
+              <p className="mt-2 text-xs font-bold uppercase tracking-wider text-slate-500">{grupo} ({lista.length})</p>
+            {lista.map((m) => (
               <div key={m.id} className="border-t border-slate-100">
               <div className="flex items-center justify-between gap-2 py-2">
-                <span className="text-sm"><b>{m.nome}</b><span className="block text-xs text-slate-500">{m.email} · {m.papel === "GERENTE" ? "administrador de cotas" : "revenda"}{m.empresa ? ` · ${m.empresa}` : ""}{m.cidade ? ` · ${m.cidade}` : ""}{m.status === "RECUSADO" ? " · recusado" : ""}</span></span>
+                <span className="text-sm"><b>{m.nome}</b><span className="block text-xs text-slate-500">{m.email} · {m.responsavel_auth_id ? `colaborador de ${m.responsavel_nome ?? "—"} · ${Number(m.colaborador_percentual ?? 0).toLocaleString("pt-BR")}%` : m.papel === "GERENTE" ? "administradora de cotas" : "revenda"}{m.empresa ? ` · ${m.empresa}` : ""}{m.cidade ? ` · ${m.cidade}` : ""}{m.status === "RECUSADO" ? " · recusado" : ""}</span></span>
                 <div className="flex flex-wrap justify-end gap-1">
                   {props.papel === "DONO" && (
                     <button className="rounded-lg bg-[#0047bb] px-2 py-1 text-xs font-bold text-white" onClick={() => setEditando(editando?.id === m.id ? null : {
-                      id: m.id, nome: m.nome, email: m.email, telefone: mascaraTelefone(m.telefone ?? ""), senha: "", papel: m.papel,
+                      id: m.id, nome: m.nome, email: m.email, telefone: mascaraTelefone(m.telefone ?? ""), senha: "", papel: m.responsavel_auth_id ? "COLABORADOR" : m.papel,
+                      responsavelAuthId: m.responsavel_auth_id ?? props.authUserId, percentual: String(m.colaborador_percentual ?? 30),
                       administradora: m.administradora ?? "", cidade: m.cidade ?? "", empresa: m.empresa ?? "",
                       cnpj: mascaraPix("CNPJ", m.cnpj ?? ""), cpf: mascaraPix("CPF", m.cpf ?? ""),
                       pixTipo: m.pix?.tipo ?? "CELULAR", pixChave: m.pix?.chave ?? "", pixFavorecido: m.pix?.favorecido ?? "",
                     })}>{editando?.id === m.id ? "Fechar" : "Editar"}</button>
                   )}
-                  {props.papel === "DONO" && (
+                  {props.papel === "DONO" && !m.responsavel_auth_id && (
                     <button className="rounded-lg bg-slate-100 px-2 py-1 text-xs" disabled={pend} onClick={() => agir(() => atualizarUsuarioAction(m.id, { papel: m.papel === "GERENTE" ? "VENDEDOR" : "GERENTE" }))}>
-                      {m.papel === "GERENTE" ? "→ revenda" : "→ administrador"}
+                      {m.papel === "GERENTE" ? "→ revenda" : "→ administradora"}
                     </button>
                   )}
                   <button className={`rounded-lg px-2 py-1 text-xs ${m.ocultar_comissao ? "bg-slate-800 text-white" : "bg-slate-100"}`} disabled={pend} title="Ocultar comissão na página principal (o olho pede a senha)" onClick={() => agir(async () => { const r = await ocultarComissaoMembroAction(m.id, !m.ocultar_comissao); if (!r.ok) throw new Error(r.erro); })}>
@@ -488,7 +500,7 @@ export function Painel(props: {
                   e.preventDefault();
                   start(async () => {
                     const { id, ...d } = editando;
-                    const r = await editarMembroAction(id, d);
+                    const r = await editarMembroAction(id, { ...d, percentual: Number(d.percentual) });
                     setAviso(r.ok ? `✅ ${d.nome} atualizado.` : `⚠️ ${r.erro}`);
                     if (r.ok) { setEditando(null); router.refresh(); }
                   });
@@ -498,11 +510,27 @@ export function Painel(props: {
                   <label className="text-xs font-semibold text-slate-600">WhatsApp<TelInput value={editando.telefone} onChange={(v) => setEditando({ ...editando, telefone: v })} /></label>
                   <label className="text-xs font-semibold text-slate-600">CPF<input className={inputCls} value={editando.cpf} onChange={(e) => setEditando({ ...editando, cpf: mascaraPix("CPF", e.target.value) })} /></label>
                   <label className="text-xs font-semibold text-slate-600">Papel
-                    <select className={inputCls} value={editando.papel} onChange={(e) => setEditando({ ...editando, papel: e.target.value as "GERENTE" | "VENDEDOR" })}>
+                    <select className={inputCls} value={editando.papel} onChange={(e) => setEditando({ ...editando, papel: e.target.value as "GERENTE" | "VENDEDOR" | "COLABORADOR" })}>
+                      <option value="GERENTE">Administradora de cotas</option>
                       <option value="VENDEDOR">Revenda</option>
-                      <option value="GERENTE">Administrador de cotas</option>
+                      <option value="COLABORADOR">Colaborador</option>
                     </select>
                   </label>
+                  {editando.papel === "COLABORADOR" && (
+                    <>
+                      <label className="text-xs font-semibold text-slate-600">Colaborador de
+                        <select className={inputCls} value={editando.responsavelAuthId} onChange={(e) => setEditando({ ...editando, responsavelAuthId: e.target.value })}>
+                          <option value={props.authUserId}>Dono do portal (administradora e revenda)</option>
+                          {props.equipe.filter((x) => x.id !== editando.id && !x.responsavel_auth_id && x.status === "ATIVO").map((x) => (
+                            <option key={x.id} value={x.auth_user_id}>{x.nome} · {x.papel === "GERENTE" ? "administradora" : "revenda"}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="text-xs font-semibold text-slate-600">% da comissão para o colaborador
+                        <input className={inputCls} type="number" min={0} max={100} step="0.5" value={editando.percentual} onChange={(e) => setEditando({ ...editando, percentual: e.target.value })} />
+                      </label>
+                    </>
+                  )}
                   <label className="text-xs font-semibold text-slate-600">Nome da empresa<input className={inputCls} value={editando.empresa} onChange={(e) => setEditando({ ...editando, empresa: e.target.value })} /></label>
                   <label className="text-xs font-semibold text-slate-600">CNPJ<input className={inputCls} value={editando.cnpj} onChange={(e) => setEditando({ ...editando, cnpj: mascaraPix("CNPJ", e.target.value) })} /></label>
                   <label className="text-xs font-semibold text-slate-600">Administradora<input className={inputCls} value={editando.administradora} onChange={(e) => setEditando({ ...editando, administradora: e.target.value })} /></label>
@@ -517,6 +545,9 @@ export function Painel(props: {
               )}
               </div>
             ))}
+              </div>
+              );
+            })}
           </Card>
 
           {props.papel === "DONO" && props.usuariosErp.length > 0 && (

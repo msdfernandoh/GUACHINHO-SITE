@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { gerarPropostaAction, marcarVendidaAction, revelarComissaoAction, simularAction } from "@/app/(landing-contempladas)/contempladas/actions";
+import { gerarPropostaAction, leadNegociarAction, marcarVendidaAction, revelarComissaoAction, simularAction } from "@/app/(landing-contempladas)/contempladas/actions";
 import { pct, resumirCombinacao, taxaJuncao, valorAcrescimo, type Acrescimo, type Combinacao, type Preferencia } from "@/lib/contempladas/motor";
 import type { CotaPortal } from "@/lib/contempladas/repo";
 import { brl, btnOuro, btnSec, Card, inputCls, mascaraTelefone, MoneyInput } from "./ui";
@@ -113,6 +113,15 @@ export function Portal({ cotas: cotasIniciais, stats, logado, adicional, unidade
   const [aviso, setAviso] = useState<string | null>(null);
   const [sel, setSel] = useState<string[]>([]);
   const [negociar, setNegociar] = useState<string[] | null>(null);
+  // Sem login, "Negociar" pede para entrar ou deixar nome e WhatsApp (vira lead no CRM).
+  const [leadIds, setLeadIds] = useState<string[] | null>(null);
+  const [lead, setLead] = useState({ nome: "", telefone: "" });
+  const [leadMsg, setLeadMsg] = useState<string | null>(null);
+  const abrirNegociar = (ids: string[]) => {
+    if (logado) { setNegociar(ids); return; }
+    setLeadMsg(null);
+    setLeadIds(ids);
+  };
   const [janela, setJanela] = useState<"texto" | "oportunidades" | null>(null);
   const [modo, setModo] = useState("COMPLETA");
   const [desconto, setDesconto] = useState(0);
@@ -189,6 +198,35 @@ export function Portal({ cotas: cotasIniciais, stats, logado, adicional, unidade
 
   return (
     <>
+      {leadIds && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={() => setLeadIds(null)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            {leadMsg === "ok" ? (
+              <>
+                <p className="text-lg font-bold text-slate-900">Recebemos seu interesse!</p>
+                <p className="mt-1 text-sm text-slate-600">Um consultor vai chamar você no WhatsApp para negociar.</p>
+                <button className="mt-4 w-full rounded-xl bg-[#0047bb] py-2.5 font-semibold text-white" onClick={() => setLeadIds(null)}>Fechar</button>
+              </>
+            ) : (
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                start(async () => {
+                  const r = await leadNegociarAction({ cotaIds: leadIds, nome: lead.nome, telefone: lead.telefone });
+                  setLeadMsg(r.ok ? "ok" : r.erro ?? "Não foi possível enviar.");
+                });
+              }}>
+                <p className="text-lg font-bold text-slate-900">Negociar esta carta</p>
+                <a href="/contempladas/painel" className="mt-3 block w-full rounded-xl border border-[#0047bb] py-2.5 text-center font-semibold text-[#0047bb]">Já tenho login: entrar</a>
+                <p className="my-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-400">ou deixe seu contato</p>
+                <input className="w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none focus:border-[#0047bb]" placeholder="Seu nome" value={lead.nome} onChange={(e) => setLead({ ...lead, nome: e.target.value })} />
+                <input className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 outline-none focus:border-[#0047bb]" placeholder="WhatsApp com DDD" inputMode="tel" value={lead.telefone} onChange={(e) => setLead({ ...lead, telefone: e.target.value })} />
+                {leadMsg && leadMsg !== "ok" ? <p className="mt-2 text-sm font-semibold text-red-600">{leadMsg}</p> : null}
+                <button disabled={pend} className="mt-3 w-full rounded-xl bg-emerald-600 py-2.5 font-semibold text-white disabled:opacity-50">Quero negociar</button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
       {pedirSenha && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={() => setPedirSenha(false)}>
           <form className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void confirmarSenha(); }}>
@@ -367,7 +405,7 @@ export function Portal({ cotas: cotasIniciais, stats, logado, adicional, unidade
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       {podeVender(c) && <button className="rounded-xl border border-slate-300 px-3 py-2.5 text-xs font-bold text-slate-700 hover:border-emerald-600 hover:text-emerald-700" disabled={pend} onClick={() => vender(c)}>✔ Vendida</button>}
-                      {livre && <button className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700" onClick={() => setNegociar([c.id])}>Negociar</button>}
+                      {livre && <button className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700" onClick={() => abrirNegociar([c.id])}>Negociar</button>}
                     </div>
                   </td>
                 </tr>
@@ -408,7 +446,7 @@ export function Portal({ cotas: cotasIniciais, stats, logado, adicional, unidade
                     <Situacao c={c} />
                     <div className="flex gap-2">
                       {podeVender(c) && <button className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700" disabled={pend} onClick={() => vender(c)}>✔ Vendida</button>}
-                      {livre && <button className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={() => setNegociar([c.id])}>Negociar</button>}
+                      {livre && <button className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={() => abrirNegociar([c.id])}>Negociar</button>}
                     </div>
                   </div>
                 </div>
@@ -450,7 +488,7 @@ export function Portal({ cotas: cotasIniciais, stats, logado, adicional, unidade
               <div className="flex gap-2">
                 <button className={`${btnSec} !py-2`} onClick={() => setSel([])}>Limpar</button>
                 <button className="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-40" disabled={misturaUnidades}
-                  title={misturaUnidades ? "Cotas de unidades diferentes: negocie cada uma separadamente" : undefined} onClick={() => setNegociar(sel)}>Negociar</button>
+                  title={misturaUnidades ? "Cotas de unidades diferentes: negocie cada uma separadamente" : undefined} onClick={() => abrirNegociar(sel)}>Negociar</button>
                 <button className="rounded-xl border border-emerald-600 px-3 py-2 text-sm font-bold text-emerald-700" onClick={() => setJanela("texto")}>Texto WhatsApp</button>
                 <button className={`${btnOuro} !py-2`} disabled={pend} onClick={gerar}>Gerar proposta</button>
               </div>

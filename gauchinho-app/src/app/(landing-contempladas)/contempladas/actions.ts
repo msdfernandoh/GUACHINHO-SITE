@@ -520,11 +520,11 @@ export async function salvarMeusDadosAction(d: {
 
 export async function editarMembroAction(
   id: string,
-  d: { nome: string; email: string; telefone: string; administradora: string; cidade: string; empresa: string; cnpj: string; cpf: string; papel: "GERENTE" | "VENDEDOR"; senha: string; pixTipo?: string; pixChave?: string; pixFavorecido?: string },
+  d: { nome: string; email: string; telefone: string; administradora: string; cidade: string; empresa: string; cnpj: string; cpf: string; papel: "GERENTE" | "VENDEDOR" | "COLABORADOR"; senha: string; pixTipo?: string; pixChave?: string; pixFavorecido?: string; responsavelAuthId?: string; percentual?: number },
 ) {
   return resultado(async () => {
     const { empresaId, a } = await exigirGerencia();
-    if (a.papel !== "DONO") throw new Error("Somente o dono do portal edita a equipe.");
+    if (a.papel !== "DONO") throw new Error("Somente o dono do portal edita os usuários.");
     if (so(d.nome).length < 3) throw new Error("Informe o nome.");
     if (!/^\S+@\S+\.\S+$/.test(so(d.email))) throw new Error("E-mail inválido.");
     if (d.senha && d.senha.length < 8) throw new Error("A senha nova precisa ter ao menos 8 caracteres.");
@@ -544,6 +544,23 @@ export async function editarMembroAction(
       papel: d.papel === "GERENTE" ? "GERENTE" : "VENDEDOR",
       senha: d.senha || null,
     });
+    // Colaborador: vende pelas cotas de um responsável (dono, administradora ou revenda) com % da comissão.
+    if (d.papel === "COLABORADOR") {
+      const auth = await acesso.authDoMembro(empresaId, id);
+      if (!auth) throw new Error("Usuário não encontrado.");
+      let respNome: string;
+      if (!d.responsavelAuthId || d.responsavelAuthId === a.authUserId) {
+        d.responsavelAuthId = a.authUserId;
+        respNome = await acesso.nomeEmpresaPortal(empresaId);
+      } else {
+        const r = (await acesso.listarUsuariosPortal(empresaId)).find((m) => m.auth_user_id === d.responsavelAuthId && !m.responsavel_auth_id);
+        if (!r || r.auth_user_id === auth) throw new Error("Responsável inválido.");
+        respNome = r.nome;
+      }
+      await acesso.definirColaboracao(empresaId, auth, { percentual: pctValido(d.percentual), responsavelAuthId: d.responsavelAuthId, responsavelNome: respNome });
+    } else {
+      await acesso.removerColaboracao(empresaId, id);
+    }
     // PIX que aparece no Negociar das cotas deste administrador.
     if (d.pixChave !== undefined) {
       const auth = await acesso.authDoMembro(empresaId, id);
@@ -609,7 +626,7 @@ export async function criarColaboradorAction(p: { nome: string; email: string; t
   return resultado(async () => {
     const { empresaId, a } = await exigirLogado();
     if (a.colaborador) throw new Error("Colaborador não cadastra outros colaboradores.");
-    let resp = { authId: a.authUserId, nome: a.nome };
+    let resp = { authId: a.authUserId, nome: a.papel === "DONO" ? await acesso.nomeEmpresaPortal(empresaId) : a.nome };
     if (a.papel === "DONO" && p.responsavelAuthId && p.responsavelAuthId !== a.authUserId) {
       const r = (await acesso.listarUsuariosPortal(empresaId)).find((m) => m.auth_user_id === p.responsavelAuthId && m.status === "ATIVO");
       if (!r) throw new Error("Responsável não encontrado.");
@@ -683,5 +700,40 @@ export async function revelarComissaoAction(senha: string) {
     const comissoes: Record<string, number> = {};
     for (const c of cotas) comissoes[c.id] = repo.comissaoVisivel(c, cfgs.de(c.dono_auth_id)) * acesso.fatorComissao(a);
     return { comissoes };
+  });
+}
+
+/** Visitante sem login em "Negociar": vira lead no CRM com o valor das cotas de interesse. */
+export async function leadNegociarAction(p: { cotaIds: string[]; nome: string; telefone: string }) {
+  return resultado(async () => {
+    const empresaId = await empresa();
+    const nome = (p.nome ?? "").trim();
+    if (nome.length < 3) throw new Error("Informe seu nome.");
+    const { isValidBrazilianPhone, upsertLeadPorTelefone } = await import("@/lib/crm/upsert-lead");
+    if (!isValidBrazilianPhone(p.telefone)) throw new Error("Informe o WhatsApp com DDD.");
+    const cotas = await repo.cotasPorIds(empresaId, (p.cotaIds ?? []).slice(0, 20));
+    if (!cotas.length) throw new Error("Cota não encontrada.");
+    const credito = cotas.reduce((s, c) => s + c.credito, 0);
+    const entrada = cotas.reduce((s, c) => s + c.entrada, 0);
+    const imovel = cotas.some((c) => c.tipo === "imovel");
+    const resumo = cotas.map((c) => `${c.codigo} · ${c.administradora} · crédito ${c.credito.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} · entrada ${c.entrada.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}${c.dono_nome ? ` · adm. ${c.dono_nome}` : ""}`).join("\n");
+    const r = await upsertLeadPorTelefone(createAdminClient({ noStore: true }), {
+      empresa_id: empresaId,
+      nome,
+      whatsapp: p.telefone,
+      origem: "contempladas",
+      origem_detalhe: "Portal de cotas contempladas · Negociar",
+      tipo_interesse: imovel ? "imovel" : "veiculo",
+      tipo_credito: imovel ? "IMOVEL" : "VEICULO",
+      produto_interesse: "Carta contemplada",
+      valor_credito: credito,
+      valor_simulado: credito,
+      entrada,
+      dados_simulacao: { origem: "CONTEMPLADAS_NEGOCIAR", cotas: cotas.map((c) => ({ id: c.id, codigo: c.codigo, credito: c.credito, entrada: c.entrada, administrador: c.dono_nome })) },
+      resultado_resumido: `Interesse em ${cotas.length} carta(s) contemplada(s)\n${resumo}`,
+      status: "Novo",
+    } as Parameters<typeof upsertLeadPorTelefone>[1]);
+    if (!r.ok) throw new Error("Não foi possível registrar agora. Tente pelo WhatsApp.");
+    return {};
   });
 }

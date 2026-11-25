@@ -6,7 +6,7 @@ import { atualizarColaboradorAction, criarColaboradorAction } from "@/app/(landi
 import type { Colaborador } from "@/lib/contempladas/acesso";
 import { btnOuro, btnSec, Card, inputCls, TelInput } from "./ui";
 
-/** Equipe de colaboradores: quem vende pela revenda/administrador, vendo só o percentual combinado. */
+/** Colaboradores: quem vende pela revenda/administrador, vendo só o percentual combinado. */
 export function Colaboradores({
   itens,
   dono,
@@ -53,7 +53,7 @@ export function Colaboradores({
           </label>
           {dono && responsaveis.length > 0 ? (
             <select className={inputCls} value={novo.responsavel} onChange={(e) => setNovo({ ...novo, responsavel: e.target.value })}>
-              <option value={authUserId}>Responsável: eu (dono do portal)</option>
+              <option value={authUserId}>Responsável: dono do portal (administradora e revenda)</option>
               {responsaveis.map((r) => <option key={r.authUserId} value={r.authUserId}>Responsável: {r.nome}</option>)}
             </select>
           ) : null}
@@ -71,7 +71,7 @@ export function Colaboradores({
         >
           Cadastrar colaborador
         </button>
-        <p className="mt-2 text-xs text-slate-500">Se o e-mail já tiver acesso (portal ou ERP), ele só é vinculado à sua equipe.</p>
+        <p className="mt-2 text-xs text-slate-500">Se o e-mail já tiver acesso (portal ou ERP), ele só é vinculado como seu colaborador.</p>
       </Card>
 
       {aviso ? <p className="rounded-xl bg-slate-100 p-3 text-sm">{aviso}</p> : null}

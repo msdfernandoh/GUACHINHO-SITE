@@ -156,12 +156,15 @@ export type MembroPortal = {
   tipo_cadastro: string | null;
   created_at: string;
   ocultar_comissao?: boolean;
+  responsavel_auth_id?: string | null;
+  responsavel_nome?: string | null;
+  colaborador_percentual?: number | string | null;
 };
 
 export async function listarUsuariosPortal(empresaId: string) {
   const { data } = await db()
     .from("contempladas_usuarios")
-    .select("id,auth_user_id,nome,email,telefone,papel,ativo,status,administradora,cidade,empresa,cnpj,cpf,tipo_cadastro,created_at,ocultar_comissao")
+    .select("id,auth_user_id,nome,email,telefone,papel,ativo,status,administradora,cidade,empresa,cnpj,cpf,tipo_cadastro,created_at,ocultar_comissao,responsavel_auth_id,responsavel_nome,colaborador_percentual")
     .eq("empresa_id", empresaId)
     .order("nome");
   const pix = await pixDosMembros(empresaId);
@@ -421,4 +424,16 @@ export async function senhaConfere(email: string, senha: string) {
   if (error || !data.session) return false;
   await c.auth.signOut().catch(() => undefined);
   return true;
+}
+
+/** Tira a pessoa da condição de colaborador (volta a ser revenda/administrador normal). */
+export async function removerColaboracao(empresaId: string, id: string) {
+  const { error } = await db().from("contempladas_usuarios").update({ responsavel_auth_id: null, responsavel_nome: null, colaborador_percentual: null }).eq("empresa_id", empresaId).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** Nome da empresa dona do portal (ex.: Gauchinho Consórcios). */
+export async function nomeEmpresaPortal(empresaId: string) {
+  const { data } = await db().from("empresas").select("nome_fantasia,razao_social").eq("id", empresaId).maybeSingle();
+  return (data?.nome_fantasia || data?.razao_social || "Dono do portal") as string;
 }

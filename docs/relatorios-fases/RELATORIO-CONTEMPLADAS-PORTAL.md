@@ -40,3 +40,8 @@
 - Migration 361: `contempladas_usuarios.ocultar_comissao`.
 - Marcado (em Meu perfil, na Equipe ou em Colaboradores), a página principal não recebe a comissão; o olho pede a senha (`revelarComissaoAction`, confere com signInWithPassword sem trocar a sessão) e só então carrega os valores.
 - Botão "Sair" no topo do portal para quem está logado.
+
+## Estrutura Administradoras / Revendas / Colaboradores e lead no Negociar (25/11/2026)
+- Aba "Equipe" passa a "Usuários", em três grupos. No editar, o papel tem "Colaborador" com o responsável (dono do portal, administradora ou revenda) e o %.
+- Dono como responsável usa o nome da empresa (empresas.nome_fantasia). Leonam: colaborador da Gauchinho Consórcios com 30%.
+- Visitante sem login em "Negociar": entrar ou deixar nome + WhatsApp; vira lead no CRM (`leadNegociarAction`, origem "contempladas") com crédito/entrada das cotas.

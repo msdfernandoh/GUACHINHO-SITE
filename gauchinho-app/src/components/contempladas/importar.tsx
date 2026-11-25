@@ -63,7 +63,7 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
             <span className="mt-1 block text-xs font-normal text-slate-500">
               {gerentes.length
                 ? "As reservas, o PIX e o WhatsApp dessas cotas vão para o administrador escolhido."
-                : <>Nenhum administrador de cotas cadastrado ainda. Cadastre em <a className="text-[#0047bb] underline" href="/contempladas/painel">Painel → Equipe</a> (papel Administrador de cotas).</>}
+                : <>Nenhum administrador de cotas cadastrado ainda. Cadastre em <a className="text-[#0047bb] underline" href="/contempladas/painel">Painel → Usuários</a> (papel Administrador de cotas).</>}
             </span>
           </label>
         )}
