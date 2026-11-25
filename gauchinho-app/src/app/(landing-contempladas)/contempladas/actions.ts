@@ -127,12 +127,9 @@ export async function enviarCotasAction(
       donoNome: dono.nome,
       incluirSemDono: a.papel === "DONO" && dono.proprio,
     });
-    let vendidasFora = 0;
-    if (modo === "VENDER_FORA") {
-      // Só mexe nas cotas do administrador deste envio.
-      const naLista = lidas.flatMap((l) => (l.cota ? [l.cota] : []));
-      vendidasFora = await repo.venderForaDaLista(empresaId, dono.authUserId, a.papel === "DONO" && dono.proprio, naLista, { authId: a.authUserId, nome: a.nome });
-    }
+    // Só mexe nas cotas do administrador deste envio: as que vieram na lista ganham a data de atualização.
+    const naLista = lidas.flatMap((l) => (l.cota ? [l.cota] : []));
+    const vendidasFora = await repo.venderForaDaLista(empresaId, dono.authUserId, a.papel === "DONO" && dono.proprio, naLista, { authId: a.authUserId, nome: a.nome }, modo !== "VENDER_FORA");
     revalidatePath("/contempladas");
     return { ...r, vendidasFora };
   });

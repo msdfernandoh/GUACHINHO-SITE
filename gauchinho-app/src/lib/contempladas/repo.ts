@@ -24,6 +24,8 @@ export type CotaPortal = CotaMotor & {
   dono_auth_id: string | null;
   dono_nome: string | null;
   vendida_em: string | null;
+  /** Última vez que a cota entrou ou foi confirmada numa tabela enviada. */
+  atualizada_em: string | null;
   vendedor_nome: string | null;
   vendida_por_nome: string | null;
   exclusao_solicitada_em: string | null;
@@ -223,6 +225,7 @@ export async function listarCotas(empresaId: string, opts: { incluirVendidas?: b
     dono_auth_id: c.dono_auth_id ?? null,
     dono_nome: c.dono_nome ?? null,
     vendida_em: c.vendida_em ?? null,
+    atualizada_em: c.updated_at ?? c.created_at ?? null,
     vendedor_nome: c.vendedor_nome ?? null,
     vendida_por_nome: c.vendida_por_nome ?? null,
     exclusao_solicitada_em: c.exclusao_solicitada_em ?? null,
@@ -924,13 +927,14 @@ export async function statusLeadPortal(empresaId: string, id: string, status: Le
   if (!data?.length) throw new Error("Lead não encontrado.");
 }
 
-/** Marca como vendidas as cotas disponíveis do administrador que não estão na nova lista. */
+/** Marca a data de atualização das cotas do administrador que vieram na lista e, se pedido, vende as que ficaram de fora. */
 export async function venderForaDaLista(
   empresaId: string,
   donoAuthId: string | null,
   incluirSemDono: boolean,
   lista: { administradora: string; credito: number; prazo: number; entrada_original: number }[],
   por: { authId: string; nome: string },
+  soConfirmar = false,
 ) {
   const chave = (c: { administradora: string; credito: number; prazo: number; entrada_original: number }) =>
     `${String(c.administradora).toLowerCase()}|${Math.round(num(c.credito) * 100)}|${c.prazo}|${Math.round(num(c.entrada_original) * 100)}`;
@@ -938,6 +942,9 @@ export async function venderForaDaLista(
   let q = db().from("contempladas_cotas").select("id,administradora,credito,prazo,entrada_original,dono_auth_id").eq("empresa_id", empresaId).eq("status", "DISPONIVEL");
   q = donoAuthId ? (incluirSemDono ? q.or(`dono_auth_id.eq.${donoAuthId},dono_auth_id.is.null`) : q.eq("dono_auth_id", donoAuthId)) : q.is("dono_auth_id", null);
   const { data } = await q;
+  const confirmadas = (data ?? []).filter((c) => naLista.has(chave(c as never))).map((c) => c.id as string);
+  if (confirmadas.length) await db().from("contempladas_cotas").update({ updated_at: new Date().toISOString() }).in("id", confirmadas);
+  if (soConfirmar) return 0;
   const ids = (data ?? []).filter((c) => !naLista.has(chave(c as never))).map((c) => c.id as string);
   if (!ids.length) return 0;
   await mudarStatusCotas(empresaId, ids, "VENDIDA", undefined, { authId: por.authId, nome: por.nome, vendedor: "Atualização da tabela" });

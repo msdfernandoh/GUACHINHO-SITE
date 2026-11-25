@@ -64,6 +64,8 @@ function Situacao({ c }: { c: CotaPortal }) {
   return <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Disponível</span>;
 }
 
+const atualiz = (iso: string) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Cuiaba" });
+
 export function Portal({ cotas: cotasIniciais, stats, logado, adicional, unidades, gerencia, meuWhatsapp = null, comissaoProtegida = false }: { cotas: CotaPortal[]; stats: Stats; logado: string | null; adicional: Acrescimo | null; unidades: Record<string, ConfigPublica>; gerencia: { dono: boolean; authUserId: string } | null; meuWhatsapp?: string | null; comissaoProtegida?: boolean }) {
   // Comissão protegida: só chega ao navegador depois de confirmar a senha no olho.
   const [revelado, setRevelado] = useState<Record<string, number> | null>(null);
@@ -388,7 +390,7 @@ export function Portal({ cotas: cotasIniciais, stats, logado, adicional, unidade
                 <tr key={c.id} className={`border-t border-slate-100 ${marcada ? "bg-[#0047bb]/5" : i % 2 ? "bg-slate-50/60" : ""}`}>
                   <td className="p-4"><input type="checkbox" className="h-5 w-5 accent-[#0047bb]" disabled={!livre} checked={marcada} onChange={() => setSel((s) => (marcada ? s.filter((x) => x !== c.id) : [...s, c.id]))} /></td>
                   <td className="p-4 text-[#0a2a66]"><IconeTipo tipo={c.tipo} /></td>
-                  <td className="p-4 font-semibold text-slate-700">{c.codigo}</td>
+                  <td className="p-4 font-semibold text-slate-700">{c.codigo}{c.atualizada_em && <span className="block text-[10px] font-normal text-slate-400" title="Última atualização da cota">atualiz. {atualiz(c.atualizada_em)}</span>}</td>
                   <td className="p-4 text-right font-bold text-[#0a2a66]">{brl(c.credito)}</td>
                   <td className="p-4 text-right">{brl(c.entrada + extraDe(c.credito))}</td>
                   <td className="p-4 text-center">{c.prazo}x de {brl(c.parcela)}</td>
@@ -441,7 +443,7 @@ export function Portal({ cotas: cotasIniciais, stats, logado, adicional, unidade
                   <p className="text-xs font-semibold text-[#0047bb]">Taxa {taxaTxt([c], c.entrada + extraDe(c.credito))}</p>
                   <p className="text-xs text-slate-500">Saldo devedor {brl(c.saldo_devedor)}{c.vencimento_mes ? ` · 1º venc. ${MES_CURTO[c.vencimento_mes - 1]}` : ""}</p>
                   {logado && c.status === "VENDIDA" && <p className="text-xs text-slate-500">Vendida {c.vendida_em ? new Date(c.vendida_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : ""}{c.vendedor_nome ? ` · ${c.vendedor_nome}` : ""}{c.dono_nome ? ` · ${c.dono_nome}` : ""}</p>}
-                  <p className="text-xs text-slate-500">{c.codigo} · <span className="capitalize">{c.administradora}</span> · {nomeUnidade(c)}{verRent ? ` · rentab. ${brl(c.comissao_parceiro + extraDe(c.credito))}` : ""}</p>
+                  <p className="text-xs text-slate-500">{c.codigo}{c.atualizada_em ? <span className="text-slate-400"> · atualiz. {atualiz(c.atualizada_em)}</span> : null} · <span className="capitalize">{c.administradora}</span> · {nomeUnidade(c)}{verRent ? ` · rentab. ${brl(c.comissao_parceiro + extraDe(c.credito))}` : ""}</p>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <Situacao c={c} />
                     <div className="flex gap-2">
