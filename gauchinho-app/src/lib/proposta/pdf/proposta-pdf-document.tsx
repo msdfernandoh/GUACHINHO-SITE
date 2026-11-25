@@ -1,3 +1,4 @@
+import { projetarCredito } from "../simulacao-ilustrativa";
 import type { PropostaPdfData, SegmentoPdf, GrupoPdfBlock, SegmentoTipo } from "./types";
 import {
   AVISO_PROJECAO_PDF,
@@ -922,6 +923,50 @@ function fallbackSegmentoFromData(data: PropostaPdfData): SegmentoPdf {
   };
 }
 
+function paginasSimulacao(data: PropostaPdfData) {
+  const config = data.simulacaoIlustrativa;
+  if (!config) return [];
+  const grupos = separarSegmentosPorGrupo(data.segmentos).flatMap(seg => seg.grupos);
+  return grupos.map((grupo, index) => {
+    const prazo = grupo.prazoRestante ?? grupo.prazoTotal ?? 0;
+    const projecao = prazo > 0 ? projetarCredito(grupo.credito, prazo, config) : null;
+    return <Page key={`simulacao-${index}`} size="A4" style={s.page}>
+      <Cabecalho direito={`Grupo ${grupo.codigoGrupo}`} />
+      <Text style={s.h2}>Simulação Ilustrativa</Text>
+      <Text style={{ marginTop: 8, fontWeight: "bold" }}>Sem contemplação garantida</Text>
+      <Text style={{ marginVertical: 10 }}>
+        Crédito inicial de {fmtMoney(grupo.credito)} · Reajuste de {pct(config.taxaAnual)} ao ano
+        {prazo > 0 ? ` · Prazo simulado de ${prazo} meses` : ""}
+      </Text>
+      {config.contemplacao && <Text style={{ marginBottom: 10 }}>
+        Hipótese de contemplação no início do ano {config.contemplacao.ano}, com taxa de {pct(config.contemplacao.taxaMensal)} ao mês sobre o crédito sem saque.
+      </Text>}
+      {projecao ? <>
+        <View fixed style={{ flexDirection: "row", backgroundColor: "#eaf2fa", padding: 6 }}>
+          <Text style={{ width: "15%" }}>Ano</Text>
+          <Text style={{ width: "40%" }}>Sem contemplação · início do ano</Text>
+          {config.contemplacao && <Text style={{ width: "45%" }}>Com contemplação sem saque · fim do ano</Text>}
+        </View>
+        {projecao.linhas.map(linha => <View key={linha.ano} wrap={false} style={{ flexDirection: "row", padding: 5, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" }}>
+          <Text style={{ width: "15%" }}>{linha.ano}</Text>
+          <Text style={{ width: "40%" }}>{linha.sem == null ? "—" : fmtMoney(linha.sem)}</Text>
+          {config.contemplacao && <Text style={{ width: "45%" }}>{linha.com == null ? "—" : fmtMoney(linha.com)}</Text>}
+        </View>)}
+        <View wrap={false} style={{ marginTop: 12, padding: 8, backgroundColor: "#eaf2fa" }}>
+          <Text>Valor final sem contemplação: {fmtMoney(projecao.finalSem)}</Text>
+          {config.contemplacao && <Text style={{ marginTop: 5 }}>
+            Valor final com contemplação sem saque: {projecao.finalCom == null ? "Ano informado fora do prazo do grupo" : fmtMoney(projecao.finalCom)}
+          </Text>}
+        </View>
+      </> : <Text>Prazo do grupo indisponível para projeção.</Text>}
+      <Text style={{ marginTop: 12, fontSize: 9 }}>
+        Valores hipotéticos. A taxa mensal é uma premissa da simulação e não representa rendimento garantido. As condições efetivas dependem do contrato e da administradora.
+      </Text>
+      <Rodape pagina="Simulação Ilustrativa" />
+    </Page>;
+  });
+}
+
 function ComparacaoGrupos({ data }: { data: PropostaPdfData }) {
   const contato = data.consultor.usarConsultor && data.consultor.nome
     ? { nome: data.consultor.nome, tel: data.consultor.telefone, email: data.consultor.email }
@@ -938,6 +983,7 @@ function ComparacaoGrupos({ data }: { data: PropostaPdfData }) {
       <SegBlock data={data} segmento={seg} />
       <Rodape pagina={`Opção ${i + 1} de ${grupos.length}`} />
     </Page>)}
+    {paginasSimulacao(data)}
     {lotes.map((lote, index) => <Page key={index} size="A4" style={s.page}>
       <Cabecalho direito="Análise comparativa" />
       <Text style={s.h2}>Compare e escolha seu grupo</Text>
@@ -992,6 +1038,7 @@ export function PropostaPdfDocument({ data }: { data: PropostaPdfData }) {
       <Document title={`${TITULO_PROPOSTA} - Resumo`} author={MARCA_PRINCIPAL}>
         {docData.capaEstilo === "campanha" ? <CapaCampanha data={docData} /> : <CapaPadrao data={docData} />}
         <FolhaResumoLink data={docData} pagina="Folha 1 / 1" />
+        {paginasSimulacao(docData)}
       </Document>
     );
   }
@@ -1019,6 +1066,7 @@ export function PropostaPdfDocument({ data }: { data: PropostaPdfData }) {
         </Page>
       ))}
 
+      {paginasSimulacao(docData)}
       <FolhaEncerramento data={docData} pagina={`Folha ${totalFolhas} / ${totalFolhas}`} />
     </Document>
   );

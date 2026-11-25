@@ -1,3 +1,4 @@
+import type { SimulacaoIlustrativa } from "../simulacao-ilustrativa";
 export const MARCA_PRINCIPAL = "Gauchinho Escritório de Soluções Financeiras";
 export const TITULO_PROPOSTA = "Proposta de Solução Financeira Personalizada";
 export const FRASE_CAPA =
@@ -215,6 +216,7 @@ export type PropostaPdfData = {
   /** Quando separado, preserva capa única e detalha um grupo por folha. */
   somenteCapaComparacaoPdf?: boolean;
   compararGruposPdf?: boolean;
+  simulacaoIlustrativa?: SimulacaoIlustrativa;
   modoAgrupamentoGrupos: "unificado" | "separado";
   /** Versão completa ou o mesmo recorte exibido no link público resumido. */
   visualizacao: "completa" | "resumida";

@@ -107,6 +107,23 @@ function baseData(overrides: Partial<PropostaPdfData>): PropostaPdfData {
 }
 
 describe("PDF de proposta — nova geração", () => {
+  it("inclui a simulação antes da assinatura com as duas projeções finais", async () => {
+    const seg = segmento("imovel", "Imóvel");
+    seg.grupos = [{ ...grupo("imovel", "1273"), credito: 100_000, prazoRestante: 42 }];
+    const dados = baseData({
+      segmentos: [seg],
+      consolidado: consolidadoDe([seg]),
+      simulacaoIlustrativa: { taxaAnual: 8, contemplacao: { ano: 3, taxaMensal: 1 } },
+      observacaoConsultor: "Recado de encerramento da proposta",
+    });
+    const buf = await renderPropostaPdfBuffer({ ...dados, blocos: { ...dados.blocos, observacao: true } });
+    const { extractText } = await import("unpdf");
+    const { text } = await extractText(new Uint8Array(buf), { mergePages: true });
+    expect(text).toContain("Sem contemplação garantida");
+    expect(text).toContain("116.640,00");
+    expect(text).toContain("125.971,20");
+    expect(text.indexOf("Recado de encerramento da proposta")).toBeGreaterThan(text.indexOf("Simulação Ilustrativa"));
+  }, 30000);
   it.each([false, true])("compara três grupos com capa, versão compacta: %s", async (compacta) => {
     const seg = segmento("veiculo", "Veículo");
     seg.grupos = ["1553", "1554", "1555"].map(codigo => grupo("veiculo", codigo));

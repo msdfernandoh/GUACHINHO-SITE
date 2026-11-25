@@ -1,3 +1,5 @@
+import { getCurrentTenantContext } from "@/lib/tenant/context";
+import { simulacaoIlustrativaSchema } from "@/lib/proposta/simulacao-ilustrativa";
 import { NextResponse } from "next/server";
 import { authorizePublicIngress } from "@/lib/security/public-ingress";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -40,6 +42,7 @@ type Body = {
   consultor_telefone?: string;
   somente_capa_comparacao_pdf?: boolean;
   comparar_grupos_pdf?: boolean;
+  simulacao_ilustrativa_pdf?: unknown;
   visualizacao_pdf?: "completa" | "resumida";
   modo_agrupamento_grupos?: "unificado" | "separado" | "independentes";
 };
@@ -49,6 +52,19 @@ export async function POST(request: Request) {
   if (!ingress.ok) return ingress.response;
   try {
     const body = (await request.json()) as Body;
+    let simulacaoIlustrativa;
+    if (body.simulacao_ilustrativa_pdf !== undefined) {
+      const tenant = await getCurrentTenantContext();
+      if (body.acao !== "proposta" || !tenant.usuario ||
+          tenant.empresaAtiva?.id !== ingress.empresaId || !tenant.permissoes.has("gerenciar_propostas")) {
+        return NextResponse.json({ error: "Usuário sem permissão para incluir a simulação." }, { status: 403 });
+      }
+      const resultado = simulacaoIlustrativaSchema.safeParse(body.simulacao_ilustrativa_pdf);
+      if (!resultado.success) {
+        return NextResponse.json({ error: "Confira as taxas e o ano da contemplação." }, { status: 400 });
+      }
+      simulacaoIlustrativa = resultado.data;
+    }
     if (!propostaMinimumValid({ nome: body.nome, telefone: body.whatsapp }) || !body.selecoes?.length) {
       return NextResponse.json({ error: "Dados incompletos" }, { status: 400 });
     }
@@ -222,6 +238,7 @@ export async function POST(request: Request) {
         consultor_telefone: consultorTelefone,
         contato_exibido_tipo: consultorNome ? "consultor" : null,
         dados_simulacao: {
+          simulacao_ilustrativa_pdf: simulacaoIlustrativa,
           simulacao_grupo_id: sim.id,
           totais,
           selecoes: selecoesCalc.map((s) => {

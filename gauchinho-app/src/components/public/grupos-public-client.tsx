@@ -76,6 +76,11 @@ export function GruposPublicClient({
   const [consultorNomePdf, setConsultorNomePdf] = useState("");
   const [consultorTelPdf, setConsultorTelPdf] = useState("");
   const [pdfResumido, setPdfResumido] = useState(false);
+  const [simularReajuste, setSimularReajuste] = useState(false);
+  const [simularContemplacao, setSimularContemplacao] = useState(false);
+  const [taxaAnual, setTaxaAnual] = useState("");
+  const [anoContemplacao, setAnoContemplacao] = useState("");
+  const [taxaMensal, setTaxaMensal] = useState("");
   const [modoAgrupamentoGrupos, setModoAgrupamentoGrupos] = useState<ModoAgrupamentoGrupos>("unificado");
   const [loading, setLoading] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
@@ -257,6 +262,11 @@ export function GruposPublicClient({
     // separado. O consultor pode optar por unificar explicitamente no modal.
     setModoAgrupamentoGrupos(temMaisDeUmGrupo ? "separado" : "unificado");
     setPdfResumido(false);
+    setSimularReajuste(false);
+    setSimularContemplacao(false);
+    setTaxaAnual("");
+    setAnoContemplacao("");
+    setTaxaMensal("");
     setCompararPdf(false);
     setSomenteComparacaoPdf(false);
     setModalOpen(true);
@@ -279,6 +289,10 @@ export function GruposPublicClient({
           nome,
           whatsapp: digitsOnlyPhone(whatsapp),
           acao: "proposta",
+          simulacao_ilustrativa_pdf: isConsultor && (simularReajuste || simularContemplacao) ? {
+            taxaAnual: Number(taxaAnual),
+            contemplacao: simularContemplacao ? { ano: Number(anoContemplacao), taxaMensal: Number(taxaMensal) } : undefined,
+          } : undefined,
           observacao: observacaoPdf.trim() || undefined,
           consultor_nome: consultorNomePdf.trim() || undefined,
           consultor_telefone: consultorTelPdf.trim() || undefined,
@@ -491,12 +505,15 @@ export function GruposPublicClient({
       ) : null}
 
       {modalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+        <div className="fixed inset-0 z-50 flex max-h-dvh flex-col overflow-y-scroll overscroll-contain bg-black/70 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
           <form
             onSubmit={submitModal}
-            className="w-full max-w-md space-y-4 rounded-2xl border border-zinc-700 bg-zinc-900 p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-proposta-pdf"
+            className="m-auto w-full max-w-md shrink-0 space-y-4 rounded-2xl border border-zinc-700 bg-zinc-900 p-4 sm:p-6"
           >
-            <h2 className="text-lg font-semibold text-white">
+            <h2 id="titulo-proposta-pdf" className="text-lg font-semibold text-white">
               {isConsultor ? "Gerar proposta PDF" : "Seus dados"}
             </h2>
             <div>
@@ -525,6 +542,29 @@ export function GruposPublicClient({
             {isConsultor ? (
               <>
                 <label className="flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={pdfResumido} onChange={(e) => setPdfResumido(e.target.checked)} /> Gerar versão resumida (mesmos dados do link resumido)</label>
+                <fieldset className="space-y-2 rounded-lg border border-zinc-700 p-3 text-sm text-zinc-300">
+                  <legend className="px-1 font-semibold">Simulação Ilustrativa</legend>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={simularReajuste} onChange={(e) => setSimularReajuste(e.target.checked)} />
+                    Simular reajuste anual sem contemplação
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={simularContemplacao} onChange={(e) => setSimularContemplacao(e.target.checked)} />
+                    Simular contemplação em um ano e crédito sem saque
+                  </label>
+                  {(simularReajuste || simularContemplacao) && <label className="block">
+                    Taxa de reajuste anual (%)
+                    <Input type="number" min="0" max="100" step="0.01" required value={taxaAnual} onChange={(e) => setTaxaAnual(e.target.value)} />
+                  </label>}
+                  {simularContemplacao && <div className="grid grid-cols-2 gap-2">
+                    <label>Ano da contemplação
+                      <Input type="number" min="1" max="50" step="1" required value={anoContemplacao} onChange={(e) => setAnoContemplacao(e.target.value)} />
+                    </label>
+                    <label>Taxa mensal após contemplação (%)
+                      <Input type="number" min="0" max="10" step="0.01" required value={taxaMensal} onChange={(e) => setTaxaMensal(e.target.value)} />
+                    </label>
+                  </div>}
+                </fieldset>
                 {temMaisDeUmGrupo ? (
                   <fieldset className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
                     <legend className="px-1 text-sm font-semibold text-amber-200">Mais de um grupo selecionado</legend>

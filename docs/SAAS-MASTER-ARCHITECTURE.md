@@ -1,5 +1,13 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Simulação Ilustrativa da proposta PDF (25/11/2026)
+
+O formulário autenticado de Grupos aceita hipóteses opcionais de reajuste
+anual e contemplação. Os parâmetros ficam no snapshot da proposta e o PDF
+projeta o crédito de cada grupo até o fim do prazo restante. O modal rola
+verticalmente em telas baixas, incluindo os botões de ação. Relatório em
+`docs/relatorios-fases/PROPOSTA-PDF-SIMULACAO-ILUSTRATIVA-2026-11-25.md`.
+
 ### Filtro de registro no evento em Leads (18/11/2026)
 
 A lista administrativa e suas exportações combinam o evento escolhido com

@@ -1,3 +1,4 @@
+import { simulacaoIlustrativaSchema } from "./simulacao-ilustrativa";
 import type { PropostaPdfData, MarcoProjecaoPdf, GrupoCotaPdfRow } from "./pdf/types";
 import { fmtDateBr, fmtMoney } from "./pdf/format";
 import { construirSegmentos, type ItemGrupoRow } from "./pdf/build-segmentos";
@@ -601,6 +602,7 @@ export async function buildPropostaPdfData(
     linhasGrupo: propostasFull.linhasGrupo,
     somenteCapaComparacaoPdf: dadosSim.somente_capa_comparacao_pdf === true,
     compararGruposPdf: dadosSim.comparar_grupos_pdf === true && modoAgrupamentoGrupos === "separado",
+    simulacaoIlustrativa: simulacaoIlustrativaSchema.safeParse(dadosSim.simulacao_ilustrativa_pdf).data,
     modoAgrupamentoGrupos,
     visualizacao: overrides?.visualizacao === "resumida" ? "resumida" : "completa",
   };
