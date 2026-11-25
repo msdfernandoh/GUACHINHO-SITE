@@ -16,3 +16,8 @@
 - Lista `/erp/extrato-clientes`: cartões de enviados/pendentes do mês, e em cada cliente os atalhos Copiar mensagem (gera e copia sem abrir), Baixar PDF, Abrir e Marcar enviado.
 - Mensagem centralizada em `lib/erp/extrato-mensagem.ts` (mesmo modelo salvo no navegador nas duas telas; saudação pelo primeiro nome).
 - PDF novo em `lib/erp/extrato-cliente-pdf.tsx`: capa com logo Racon + Gauchinho, texto de gestão do investimento, assinaturas de Fernando e Eroni; resumo da carteira; página por cota com gráfico de evolução e assembleias; encerramento.
+
+## Contemplação por lance recusada (2026-11-25)
+- Migration 363: `cota_contemplacao_recusas` + `rpc_registrar_recusa_contemplacao` / `rpc_desfazer_recusa_contemplacao`. A recusa devolve a cota para "ativa" (sem contemplação), guarda o estado anterior para desfazer e bloqueia se a contemplação já gerou comissão.
+- Clientes contemplados: coluna de modalidade (sorteio, lance livre, fixo, fidelidade); desclassificadas da Racon entram como "lance não pago"; botão "Cliente recusou" nas contemplações por lance e "Desfazer recusa".
+- Extrato (tela e PDF): a assembleia em que a própria cota saiu aparece destacada como "Sua cota foi contemplada" ou "Contemplada por lance livre · lance não pago".

@@ -1,5 +1,5 @@
 import type { ResultadoAssembleia } from "./contemplacoes";
-import { resultadosVigentes } from "./contemplacoes";
+import { chaveRecusa, normalizarCotaContemplacao, resultadosVigentes } from "./contemplacoes";
 
 export type ReajusteExtrato = { data_iso: string; preco: number; tipo: string; variacao_percentual?: string };
 export type CotaExtrato = {
@@ -73,8 +73,11 @@ export function distanciaParaCima(referencia: number, numero: number, capacidade
   return capacidade && referencia <= capacidade ? capacidade - referencia + numero : Number.NaN;
 }
 
-export function proximidadesCota(cota: CotaExtrato, resultados: ResultadoAssembleia[], capacidade: number | null, inicio: string, fim: string) {
+export type EventoPropriaCota = { tipo: "contemplada" | "sem_pagamento"; modalidade: string } | null;
+
+export function proximidadesCota(cota: CotaExtrato, resultados: ResultadoAssembleia[], capacidade: number | null, inicio: string, fim: string, recusas: Set<string> = new Set()) {
   const numero = Number.parseInt(cota.numero_cota, 10);
+  const propria = normalizarCotaContemplacao(cota.numero_cota);
   return resultadosVigentes(resultados).filter((a) => a.grupo_id === cota.grupo_id && a.assembleia_data >= inicio && a.assembleia_data <= fim &&
     (!cota.data_contemplacao || a.assembleia_data <= cota.data_contemplacao))
     .map((a) => {
@@ -85,6 +88,12 @@ export function proximidadesCota(cota: CotaExtrato, resultados: ResultadoAssembl
       const melhor = candidatos[0];
       const percentual = melhor && capacidade && numero >= 1 && numero <= capacidade && melhor.distancia < capacidade
         ? (1 - melhor.distancia / capacidade) * 100 : null;
-      return { data: a.assembleia_data, numero: a.assembleia_numero, melhor, percentual };
+      // A própria cota no resultado: contemplada, ou contemplada por lance sem pagamento (desclassificada ou recusada).
+      const minha = a.cotas.find((r) => normalizarCotaContemplacao(r.cota) === propria && (r.situacao_cota === "ATIVA" || r.situacao_cota === "DESCLASSIFICADA"));
+      const evento: EventoPropriaCota = !minha || !cota.grupo_id ? null : {
+        tipo: minha.situacao_cota === "DESCLASSIFICADA" || recusas.has(chaveRecusa(cota.grupo_id, cota.numero_cota, a.assembleia_data)) ? "sem_pagamento" : "contemplada",
+        modalidade: minha.modalidade,
+      };
+      return { data: a.assembleia_data, numero: a.assembleia_numero, melhor, percentual, evento };
     }).sort((a, b) => b.data.localeCompare(a.data));
 }

@@ -41,6 +41,15 @@ describe("extrato por cota", () => {
     expect(distanciaParaCima(727, 652, 900)).toBe(825); // dá a volta no grupo
     expect(distanciaParaCima(727, 652, null)).toBeNaN();
   });
+  it("marca a própria cota contemplada e o lance não pago", () => {
+    const base = { grupo_id: "g", criado_em: "2026-10-10" };
+    const r = proximidadesCota(cota, [
+      { ...base, id: "a", assembleia_numero: 10, assembleia_data: "2026-08-10", cotas: [{ cota: "0493-00", modalidade: "LANCE_LIVRE", situacao_cota: "DESCLASSIFICADA", percentual_lance: 40 }] },
+      { ...base, id: "b", assembleia_numero: 11, assembleia_data: "2026-09-10", cotas: [{ cota: "0493-00", modalidade: "LANCE_LIVRE", situacao_cota: "ATIVA", percentual_lance: 40 }] },
+      { ...base, id: "c", assembleia_numero: 12, assembleia_data: "2026-10-10", cotas: [{ cota: "0493-00", modalidade: "SORTEIO", situacao_cota: "ATIVA", percentual_lance: 0 }] },
+    ], 3000, "2026-01-01", "2026-11-25", new Set(["g:493:2026-09-10"]));
+    expect(r.map((a) => a.evento?.tipo)).toEqual(["contemplada", "sem_pagamento", "sem_pagamento"]);
+  });
   it("informa ausência de histórico e de parcela sem estimar um total", () => {
     const dados = calcularExtratoCota({ ...cota, snapshot_cota: {}, parcela_vigente_newcon: null }, "2026-11-25", "2026-11");
     expect(dados.totalParcelas).toBeNull();

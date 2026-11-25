@@ -4,6 +4,7 @@ import { pdfImage } from "@/lib/proposta/pdf/assets";
 import { ensureFonts, FONT_DISPLAY, FONT_MONO } from "@/lib/proposta/pdf/fonts";
 import { moedaExtrato as brl } from "./extrato-cliente";
 import { totalCompleto } from "./extrato-mensagem";
+import { rotuloModalidadeContemplacao } from "./contemplacoes";
 
 const NAVY = "#071a3d";
 const NAVY_2 = "#0c2a5e";
@@ -23,7 +24,7 @@ export type CotaPdf = {
   id: string; grupo: string | null; cota: string | null; contemplada: boolean | null; adesao: string | null; quantidade: number;
   contratado: number | null; atual: number | null; valorizacao: number | null; percentual: number | null; totalParcelas: number | null;
   projecao3: number | null; projecao5: number | null; taxa: number | null; reajustou: boolean;
-  assembleias: { numero: number; data: string; melhor: { modalidade: string; cota: string | number; distancia: number } | null; percentual: number | null }[];
+  assembleias: { numero: number; data: string; melhor: { modalidade: string; cota: string | number; distancia: number } | null; percentual: number | null; evento?: { tipo: "contemplada" | "sem_pagamento"; modalidade: string } | null }[];
 };
 export type ExtratoPdfDados = { cliente: { nome: string }; hoje: string; mes: string; historico: string; cotas: CotaPdf[] };
 
@@ -263,9 +264,13 @@ function CotaBloco({ c, i }: { c: CotaPdf; i: number }) {
         ))}
       </View>
       {c.assembleias.map((a, k) => (
-        <View key={a.numero} wrap={false} style={{ flexDirection: "row", paddingVertical: 4.5, paddingHorizontal: 8, backgroundColor: k % 2 ? PAPER : "#fff", borderBottomWidth: 1, borderColor: LINE }}>
+        <View key={a.numero} wrap={false} style={{ flexDirection: "row", paddingVertical: 4.5, paddingHorizontal: 8, backgroundColor: a.evento ? (a.evento.tipo === "contemplada" ? "#eafaf3" : "#fff6e0") : k % 2 ? PAPER : "#fff", borderBottomWidth: 1, borderColor: LINE }}>
           <Text style={{ width: "18%", fontSize: 8 }}>{data(a.data)}</Text>
-          <Text style={{ width: "42%", fontSize: 8 }}>{a.melhor ? `${a.melhor.modalidade.replaceAll("_", " ").toLowerCase().replace(/^./, (l) => l.toUpperCase())} · cota ${a.melhor.cota}` : "Sem resultado elegível"}</Text>
+          {a.evento ? (
+            <Text style={{ width: "42%", fontSize: 8, fontWeight: 700, color: a.evento.tipo === "contemplada" ? VERDE : "#a15c00" }}>
+              {a.evento.tipo === "contemplada" ? `Sua cota foi contemplada · ${rotuloModalidadeContemplacao(a.evento.modalidade) ?? "contemplação"}` : `Contemplada por ${(rotuloModalidadeContemplacao(a.evento.modalidade) ?? "lance").toLowerCase()} · lance não pago`}
+            </Text>
+          ) : <Text style={{ width: "42%", fontSize: 8 }}>{a.melhor ? `${a.melhor.modalidade.replaceAll("_", " ").toLowerCase().replace(/^./, (l) => l.toUpperCase())} · cota ${a.melhor.cota}` : "Sem resultado elegível"}</Text>}
           <Text style={{ width: "15%", fontSize: 8 }}>{a.melhor?.distancia ?? "—"}</Text>
           <View style={{ width: "25%", flexDirection: "row", alignItems: "center" }}>
             <View style={{ width: 46, height: 5, backgroundColor: LINE, borderRadius: 3, marginRight: 5 }}>

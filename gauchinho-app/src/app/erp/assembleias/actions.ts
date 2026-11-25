@@ -14,7 +14,7 @@ import {
   validarPrimeiroPremioFederal,
 } from "@/lib/erp/assembleias";
 
-import { indicadoresContemplacoes, identificarContemplacoesDaCarteira, normalizarCotaContemplacao, type CotaCarteiraContemplacao, cotasUnicas, contempladasAtivas, type ResultadoAssembleia } from "@/lib/erp/contemplacoes";
+import { chaveRecusa, indicadoresContemplacoes, identificarContemplacoesDaCarteira, normalizarCotaContemplacao, type CotaCarteiraContemplacao, cotasUnicas, contempladasAtivas, type ResultadoAssembleia } from "@/lib/erp/contemplacoes";
 import { carregarResultados, resumoGruposAssembleia } from "@/lib/erp/assembleias-resumo";
 import { classificarSimulacoes, percentualAtrasoValido } from "@/lib/erp/simulacao-contemplacao";
 
@@ -201,46 +201,88 @@ async function linhasResultadoComCarteira(
   return identificarContemplacoesDaCarteira(linhasResultado(resultados), carteira);
 }
 
-export async function listarClientesContempladosAction() {
+export type ClienteContemplado = {
+  id: string; grupoId: string; cliente: string; grupo: string; cota: string; contratacao: string | null;
+  credito: number | null; contemplacao: string; modalidade: string | null;
+  situacao: "contemplada" | "desclassificada" | "recusada"; recusaId: string | null;
+};
+
+export async function listarClientesContempladosAction(): Promise<ClienteContemplado[]> {
   const { supabase, empresaId } = await requireAssembleias(false);
   const grupos = await listarGruposParaAssembleias(supabase, empresaId);
   const ids = grupos.map((grupo) => grupo.id);
-  const [carteira, resultados] = await Promise.all([
+  const [carteira, resultados, recusasRes] = await Promise.all([
     carregarCarteiraContemplacoes(supabase, empresaId, ids),
     carregarResultados(supabase, ids),
+    supabase.from("cota_contemplacao_recusas").select("id,grupo_id,numero_cota,assembleia_data,modalidade").eq("empresa_id", empresaId),
   ]);
+  const recusas = new Map((recusasRes.data ?? []).map((r) => [chaveRecusa(r.grupo_id, r.numero_cota, r.assembleia_data), r]));
 
   const codigoPorGrupo = new Map(grupos.map((grupo) => [grupo.id, grupo.codigo_grupo]));
-  const porCota = new Map<string, {
-    cliente: string; grupo: string; cota: string; contratacao: string | null;
-    credito: number | null; contemplacao: string; modalidade: string | null;
-  }>();
+  const porCota = new Map<string, Omit<ClienteContemplado, "id">>();
 
-  for (const linha of identificarContemplacoesDaCarteira(linhasResultado(resultados), carteira)) {
+  for (const linha of identificarContemplacoesDaCarteira(linhasResultado(resultados), carteira, { incluirDesclassificadas: true })) {
     if (!linha.cliente_nosso_nome) continue;
     const cota = normalizarCotaContemplacao(linha.cota);
-    const chave = `${linha.grupo_id}:${cota}`;
+    const data = linha.assembleia_data.slice(0, 10);
+    const recusa = recusas.get(chaveRecusa(linha.grupo_id, cota, data));
+    const situacao = linha.situacao_cota === "DESCLASSIFICADA" ? "desclassificada" : recusa ? "recusada" : "contemplada";
+    const chave = `${linha.grupo_id}:${cota}:${situacao === "contemplada" ? "c" : data}`;
     const anterior = porCota.get(chave);
     if (anterior && anterior.contemplacao >= linha.assembleia_data) continue;
     porCota.set(chave, {
-      cliente: linha.cliente_nosso_nome, grupo: codigoPorGrupo.get(linha.grupo_id) ?? "—",
+      grupoId: linha.grupo_id, cliente: linha.cliente_nosso_nome, grupo: codigoPorGrupo.get(linha.grupo_id) ?? "—",
       cota, contratacao: linha.contratacao_da_cota, credito: linha.credito_da_cota,
-      contemplacao: linha.assembleia_data, modalidade: linha.modalidade ?? null,
+      contemplacao: linha.assembleia_data, modalidade: linha.modalidade ?? null, situacao, recusaId: recusa?.id ?? null,
+    });
+  }
+  // Recusas registradas sem resultado importado também aparecem, para poder desfazer.
+  for (const r of recusasRes.data ?? []) {
+    const chave = `${r.grupo_id}:${normalizarCotaContemplacao(r.numero_cota)}:${r.assembleia_data}`;
+    if (porCota.has(chave)) continue;
+    const titular = carteira.find((c) => c.grupo_id === r.grupo_id && normalizarCotaContemplacao(c.numero_cota) === normalizarCotaContemplacao(r.numero_cota));
+    porCota.set(chave, {
+      grupoId: r.grupo_id, cliente: titular?.cliente_nome ?? "—", grupo: codigoPorGrupo.get(r.grupo_id) ?? "—", cota: normalizarCotaContemplacao(r.numero_cota),
+      contratacao: titular?.data_venda ?? null, credito: titular?.valor_credito ?? null, contemplacao: r.assembleia_data,
+      modalidade: r.modalidade, situacao: "recusada", recusaId: r.id,
     });
   }
   for (const cota of carteira) {
     if (!cota.data_contemplacao) continue;
     const numero = normalizarCotaContemplacao(cota.numero_cota);
-    porCota.set(`${cota.grupo_id}:${numero}`, {
-      cliente: cota.cliente_nome, grupo: codigoPorGrupo.get(cota.grupo_id) ?? "—",
+    const chave = `${cota.grupo_id}:${numero}:c`;
+    porCota.set(chave, {
+      grupoId: cota.grupo_id, cliente: cota.cliente_nome, grupo: codigoPorGrupo.get(cota.grupo_id) ?? "—",
       cota: numero, contratacao: cota.data_venda, credito: cota.valor_credito ?? null,
-      contemplacao: cota.data_contemplacao, modalidade: porCota.get(`${cota.grupo_id}:${numero}`)?.modalidade ?? null,
+      contemplacao: cota.data_contemplacao, modalidade: porCota.get(chave)?.modalidade ?? null, situacao: "contemplada", recusaId: null,
     });
   }
 
   return [...porCota].map(([id, cota]) => ({ id, ...cota })).sort((a, b) =>
     b.contemplacao.localeCompare(a.contemplacao) || a.cliente.localeCompare(b.cliente, "pt-BR"),
   );
+}
+
+/** Cliente não pagou o lance: a cota volta a concorrer como cota normal. */
+export async function registrarRecusaContemplacaoAction(grupoId: string, cota: string, data: string, modalidade: string | null) {
+  const { supabase, empresaId } = await requireAssembleias(true);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return { ok: false, mensagem: "Data inválida." };
+  const concedidos = await listGruposAutorizadosForEmpresa(empresaId, { incluirInativos: true });
+  if (!concedidos.some((g) => g.id === grupoId)) return { ok: false, mensagem: "Grupo não autorizado." };
+  const { error } = await supabase.rpc("rpc_registrar_recusa_contemplacao", {
+    p_empresa_id: empresaId, p_grupo_id: grupoId, p_numero_cota: cota, p_data: data, p_modalidade: modalidade,
+  });
+  if (error) return { ok: false, mensagem: error.message.includes("comissão") ? error.message : "Não foi possível registrar a recusa." };
+  revalidatePath("/erp/assembleias"); revalidatePath("/erp/clientes"); revalidatePath("/erp/extrato-clientes");
+  return { ok: true, mensagem: "Recusa registrada. A cota voltou a concorrer normalmente." };
+}
+
+export async function desfazerRecusaContemplacaoAction(recusaId: string) {
+  const { supabase, empresaId } = await requireAssembleias(true);
+  const { error } = await supabase.rpc("rpc_desfazer_recusa_contemplacao", { p_empresa_id: empresaId, p_recusa_id: recusaId });
+  if (error) return { ok: false, mensagem: "Não foi possível desfazer a recusa." };
+  revalidatePath("/erp/assembleias"); revalidatePath("/erp/clientes"); revalidatePath("/erp/extrato-clientes");
+  return { ok: true, mensagem: "Recusa desfeita." };
 }
 
 export async function fetchContemplacoesGrupoAction(grupoId: string) {

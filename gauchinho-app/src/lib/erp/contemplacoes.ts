@@ -81,7 +81,7 @@ export function normalizarCotaContemplacao(numero: string) {
 export function identificarContemplacoesDaCarteira<T extends ResultadoCota & {
   grupo_id: string;
   assembleia_data: string;
-}>(linhas: T[], carteira: CotaCarteiraContemplacao[]) {
+}>(linhas: T[], carteira: CotaCarteiraContemplacao[], opcoes: { incluirDesclassificadas?: boolean } = {}) {
   const chaveCota = (grupo: string, numero: string) => `${grupo}:${normalizarCotaContemplacao(numero)}`;
   const chaveMes = (linha: T) => `${linha.grupo_id}:${linha.assembleia_data.slice(0, 7)}`;
   const cotas = new Map<string, CotaCarteiraContemplacao[]>();
@@ -94,13 +94,15 @@ export function identificarContemplacoesDaCarteira<T extends ResultadoCota & {
 
   const clientesPorMes = new Map<string, Set<string>>();
   const identificadas = linhas.map((linha) => {
-    if (linha.situacao_cota !== "ATIVA") return { linha, titular: null };
+    const desclassificada = !!opcoes.incluirDesclassificadas && linha.situacao_cota === "DESCLASSIFICADA";
+    if (linha.situacao_cota !== "ATIVA" && !desclassificada) return { linha, titular: null };
     const titulares = new Map((cotas.get(chaveCota(linha.grupo_id, linha.cota)) ?? [])
       .filter((cota) => cota.data_venda && cota.data_venda.slice(0, 10) <= linha.assembleia_data.slice(0, 10))
       .map((cota) => [cota.cliente_id, cota]));
     if (titulares.size !== 1) return { linha, titular: null };
 
     const [[clienteId, titular]] = [...titulares];
+    if (desclassificada) return { linha, titular };
     const mes = chaveMes(linha);
     const clientes = clientesPorMes.get(mes) ?? new Set<string>();
     clientes.add(clienteId);
@@ -116,3 +118,17 @@ export function identificarContemplacoesDaCarteira<T extends ResultadoCota & {
     clientes_nossos_no_mes: clientesPorMes.get(chaveMes(linha))?.size ?? 0,
   }));
 }
+
+/** Modalidade em texto curto para telas e mensagens. */
+export function rotuloModalidadeContemplacao(m: string | null | undefined) {
+  const u = (m ?? "").toUpperCase();
+  if (!u) return null;
+  if (u.includes("SORTEIO")) return "Sorteio";
+  if (u.includes("FIDELIDADE")) return "Lance fidelidade";
+  if (u.includes("FIXO")) return "Lance fixo";
+  if (u.includes("LIVRE")) return "Lance livre";
+  if (u.includes("LANCE")) return "Lance";
+  return null;
+}
+
+export const chaveRecusa = (grupoId: string, numero: string, data: string) => `${grupoId}:${normalizarCotaContemplacao(numero)}:${data.slice(0, 10)}`;

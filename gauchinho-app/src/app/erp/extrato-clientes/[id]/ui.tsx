@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { carregarExtratoCliente } from "../actions";
 import { registrarEnvioExtrato } from "../actions";
 import { moedaExtrato as brl } from "@/lib/erp/extrato-cliente";
+import { rotuloModalidadeContemplacao } from "@/lib/erp/contemplacoes";
 import { CHAVE_MODELO_EXTRATO, MODELO_MENSAGEM_EXTRATO, montarMensagemExtrato } from "@/lib/erp/extrato-mensagem";
 
 type Dados = Awaited<ReturnType<typeof carregarExtratoCliente>>;
@@ -44,7 +45,7 @@ export function ExtratoClienteDetalhe({ dados }: { dados: Dados }) {
           <p className="text-xs text-slate-600">{c.quantidade} parcelas estimadas · Taxa anual de referência {c.taxa === null ? "indisponível" : c.taxa.toLocaleString("pt-BR") + "%"}.
             {" "}O total das parcelas é estimado pela parcela vigente, proporcionalmente ao histórico do crédito. Valores ausentes ou troca de bem exigem conferência.</p>
           <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="p-2">Assembleia</th><th className="p-2">Melhor referência numérica</th><th className="p-2">Distância</th><th className="p-2">Proximidade histórica</th></tr></thead>
-            <tbody className="divide-y">{c.assembleias.map((a) => <tr key={a.numero}><td className="p-2">{a.data.split("-").reverse().join("/")}</td><td className="p-2">{a.melhor ? a.melhor.modalidade.replaceAll("_", " ") + " · " + a.melhor.cota : "Sem resultado elegível"}</td><td className="p-2">{a.melhor?.distancia ?? "—"}</td><td className="p-2">{a.percentual === null ? "Indisponível" : a.percentual.toFixed(2).replace(".", ",") + "%"}</td></tr>)}</tbody>
+            <tbody className="divide-y">{c.assembleias.map((a) => <tr key={a.numero} className={a.evento ? (a.evento.tipo === "contemplada" ? "bg-emerald-50" : "bg-amber-50") : ""}><td className="p-2">{a.data.split("-").reverse().join("/")}</td><td className="p-2">{a.evento ? <strong className={a.evento.tipo === "contemplada" ? "text-emerald-800" : "text-amber-800"}>{a.evento.tipo === "contemplada" ? `Sua cota foi contemplada · ${rotuloModalidadeContemplacao(a.evento.modalidade) ?? "contemplação"}` : `Contemplada por ${(rotuloModalidadeContemplacao(a.evento.modalidade) ?? "lance").toLowerCase()} · lance não pago`}</strong> : a.melhor ? a.melhor.modalidade.replaceAll("_", " ") + " · " + a.melhor.cota : "Sem resultado elegível"}</td><td className="p-2">{a.melhor?.distancia ?? "—"}</td><td className="p-2">{a.percentual === null ? "Indisponível" : a.percentual.toFixed(2).replace(".", ",") + "%"}</td></tr>)}</tbody>
           </table></div>
           {!c.assembleias.length && <p className="text-sm text-slate-600">Sem assembleias verificadas neste período.</p>}
           <p className="text-xs text-slate-600">A proximidade compara a numeração com resultados ativos. Participação e elegibilidade nos lances precisam ser confirmadas. O percentual descreve o histórico e não indica probabilidade futura.</p>

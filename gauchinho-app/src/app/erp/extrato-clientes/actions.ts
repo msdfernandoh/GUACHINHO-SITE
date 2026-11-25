@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireErpRouteAccess } from "@/lib/erp/erp-acesso-server";
 import { obterHojeCuiaba } from "@/lib/erp/conta-corrente-periodos";
+import { chaveRecusa } from "@/lib/erp/contemplacoes";
 import { calcularExtratoCota, proximidadesCota, type CotaExtrato } from "@/lib/erp/extrato-cliente";
 import type { ResultadoAssembleia } from "@/lib/erp/contemplacoes";
 
@@ -42,6 +43,8 @@ export async function carregarExtratoCliente(clienteId: string, historico = "12"
       if (res.data.length < 500) break;
     }
   }
+  const recusasRes = ids.length ? await db.from("cota_contemplacao_recusas").select("grupo_id,numero_cota,assembleia_data").eq("empresa_id", empresaAtiva.id).in("grupo_id", ids) : { data: [] };
+  const recusas = new Set((recusasRes.data ?? []).map((r) => chaveRecusa(r.grupo_id, r.numero_cota, r.assembleia_data)));
   return {
     cliente: cliente.data, hoje, mes, historico,
     cotas: cotas.map((cota) => {
@@ -49,7 +52,7 @@ export async function carregarExtratoCliente(clienteId: string, historico = "12"
       const inicio = historico === "todos" ? calculo.adesao : [calculo.adesao, inicio12].filter(Boolean).sort().at(-1)!;
       return { id: cota.id, grupo: cota.numero_grupo, cota: cota.numero_cota, contemplada: cota.contemplada,
         ...calculo,
-        assembleias: proximidadesCota(cota, resultados, grupos.data?.find((g) => g.id === cota.grupo_id)?.capacidade_total ?? null, inicio || hoje, hoje),
+        assembleias: proximidadesCota(cota, resultados, grupos.data?.find((g) => g.id === cota.grupo_id)?.capacidade_total ?? null, inicio || hoje, hoje, recusas),
       };
     }),
   };
