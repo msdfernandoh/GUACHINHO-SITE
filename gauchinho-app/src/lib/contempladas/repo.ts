@@ -932,14 +932,17 @@ export async function venderForaDaLista(
   empresaId: string,
   donoAuthId: string | null,
   incluirSemDono: boolean,
-  lista: { administradora: string; credito: number; prazo: number; entrada_original: number }[],
+  lista: { administradora: string; credito: number; prazo: number; entrada_original: number; tipo: "imovel" | "automovel" }[],
   por: { authId: string; nome: string; vendedor?: string | null },
   soConfirmar = false,
 ) {
   const chave = (c: { administradora: string; credito: number; prazo: number; entrada_original: number }) =>
     `${String(c.administradora).toLowerCase()}|${Math.round(num(c.credito) * 100)}|${c.prazo}|${Math.round(num(c.entrada_original) * 100)}`;
   const naLista = new Set(lista.map(chave));
-  let q = db().from("contempladas_cotas").select("id,administradora,credito,prazo,entrada_original,dono_auth_id").eq("empresa_id", empresaId).eq("status", "DISPONIVEL");
+  // Só a categoria enviada (ex.: lista de imóveis não mexe nos veículos).
+  const tipos = [...new Set(lista.map((c) => c.tipo))];
+  if (!tipos.length) return 0;
+  let q = db().from("contempladas_cotas").select("id,administradora,credito,prazo,entrada_original,dono_auth_id").eq("empresa_id", empresaId).eq("status", "DISPONIVEL").in("tipo", tipos);
   q = donoAuthId ? (incluirSemDono ? q.or(`dono_auth_id.eq.${donoAuthId},dono_auth_id.is.null`) : q.eq("dono_auth_id", donoAuthId)) : q.is("dono_auth_id", null);
   const { data } = await q;
   const confirmadas = (data ?? []).filter((c) => naLista.has(chave(c as never))).map((c) => c.id as string);

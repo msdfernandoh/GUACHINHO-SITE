@@ -205,7 +205,32 @@ function lerPlanilhaComTitulos(texto: string): LinhaLida[] | null {
  * Lê o texto colado (linhas da planilha ou mensagens do WhatsApp) e aplica o
  * acréscimo de entrada (percentual do crédito ou valor fixo) em cada cota.
  */
-export function lerCotasTexto(texto: string, acrescimo: Acrescimo | ((tipo: "imovel" | "automovel") => Acrescimo)): LinhaLida[] {
+/** CSV (vírgulas e aspas, como o Google Sheets/Excel exportam) vira colunas separadas por TAB. */
+function csvParaTabs(texto: string): string {
+  if (!/","|,"R\$|"R\$[^"]*",/.test(texto)) return texto;
+  return texto
+    .split(/\r?\n/)
+    .map((linha) => {
+      const cels: string[] = [];
+      let atual = "";
+      let aspas = false;
+      for (let i = 0; i < linha.length; i++) {
+        const ch = linha[i];
+        if (ch === '"') {
+          if (aspas && linha[i + 1] === '"') { atual += '"'; i++; } else aspas = !aspas;
+        } else if (ch === "," && !aspas) {
+          cels.push(atual.trim());
+          atual = "";
+        } else atual += ch;
+      }
+      cels.push(atual.trim());
+      return cels.join("\t");
+    })
+    .join("\n");
+}
+
+export function lerCotasTexto(textoBruto: string, acrescimo: Acrescimo | ((tipo: "imovel" | "automovel") => Acrescimo)): LinhaLida[] {
+  const texto = csvParaTabs(textoBruto);
   const agioDe = typeof acrescimo === "function" ? acrescimo : () => acrescimo;
   const rotulados = lerPlanilhaComTitulos(texto) ?? lerBlocosRotulados(texto);
   const linhas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);

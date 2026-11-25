@@ -176,7 +176,7 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
           <p className="text-xs text-slate-500">Vale só para as cotas {gerente ? `de ${nomeAdm}` : "do administrador deste envio"}. Cotas de outros administradores não mudam.</p>
           {([
             ["NOVAS", "Incluir só as cotas novas e manter as demais", "As cotas que já estão no portal continuam como estão. Cotas repetidas da lista ficam de fora."],
-            ["VENDER_FORA", "Incluir só as novas e marcar como vendidas as que não estão na lista", "Use quando a lista é a tabela completa e atualizada: o que ainda estiver disponível no portal e não aparecer nela vira vendida."],
+            ["VENDER_FORA", "Incluir só as novas e marcar como vendidas as que não estão na lista", "Use quando a lista é a tabela completa e atualizada. Vale só para a categoria da lista (imóveis ou veículos): o que dessa categoria ainda estiver disponível e não aparecer nela vira vendida."],
             ["TODAS", "Incluir todas as cotas da lista, mesmo as repetidas", "Nada é retirado nem marcado como vendido; cotas iguais às do portal entram de novo."],
           ] as const).map(([k, t, d]) => (
             <label key={k} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${modo === k ? "border-[#0047bb] bg-blue-50/60" : "border-slate-200"}`}>
@@ -193,7 +193,8 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
           <button className={btnSec} disabled={!texto.trim() || pend} onClick={() => start(async () => { const r = await preverEnvioAction(texto, personalizado, gerente || null); setPrevia(r); setFora(modo === "TODAS" ? new Set() : new Set(r.flatMap((l, i) => (l.duplicada ? [i] : [])))); })}>Conferir</button>
           <button className={btnOuro} disabled={(!validas.length && modo !== "VENDER_FORA") || !previa || pend}
             onClick={() => start(async () => {
-              if (modo === "VENDER_FORA" && !confirm(`As cotas disponíveis ${doAdm} que não estão nesta lista serão marcadas como vendidas. Continuar?`)) return;
+              const cats = [...new Set(validas.map((l) => (l.cota?.tipo === "automovel" ? "veículos" : "imóveis")))].join(" e ");
+              if (modo === "VENDER_FORA" && !confirm(`Só ${cats}: as cotas de ${cats} disponíveis ${doAdm} que não estão nesta lista serão marcadas como vendidas. As outras categorias não mudam. Continuar?`)) return;
               const r = await enviarCotasAction(texto, personalizado, gerente || null, comissaoLote, [...fora], modo);
               setMsg(r.ok ? `✅ ${r.incluidas} cotas incluídas.${r.vendidasFora ? ` ${r.vendidasFora} marcada(s) como vendida(s).` : ""}` : `⚠️ ${r.erro}`);
               if (r.ok) { setTexto(""); setPrevia(null); recarregarLotes(); }
