@@ -49,3 +49,7 @@
 ## Leads no painel (25/11/2026)
 - Migration 362 `contempladas_leads`: cada "Negociar" sem login grava o lead do portal (cotas, crédito, entrada, administradoras) além do lead no CRM do ERP.
 - Aba "Leads" no painel: dono vê todos; administradora vê os das cotas dela. WhatsApp com mensagem pronta e situação (Novo, Em contato, Fechado, Perdido).
+
+## Enviar cotas por arquivo e o que fazer com as cotas atuais (25/11/2026)
+- Enviar cotas aceita planilha (.xlsx/.xls/.csv, lida no navegador) ou imagem (`lerImagemCotasAction`, OpenAI visão com OPENAI_API_KEY) que vira o texto da importação.
+- Escolha antes de enviar (só para as cotas do administrador do envio): incluir só as novas e manter as demais; incluir só as novas e marcar como vendidas as disponíveis fora da lista (`venderForaDaLista`); incluir todas, inclusive repetidas.

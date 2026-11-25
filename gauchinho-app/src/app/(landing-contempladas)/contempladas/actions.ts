@@ -102,14 +102,17 @@ export async function enviarCotasAction(
   comissaoLote: Acrescimo | null = null,
   /** Índices (da prévia) que não devem entrar, ex.: duplicadas desmarcadas. */
   ignorar: number[] = [],
+  /** VENDER_FORA: cotas disponíveis do administrador que não estão na lista viram vendidas. */
+  modo: "NOVAS" | "VENDER_FORA" | "TODAS" = "NOVAS",
 ) {
   return resultado(async () => {
     const { empresaId, a } = await exigirGerencia();
     const dono = await donoDoEnvio(empresaId, a, gerenteId);
     const agio = await agioDoEnvio(empresaId, a, personalizado, gerenteId);
     const fora = new Set(ignorar);
-    const cotas = lerCotasTexto(String(texto ?? ""), agio).flatMap((l, i) => (l.cota && !fora.has(i) ? [l.cota] : []));
-    if (!cotas.length) throw new Error("Nenhuma cota válida no texto.");
+    const lidas = lerCotasTexto(String(texto ?? ""), agio);
+    const cotas = lidas.flatMap((l, i) => (l.cota && !fora.has(i) ? [l.cota] : []));
+    if (!cotas.length && modo !== "VENDER_FORA") throw new Error("Nenhuma cota válida no texto.");
     const { data: erp } = await createAdminClient({ noStore: true }).from("usuarios").select("id").eq("auth_user_id", a.authUserId).maybeSingle();
     const r = await repo.importarCotas({
       empresaId,
@@ -124,8 +127,14 @@ export async function enviarCotasAction(
       donoNome: dono.nome,
       incluirSemDono: a.papel === "DONO" && dono.proprio,
     });
+    let vendidasFora = 0;
+    if (modo === "VENDER_FORA") {
+      // Só mexe nas cotas do administrador deste envio.
+      const naLista = lidas.flatMap((l) => (l.cota ? [l.cota] : []));
+      vendidasFora = await repo.venderForaDaLista(empresaId, dono.authUserId, a.papel === "DONO" && dono.proprio, naLista, { authId: a.authUserId, nome: a.nome });
+    }
     revalidatePath("/contempladas");
-    return r;
+    return { ...r, vendidasFora };
   });
 }
 
@@ -746,5 +755,40 @@ export async function statusLeadAction(id: string, status: "NOVO" | "EM_CONTATO"
     await repo.statusLeadPortal(empresaId, id, status, a.papel === "DONO" ? undefined : a.authUserId);
     revalidatePath("/contempladas/painel");
     return {};
+  });
+}
+
+/** Lê a foto/print de uma tabela de cotas e devolve o texto no formato da importação. */
+export async function lerImagemCotasAction(dataUrl: string) {
+  return resultado(async () => {
+    await exigirGerencia();
+    if (!/^data:image\/(png|jpe?g|webp);base64,/.test(dataUrl ?? "")) throw new Error("Envie a imagem em PNG, JPG ou WEBP.");
+    if (dataUrl.length > 8_000_000) throw new Error("Imagem muito grande (máx. ~6 MB).");
+    const key = process.env.OPENAI_API_KEY?.trim();
+    if (!key) throw new Error("Leitura de imagem não configurada (falta a chave de IA). Use o texto ou a planilha.");
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: process.env.IA_MODEL_VISAO?.trim() || "gpt-4o-mini",
+        temperature: 0,
+        max_tokens: 4000,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você lê tabelas/listas de cartas de consórcio contempladas em imagens. Responda SOMENTE com uma linha por carta, sem cabeçalho e sem comentários, neste formato exato:\n" +
+              "<administradora> <IMÓVEL|VEÍCULO> R$ <crédito> R$ <entrada> <nº de parcelas> R$ <valor da parcela> R$ <saldo devedor> <mês do vencimento por extenso> R$ <comissão>\n" +
+              "Use valores no formato brasileiro (R$ 311.000,00). Se faltar saldo, use R$ 0,00. Se faltar comissão, omita o último campo. Se faltar o mês, omita. Não invente cartas que não estão na imagem.",
+          },
+          { role: "user", content: [{ type: "text", text: "Extraia as cartas desta imagem." }, { type: "image_url", image_url: { url: dataUrl } }] },
+        ],
+      }),
+    });
+    if (!res.ok) throw new Error("Não foi possível ler a imagem agora.");
+    const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const texto = (j.choices?.[0]?.message?.content ?? "").replace(/```[a-z]*\n?|```/g, "").trim();
+    if (!texto) throw new Error("Nenhuma carta encontrada na imagem.");
+    return { texto };
   });
 }

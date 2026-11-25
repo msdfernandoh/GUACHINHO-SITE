@@ -923,3 +923,23 @@ export async function statusLeadPortal(empresaId: string, id: string, status: Le
   if (error) throw new Error(error.message);
   if (!data?.length) throw new Error("Lead não encontrado.");
 }
+
+/** Marca como vendidas as cotas disponíveis do administrador que não estão na nova lista. */
+export async function venderForaDaLista(
+  empresaId: string,
+  donoAuthId: string | null,
+  incluirSemDono: boolean,
+  lista: { administradora: string; credito: number; prazo: number; entrada_original: number }[],
+  por: { authId: string; nome: string },
+) {
+  const chave = (c: { administradora: string; credito: number; prazo: number; entrada_original: number }) =>
+    `${String(c.administradora).toLowerCase()}|${Math.round(num(c.credito) * 100)}|${c.prazo}|${Math.round(num(c.entrada_original) * 100)}`;
+  const naLista = new Set(lista.map(chave));
+  let q = db().from("contempladas_cotas").select("id,administradora,credito,prazo,entrada_original,dono_auth_id").eq("empresa_id", empresaId).eq("status", "DISPONIVEL");
+  q = donoAuthId ? (incluirSemDono ? q.or(`dono_auth_id.eq.${donoAuthId},dono_auth_id.is.null`) : q.eq("dono_auth_id", donoAuthId)) : q.is("dono_auth_id", null);
+  const { data } = await q;
+  const ids = (data ?? []).filter((c) => !naLista.has(chave(c as never))).map((c) => c.id as string);
+  if (!ids.length) return 0;
+  await mudarStatusCotas(empresaId, ids, "VENDIDA", undefined, { authId: por.authId, nome: por.nome, vendedor: "Atualização da tabela" });
+  return ids.length;
+}

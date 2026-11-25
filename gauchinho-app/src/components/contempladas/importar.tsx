@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { agioGerenteAction, desfazerLoteAction, enviarCotasAction, listarLotesAction, preverEnvioAction } from "@/app/(landing-contempladas)/contempladas/actions";
+import { agioGerenteAction, desfazerLoteAction, enviarCotasAction, lerImagemCotasAction, listarLotesAction, preverEnvioAction } from "@/app/(landing-contempladas)/contempladas/actions";
 import type { LinhaPrevia } from "@/app/(landing-contempladas)/contempladas/actions";
 import type { Acrescimo } from "@/lib/contempladas/motor";
 import { brl, btnOuro, btnSec, Card, inputCls, MoneyInput, Sair } from "./ui";
@@ -30,6 +30,39 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
   const personalizado: Acrescimo | null = usarPadrao ? null : { tipo, valor };
   // Duplicadas começam desmarcadas; o usuário decide incluir ou não.
   const [fora, setFora] = useState<Set<number>>(new Set());
+  // O que fazer com as cotas deste administrador que já estão no portal.
+  const [modo, setModo] = useState<"NOVAS" | "VENDER_FORA" | "TODAS">("NOVAS");
+  const [lendo, setLendo] = useState<string | null>(null);
+  const nomeAdm = gerente ? gerentes.find((g) => g.authUserId === gerente)?.nome ?? "administrador selecionado" : ehDono ? "suas" : "suas";
+  const doAdm = gerente ? `do administrador ${nomeAdm}` : "suas (do administrador logado)";
+  const lerArquivo = async (f: File) => {
+    setMsg(null);
+    setPrevia(null);
+    if (/\.(xlsx|xls|csv)$/i.test(f.name)) {
+      setLendo("Lendo a planilha…");
+      try {
+        const XLSX = await import("xlsx");
+        const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+        const aba = wb.Sheets[wb.SheetNames[0]];
+        setTexto(XLSX.utils.sheet_to_csv(aba, { FS: "\t", blankrows: false }));
+      } catch {
+        setMsg("⚠️ Não consegui ler a planilha. Copie e cole as linhas.");
+      }
+      setLendo(null);
+      return;
+    }
+    if (/^image\//.test(f.type)) {
+      setLendo("Lendo a imagem… pode levar alguns segundos.");
+      const dataUrl = await new Promise<string>((ok, erro) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = erro; r.readAsDataURL(f); });
+      const r = await lerImagemCotasAction(dataUrl);
+      setLendo(null);
+      if (!r.ok) { setMsg(`⚠️ ${r.erro}`); return; }
+      setTexto(r.texto);
+      setMsg("✅ Texto gerado pela leitura da imagem. Confira os valores, escolha abaixo o que fazer com as cotas que já estão no portal e clique em Conferir.");
+      return;
+    }
+    setMsg("⚠️ Envie uma planilha (.xlsx, .xls, .csv) ou uma imagem (PNG, JPG, WEBP).");
+  };
   const validas = previa?.filter((l, i) => l.cota && !fora.has(i)) ?? [];
   const duplicadas = previa?.filter((l) => l.duplicada).length ?? 0;
   const mudou = () => setPrevia(null);
@@ -41,6 +74,12 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
           <span className="text-slate-600">Logado: <b className="text-slate-900">{usuario}</b></span>
           <Sair />
         </div>
+        <label className="mb-2 flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm hover:bg-slate-100">
+          <span><b>Enviar arquivo</b> · planilha (.xlsx, .csv) ou foto/print da tabela</span>
+          <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#0047bb] shadow-sm">Escolher</span>
+          <input type="file" className="hidden" accept=".xlsx,.xls,.csv,image/png,image/jpeg,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) void lerArquivo(f); e.target.value = ""; }} />
+        </label>
+        {lendo && <p className="mb-2 rounded-lg bg-blue-50 p-2 text-sm text-blue-800">{lendo}</p>}
         <textarea
           className={`${inputCls} h-64 font-mono text-xs`}
           placeholder={"Cole aqui a mensagem do WhatsApp ou copie e cole da planilha (com a linha de títulos)\nracon IMÓVEL R$ 311.000,00 R$ 195.300,00 113 R$ 2.002,26 R$ 226.255,38 dezembro R$ 5.000,00"}
@@ -111,13 +150,31 @@ export function ImportarCotas({ usuario, agioPadrao: agioIni, agioAuto: autoIni,
             <p className="col-span-2 text-xs text-slate-500">Vale só para as cotas deste envio, por cota.</p>
           </div>
         )}
-        <p className="mt-3 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">As cotas novas entram junto com as que já estão no portal. Uma cota só sai quando é marcada como vendida ou excluída.</p>
+        <fieldset className="mt-4 space-y-2">
+          <legend className="mb-1 font-semibold">E as cotas {doAdm} que já estão no portal?</legend>
+          <p className="text-xs text-slate-500">Vale só para as cotas {gerente ? `de ${nomeAdm}` : "do administrador deste envio"}. Cotas de outros administradores não mudam.</p>
+          {([
+            ["NOVAS", "Incluir só as cotas novas e manter as demais", "As cotas que já estão no portal continuam como estão. Cotas repetidas da lista ficam de fora."],
+            ["VENDER_FORA", "Incluir só as novas e marcar como vendidas as que não estão na lista", "Use quando a lista é a tabela completa e atualizada: o que ainda estiver disponível no portal e não aparecer nela vira vendida."],
+            ["TODAS", "Incluir todas as cotas da lista, mesmo as repetidas", "Nada é retirado nem marcado como vendido; cotas iguais às do portal entram de novo."],
+          ] as const).map(([k, t, d]) => (
+            <label key={k} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${modo === k ? "border-[#0047bb] bg-blue-50/60" : "border-slate-200"}`}>
+              <input type="radio" name="modo-envio" className="mt-1" checked={modo === k} onChange={() => {
+                setModo(k);
+                // Repetidas: entram só em "todas".
+                if (previa) setFora(k === "TODAS" ? new Set() : new Set(previa.flatMap((l, i) => (l.duplicada ? [i] : []))));
+              }} />
+              <span><span className="block text-sm font-semibold">{t}</span><span className="block text-xs text-slate-500">{d}</span></span>
+            </label>
+          ))}
+        </fieldset>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button className={btnSec} disabled={!texto.trim() || pend} onClick={() => start(async () => { const r = await preverEnvioAction(texto, personalizado, gerente || null); setPrevia(r); setFora(new Set(r.flatMap((l, i) => (l.duplicada ? [i] : [])))); })}>Conferir</button>
-          <button className={btnOuro} disabled={!validas.length || pend}
+          <button className={btnSec} disabled={!texto.trim() || pend} onClick={() => start(async () => { const r = await preverEnvioAction(texto, personalizado, gerente || null); setPrevia(r); setFora(modo === "TODAS" ? new Set() : new Set(r.flatMap((l, i) => (l.duplicada ? [i] : [])))); })}>Conferir</button>
+          <button className={btnOuro} disabled={(!validas.length && modo !== "VENDER_FORA") || !previa || pend}
             onClick={() => start(async () => {
-              const r = await enviarCotasAction(texto, personalizado, gerente || null, comissaoLote, [...fora]);
-              setMsg(r.ok ? `✅ ${r.incluidas} cotas incluídas.` : `⚠️ ${r.erro}`);
+              if (modo === "VENDER_FORA" && !confirm(`As cotas disponíveis ${doAdm} que não estão nesta lista serão marcadas como vendidas. Continuar?`)) return;
+              const r = await enviarCotasAction(texto, personalizado, gerente || null, comissaoLote, [...fora], modo);
+              setMsg(r.ok ? `✅ ${r.incluidas} cotas incluídas.${r.vendidasFora ? ` ${r.vendidasFora} marcada(s) como vendida(s).` : ""}` : `⚠️ ${r.erro}`);
               if (r.ok) { setTexto(""); setPrevia(null); recarregarLotes(); }
             })}>
             {pend ? "Enviando…" : `Enviar ${validas.length || ""}`}
