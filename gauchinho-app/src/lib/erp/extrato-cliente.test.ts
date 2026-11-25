@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularExtratoCota, proximidadesCota, type CotaExtrato } from "./extrato-cliente";
+import { calcularExtratoCota, distanciaParaCima, proximidadesCota, type CotaExtrato } from "./extrato-cliente";
 
 const cota: CotaExtrato = {
   id: "c", numero_grupo: "1203", numero_cota: "0493", grupo_id: "g", valor_credito: 110000,
@@ -28,10 +28,18 @@ describe("extrato por cota", () => {
       cotas: [
         { cota: "0493", modalidade: "SORTEIO", situacao_cota: "CANCELADA", percentual_lance: 0 },
         { cota: "0528", modalidade: "SORTEIO", situacao_cota: "ATIVA", percentual_lance: 0 },
+        { cota: "0458", modalidade: "LANCE_FIXO", situacao_cota: "ATIVA", percentual_lance: 0 },
       ],
     }], 3000, "2026-01-01", "2026-11-25");
+    // 0528 está acima da cota 0493: a apuração só sobe, então vale a 0458 (35 abaixo).
+    expect(dados[0].melhor.cota).toBe("0458");
     expect(dados[0].melhor.distancia).toBe(35);
     expect(dados[0].percentual).toBeCloseTo(98.833333);
+  });
+  it("conta a distância sempre subindo a partir do número apurado", () => {
+    expect(distanciaParaCima(580, 652, 900)).toBe(72);
+    expect(distanciaParaCima(727, 652, 900)).toBe(825); // dá a volta no grupo
+    expect(distanciaParaCima(727, 652, null)).toBeNaN();
   });
   it("informa ausência de histórico e de parcela sem estimar um total", () => {
     const dados = calcularExtratoCota({ ...cota, snapshot_cota: {}, parcela_vigente_newcon: null }, "2026-11-25", "2026-11");

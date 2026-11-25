@@ -62,6 +62,17 @@ export function calcularExtratoCota(cota: CotaExtrato, hoje: string, mes: string
   };
 }
 
+/**
+ * A apuração parte do número sorteado e sobe até achar uma cota apta: nunca desce.
+ * Por isso a cota do cliente só seria alcançada a partir de números iguais ou abaixo dela.
+ * Acima dela, só dando a volta no grupo (do último número de volta ao 1).
+ */
+export function distanciaParaCima(referencia: number, numero: number, capacidade: number | null) {
+  if (!Number.isFinite(referencia) || !Number.isFinite(numero)) return Number.NaN;
+  if (numero >= referencia) return numero - referencia;
+  return capacidade && referencia <= capacidade ? capacidade - referencia + numero : Number.NaN;
+}
+
 export function proximidadesCota(cota: CotaExtrato, resultados: ResultadoAssembleia[], capacidade: number | null, inicio: string, fim: string) {
   const numero = Number.parseInt(cota.numero_cota, 10);
   return resultadosVigentes(resultados).filter((a) => a.grupo_id === cota.grupo_id && a.assembleia_data >= inicio && a.assembleia_data <= fim &&
@@ -69,7 +80,7 @@ export function proximidadesCota(cota: CotaExtrato, resultados: ResultadoAssembl
     .map((a) => {
       const candidatos = a.cotas.filter((r) => r.situacao_cota === "ATIVA" &&
         ["SORTEIO", "LANCE_FIXO", "LANCE_FIXO_2", "LANCE_FIXO2", "LANCE_FIDELIDADE"].includes(r.modalidade))
-        .map((r) => ({ ...r, distancia: Math.abs(numero - Number.parseInt(r.cota, 10)) }))
+        .map((r) => ({ ...r, distancia: distanciaParaCima(Number.parseInt(r.cota, 10), numero, capacidade) }))
         .filter((r) => Number.isFinite(r.distancia)).sort((a, b) => a.distancia - b.distancia);
       const melhor = candidatos[0];
       const percentual = melhor && capacidade && numero >= 1 && numero <= capacidade && melhor.distancia < capacidade
