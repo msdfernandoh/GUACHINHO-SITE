@@ -779,8 +779,9 @@ async function lerImagemComIa(dataUrl: string): Promise<string> {
   const [, mime, b64] = dataUrl.match(/^data:([^;]+);base64,(.*)$/) ?? [];
   const gemini = process.env.GEMINI_API_KEY?.trim();
   if (gemini) {
-    const modelos = [process.env.GEMINI_MODEL?.trim(), "gemini-flash-latest", "gemini-2.5-flash"].filter(Boolean) as string[];
-    for (const modelo of modelos) {
+    // Vários modelos do plano gratuito: se um estiver sobrecarregado (503) ou indisponível, tenta o próximo.
+    const modelos = [process.env.GEMINI_MODEL?.trim(), "gemini-3.8-flash", "gemini-flash-latest", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-flash-lite-latest"].filter(Boolean) as string[];
+    for (const modelo of [...new Set(modelos)]) {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
         method: "POST",
         headers: { "x-goog-api-key": gemini, "Content-Type": "application/json" },
