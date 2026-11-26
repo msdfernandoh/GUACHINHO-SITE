@@ -768,9 +768,9 @@ export async function lerImagemCotasAction(dataUrl: string) {
 }
 
 const PROMPT_IMAGEM =
-  "Você lê tabelas/listas de cartas de consórcio contempladas em imagens. Responda SOMENTE com uma linha por carta, sem cabeçalho e sem comentários, neste formato exato:\n" +
-  "<administradora> <IMÓVEL|VEÍCULO> R$ <crédito> R$ <entrada> <nº de parcelas> R$ <valor da parcela> R$ <saldo devedor> <mês do vencimento por extenso> R$ <comissão>\n" +
-  "Use valores no formato brasileiro (R$ 311.000,00). Se faltar saldo, use R$ 0,00. Se faltar comissão, omita o último campo. Se faltar o mês, omita. Não invente cartas que não estão na imagem.";
+  "Você lê tabelas/listas de cartas de consórcio contempladas em imagens. Responda SOMENTE com uma linha por carta, sem título e sem comentários, neste formato exato:\n" +
+  "Administradora: <nome> | Tipo: <imovel|veiculo> | Crédito: R$ <valor> | Entrada: R$ <valor> | Prazo: <nº de parcelas> | Parcela: R$ <valor> | Saldo Devedor: R$ <valor> | Vencimento: <como está na imagem> | Comissão: R$ <valor>\n" +
+  "Use valores no formato brasileiro (R$ 311.000,00). Omita o campo que não existir na imagem. Se o tipo não estiver na linha, use o título da tabela. Não invente cartas que não estão na imagem.";
 
 const limparTexto = (t: string) => t.replace(/```[a-z]*\n?|```/g, "").trim();
 

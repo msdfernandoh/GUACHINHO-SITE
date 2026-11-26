@@ -29,7 +29,11 @@ const sem = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCas
 function mesDoTexto(t: string): number | null {
   const n = sem(t);
   const i = MESES.findIndex((m) => new RegExp(`\\b${m}\\b|\\b${m.slice(0, 3)}\\b`).test(n));
-  return i >= 0 ? i + 1 : null;
+  if (i >= 0) return i + 1;
+  // Campo só com a data do vencimento: "10.01", "20/12".
+  const d = t.trim().match(/^(\d{1,2})[./-](\d{1,2})(?:[./-]\d{2,4})?$/);
+  const mes = d ? Number(d[2]) : 0;
+  return mes >= 1 && mes <= 12 ? mes : null;
 }
 
 const TIPO_AUTO = /autom[oó]vel|ve[ií]culo|\bauto\b|caminh[aã]o|pesado/i;
@@ -82,6 +86,55 @@ const VALOR = String.raw`R?\$?\s*(\d[\d.]*(?:,\d{1,2})?)`;
 function campo(bloco: string, rotulo: string): number | null {
   const m = bloco.match(new RegExp(rotulo + String.raw`[^:\n]*:\s*` + VALOR, "i"));
   return m ? parseBrazilianNumber(m[1]) : null;
+}
+
+/**
+ * Uma carta por linha com rótulos separados por "|" (formato que o Gemini/ChatGPT devolvem):
+ * "* Administradora: racon | Tipo: veiculo | Crédito: R$ 74.500,00 | Entrada: R$ 29.900,00 | Prazo: 75 | …"
+ */
+function lerLinhasComBarras(texto: string): LinhaLida[] | null {
+  const linhas = texto.split(/\r?\n/).filter((l) => /\|/.test(l) && /cr[eé]dito\s*:/i.test(l));
+  if (!linhas.length) return null;
+  const campos = (l: string) => {
+    const m = new Map<string, string>();
+    for (const parte of l.replace(/^[\s*•\-–]+/, "").split("|")) {
+      const i = parte.indexOf(":");
+      if (i > 0) m.set(sem(parte.slice(0, i)), parte.slice(i + 1).trim());
+    }
+    const achar = (...k: string[]) => [...m.entries()].find(([n]) => k.some((x) => n.includes(x)))?.[1];
+    return achar;
+  };
+  const numero = (v: string | undefined) => {
+    const x = (v ?? "").match(/\d[\d.]*(?:,\d{1,2})?/);
+    return x ? parseBrazilianNumber(x[0]) : null;
+  };
+  return linhas.map((l) => {
+    const f = campos(l);
+    const credito = numero(f("credito"));
+    const entrada = numero(f("entrada"));
+    const prazo = numero(f("prazo"));
+    if (!credito || entrada == null || !prazo) return { cota: null, erro: "Crédito, entrada ou prazo não encontrado.", texto: l.trim() };
+    const adm = (f("administradora", "adm") ?? "racon").trim().toLowerCase().replace(/[^a-zà-ú\s]/gi, "").trim() || "racon";
+    const comissao = numero(f("comiss")) ?? 0;
+    return {
+      cota: {
+        administradora: adm,
+        tipo: TIPO_AUTO.test(f("tipo") ?? "") ? "automovel" : "imovel",
+        credito,
+        entrada_original: entrada,
+        prazo: Math.round(prazo),
+        parcela: numero(f("parcela")) ?? 0,
+        saldo_devedor: numero(f("saldo")) ?? 0,
+        vencimento_mes: mesDoTexto(f("venc") ?? ""),
+        comissao_parceiro: comissao,
+        comissao_fixada: comissao > 0,
+        transferencia: numero(f("transf")),
+        texto_original: l.trim(),
+      } as CotaLida,
+      erro: null,
+      texto: l.trim(),
+    };
+  });
 }
 
 /**
@@ -232,7 +285,7 @@ function csvParaTabs(texto: string): string {
 export function lerCotasTexto(textoBruto: string, acrescimo: Acrescimo | ((tipo: "imovel" | "automovel") => Acrescimo)): LinhaLida[] {
   const texto = csvParaTabs(textoBruto);
   const agioDe = typeof acrescimo === "function" ? acrescimo : () => acrescimo;
-  const rotulados = lerPlanilhaComTitulos(texto) ?? lerBlocosRotulados(texto);
+  const rotulados = lerLinhasComBarras(texto) ?? lerPlanilhaComTitulos(texto) ?? lerBlocosRotulados(texto);
   const linhas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const tabela = linhas.map((l) => ({ l, c: lerLinhaTabela(l) }));
   const pareceTabela = tabela.filter((x) => x.c).length >= Math.max(1, Math.ceil(linhas.length / 3));
