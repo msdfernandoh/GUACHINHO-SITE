@@ -4,7 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenantContext } from "@/lib/tenant/context";
 import { saveClienteAction } from "../actions";
 
-export default async function NovoClientePage() {
+export default async function NovoClientePage({ searchParams }: {
+  searchParams?: Promise<Record<string, string | undefined>>;
+}) {
+  const continuarContratacao = (await searchParams)?.origem === "contratacao";
+  const voltarHref = continuarContratacao ? "/erp/contratacoes/nova" : "/erp/clientes";
   const { empresaAtiva } = await getCurrentTenantContext();
   const supabase = await createClient();
   const { data: consultores } = empresaAtiva
@@ -13,13 +17,13 @@ export default async function NovoClientePage() {
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 pb-12">
-      <Link href="/erp/clientes" className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-blue-700">
-        <ArrowLeft size={17} /> Voltar para clientes
+      <Link href={voltarHref} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-blue-700">
+        <ArrowLeft size={17} /> {continuarContratacao ? "Voltar para nova contratação" : "Voltar para clientes"}
       </Link>
 
       <section className="rounded-3xl bg-slate-950 p-7 text-white">
         <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">ERP operacional</p>
-        <h1 className="mt-2 text-3xl font-black">Novo cliente</h1>
+        <h1 className="mt-2 text-3xl font-black">{continuarContratacao ? "Nova contratação · cadastrar cliente" : "Novo cliente"}</h1>
         <p className="mt-2 text-xs text-slate-300">
           Crie um cadastro independente no ERP. CPF/CNPJ evita duplicidade dentro desta empresa.
         </p>
@@ -27,6 +31,7 @@ export default async function NovoClientePage() {
 
       <form action={saveClienteAction} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <input type="hidden" name="controle_automacao_presente" value="1" />
+        {continuarContratacao && <input type="hidden" name="apos_salvar" value="contratacao" />}
 
         <div className="space-y-4">
           <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Dados Pessoais & Identificação</h2>
@@ -110,11 +115,11 @@ export default async function NovoClientePage() {
         </label>
 
         <div className="flex justify-end gap-3 border-t pt-5 dark:border-slate-800">
-          <Link href="/erp/clientes" className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300">
+          <Link href={voltarHref} className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300">
             Cancelar
           </Link>
           <button className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 text-xs font-black text-white shadow-lg shadow-blue-200 hover:bg-blue-700 dark:shadow-none">
-            <Save size={16} /> Salvar cliente
+            <Save size={16} /> {continuarContratacao ? "Salvar cliente e continuar" : "Salvar cliente"}
           </button>
         </div>
       </form>

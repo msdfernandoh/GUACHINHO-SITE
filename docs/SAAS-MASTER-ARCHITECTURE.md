@@ -1,5 +1,15 @@
 # ARQUITETURA MASTER SAAS MULTIEMPRESA — GAUCHINHO SITE
 
+### Nova contratação pelo ERP (26/11/2026)
+
+A fila de Contratações oferece Nova contratação, com busca paginada de cliente
+por nome ou CPF/CNPJ e cadastro completo de novo cliente dentro do fluxo.
+A continuação reutiliza a contratação vinculada ao cliente e a conferência
+canônica de grupo, cota, modalidade, seguro, comissões e documentos.
+Assinatura e validações anteriores à venda permanecem obrigatórias.
+Sem migration. Relatório: `docs/relatorios-fases/NOVA-CONTRATACAO-ERP-2026-11-26.md`.
+
+
 ### Extrato de Clientes e mensagem mensal (25/11/2026)
 
 Menu paginado, extrato único por cliente, PDF e mensagem de WhatsApp editável.

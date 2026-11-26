@@ -69,6 +69,7 @@ export default async function ErpContratacoesPage({
       <p className="text-xs font-bold uppercase tracking-[.2em] text-blue-700">Operação comercial</p>
       <h1 className="mt-1 text-3xl font-bold text-slate-950">Contratações para formalizar</h1>
       <p className="mt-2 text-slate-600">Fila operacional de contratos: conferir, vincular cliente e criar venda/cota pelo motor canônico.</p>
+      {podeFormalizar && <Link href="/erp/contratacoes/nova" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-blue-700 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800">+ Nova contratação</Link>}
     </header>
     <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       {[["Assinados aguardando formalização",cards.aguardando,"text-blue-700"],["Em conferência",cards.conferencia,"text-violet-700"],["Pendências",cards.pendencias,"text-amber-700"],["Formalizados no mês",cards.formalizados,"text-emerald-700"]].map(([label,value,color]) =>

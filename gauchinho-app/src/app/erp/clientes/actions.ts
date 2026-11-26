@@ -109,6 +109,9 @@ export async function saveClienteAction(formData: FormData) {
   revalidatePath("/erp/robos");
   revalidatePath("/erp/repasse-franquia");
   revalidatePath("/erp/comissoes");
+  if (text(formData.get("apos_salvar")) === "contratacao") {
+    redirect(`/erp/contratacoes/nova?cliente=${result.data.id}`);
+  }
   redirect(`/erp/clientes/${result.data.id}`);
 }
 
